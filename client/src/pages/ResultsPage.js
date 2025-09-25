@@ -224,7 +224,8 @@ const ResultsPage = () => {
             <div className="scholarship-grid">
               {matches.map((match) => {
                 const scholarship = match.scholarship
-                const isExpired = new Date(scholarship.deadline) < new Date()
+                const hasDeadline = scholarship.deadline != null && scholarship.deadline !== ""
+                const isExpired = hasDeadline && new Date(scholarship.deadline) < new Date()
 
                 return (
                   <div key={scholarship._id} className="scholarship-card">
@@ -243,14 +244,15 @@ const ResultsPage = () => {
                     </div>
 
                     <h3 className="scholarship-title">{scholarship.title}</h3>
-
-                    <p style={{ color: "#6b7280", marginBottom: "1rem", lineHeight: "1.5" }}>
-                      {scholarship.description}
-                    </p>
-
                     <div className="scholarship-deadline">
-                      Deadline: {formatDate(scholarship.deadline)}
-                      {isExpired && <span style={{ color: "#ef4444", marginLeft: "0.5rem" }}>(Expired)</span>}
+                      {hasDeadline ? (
+                        <>
+                          Deadline: {formatDate(scholarship.deadline)}
+                          {isExpired && <span style={{ color: "#ef4444", marginLeft: "0.5rem" }}>(Expired)</span>}
+                        </>
+                      ) : (
+                        <span style={{ color: "#059669" }}>Always Open</span>
+                      )}
                     </div>
 
                     {/* Requirements */}
@@ -303,7 +305,7 @@ const ResultsPage = () => {
                         <button className="btn btn-success" disabled style={{ width: "100%" }}>
                           ✓ Applied
                         </button>
-                      ) : isExpired ? (
+                      ) : (isExpired && hasDeadline) ? (
                         <button className="btn btn-secondary" disabled style={{ width: "100%" }}>
                           Expired
                         </button>
@@ -325,25 +327,6 @@ const ResultsPage = () => {
           </>
         )}
 
-        {/* Tips Section */}
-        <div
-          style={{
-            marginTop: "3rem",
-            padding: "2rem",
-            background: "#f0f9ff",
-            borderRadius: "12px",
-            border: "1px solid #0ea5e9",
-          }}
-        >
-          <h3 style={{ color: "#0c4a6e", marginBottom: "1rem" }}>💡 Tips to Improve Your Matches</h3>
-          <ul style={{ color: "#0c4a6e", paddingLeft: "1.5rem" }}>
-            <li>Complete all sections of your profile</li>
-            <li>Upload academic transcripts and recommendation letters</li>
-            <li>Add more extracurricular activities and achievements</li>
-            <li>Keep your GPA and academic information up to date</li>
-            <li>Check back regularly for new scholarship opportunities</li>
-          </ul>
-        </div>
       </div>
     </div>
   )

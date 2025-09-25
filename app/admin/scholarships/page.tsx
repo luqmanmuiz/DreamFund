@@ -39,9 +39,10 @@ export default function ScholarshipsManagement() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Compute display status (treat expired deadlines as Inactive)
+  // Compute display status (only check deadline if it exists)
   const computeDisplayStatus = (scholarship: any) => {
     try {
+      // Only check deadline if it exists
       if (scholarship?.deadline) {
         const dl = new Date(scholarship.deadline)
         if (!isNaN(dl.getTime())) {
@@ -53,6 +54,7 @@ export default function ScholarshipsManagement() {
           }
         }
       }
+      // If no deadline exists, keep the scholarship's current status
     } catch {}
     return scholarship.status
   }
@@ -92,12 +94,20 @@ export default function ScholarshipsManagement() {
               </Link>
               <h1 className="text-2xl font-bold text-gray-900">Manage Scholarships</h1>
             </div>
-            <Link href="/admin/scholarships/new">
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Scholarship
-              </Button>
-            </Link>
+            <div className="flex items-center space-x-3">
+              <Link href="/admin/scrape">
+                <Button className="bg-amber-500 hover:bg-amber-600 text-white">
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Scrape Scholarships
+                </Button>
+              </Link>
+              <Link href="/admin/scholarships/new">
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Scholarship
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </header>

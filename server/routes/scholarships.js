@@ -264,10 +264,12 @@ router.post("/recalculate-status", async (req, res) => {
       if (!hasDiplomaOrDegree) {
         newStatus = "inactive";
       } else if (record.deadline instanceof Date && !isNaN(record.deadline.getTime())) {
+        // Only check deadline if it exists
         const dl = record.deadline;
         const deadlineMidnightUtc = new Date(Date.UTC(dl.getUTCFullYear(), dl.getUTCMonth(), dl.getUTCDate()));
         newStatus = deadlineMidnightUtc.getTime() >= todayMidnightUtc.getTime() ? "active" : "inactive";
       } else {
+        // No deadline means scholarship is active (as long as study level is valid)
         newStatus = "active";
       }
 

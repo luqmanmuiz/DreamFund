@@ -11,7 +11,6 @@ interface ScrapedScholarship {
   link: string
   studyLevel: string
   deadline: string
-  overview: string
   criteria: string
   contactEmail: string
   scrapedAt: string
@@ -66,7 +65,6 @@ export default function ScrapePage() {
               link: s.sourceUrl || s.provider?.website,
               studyLevel: (Array.isArray(s.studyLevels) && s.studyLevels.join(', ')) || s.studyLevel || '',
               deadline: s.extractedDeadline || (s.deadline ? new Date(s.deadline).toLocaleDateString() : ''),
-              overview: s.description,
               criteria: '',
               contactEmail: s.contactEmail || s.provider?.contact || '',
               scrapedAt: s.scrapedAt || s.createdAt || ''
@@ -98,7 +96,6 @@ export default function ScrapePage() {
             name: s.title,
             studyLevel: (Array.isArray(s.studyLevels) && s.studyLevels.join(', ')) || s.studyLevel || '',
             deadline: s.extractedDeadline || (s.deadline ? new Date(s.deadline).toLocaleDateString() : ''),
-            overview: s.description,
             criteria: '',
             contactEmail: s.contactEmail || s.provider?.contact || '',
             link: s.sourceUrl || s.provider?.website,
@@ -121,14 +118,13 @@ export default function ScrapePage() {
   const convertToCSV = (data: ScrapedScholarship[]) => {
     if (!data || data.length === 0) return ''
     
-    const headers = ['Name', 'Study Level', 'Deadline', 'Overview', 'Criteria', 'Contact Email', 'Link', 'Scraped At']
+    const headers = ['Name', 'Study Level', 'Deadline', 'Criteria', 'Contact Email', 'Link', 'Scraped At']
     const csvRows = [
       headers.join(','),
       ...data.map(item => [
         `"${item.name || ''}"`,
         `"${item.studyLevel || ''}"`,
         `"${item.deadline || ''}"`,
-        `"${item.overview || ''}"`,
         `"${item.criteria || ''}"`,
         `"${item.contactEmail || ''}"`,
         `"${item.link || ''}"`,
@@ -250,14 +246,7 @@ export default function ScrapePage() {
                     </p>
                   )}
                   
-                  {scholarship.overview && (
-                    <p className="text-sm">
-                      {scholarship.overview.length > 200 
-                        ? scholarship.overview.substring(0, 200) + '...'
-                        : scholarship.overview
-                      }
-                    </p>
-                  )}
+                  {/* Description preview removed */}
                   
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     {scholarship.contactEmail && (

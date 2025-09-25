@@ -31,7 +31,6 @@ const seedAdmin = async () => {
     const sampleScholarships = [
       {
         title: "Academic Excellence Scholarship",
-        description: "For students with outstanding academic performance",
         amount: 5000,
         deadline: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days from now
         requirements: {
@@ -48,7 +47,6 @@ const seedAdmin = async () => {
       },
       {
         title: "Need-Based Support Grant",
-        description: "Financial assistance for students with demonstrated need",
         amount: 3000,
         deadline: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days from now
         requirements: {
@@ -65,7 +63,6 @@ const seedAdmin = async () => {
       },
       {
         title: "STEM Innovation Award",
-        description: "For students pursuing careers in Science, Technology, Engineering, and Mathematics",
         amount: 7500,
         deadline: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000), // 120 days from now
         requirements: {

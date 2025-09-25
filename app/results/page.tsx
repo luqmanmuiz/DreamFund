@@ -14,7 +14,6 @@ const scholarships = [
     minCGPA: 3.5,
     amount: "$5,000",
     deadline: "March 15, 2024",
-    description: "For outstanding academic performance in STEM fields",
     matchPercentage: 95,
   },
   {
@@ -24,7 +23,6 @@ const scholarships = [
     minCGPA: 3.2,
     amount: "$3,000",
     deadline: "April 30, 2024",
-    description: "Supporting students with leadership potential",
     matchPercentage: 88,
   },
   {
@@ -34,7 +32,6 @@ const scholarships = [
     minCGPA: 3.0,
     amount: "$4,500",
     deadline: "May 20, 2024",
-    description: "For students pursuing technology and innovation",
     matchPercentage: 82,
   },
   {
@@ -44,7 +41,6 @@ const scholarships = [
     minCGPA: 2.8,
     amount: "$2,500",
     deadline: "June 10, 2024",
-    description: "Recognizing community service and social impact",
     matchPercentage: 75,
   },
 ]
@@ -122,8 +118,6 @@ export default function ResultsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p className="text-gray-700">{scholarship.description}</p>
-
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-gray-500">Amount:</span>

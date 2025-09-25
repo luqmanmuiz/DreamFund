@@ -12,11 +12,6 @@ const scholarshipSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    description: {
-      type: String,
-      required: true,
-      trim: true,
-    },
     amount: {
       type: String,
       required: true,
@@ -100,7 +95,6 @@ const scholarshipSchema = new mongoose.Schema(
 scholarshipSchema.index({
   title: "text",
   provider: "text",
-  description: "text",
   keywords: "text",
 })
 

@@ -528,33 +528,6 @@ class ScholarshipScraper {
       if (!deadline) {
         console.log("❌ No deadline found using any method");
       }
-
-      // Extract Overview/Description (similar to Python)
-      let overview = null;
-      const overviewBlock = $(
-        ".MuiStack-root.topContent.description.css-j7qwjs"
-      );
-      if (overviewBlock.length > 0) {
-        const pTag = overviewBlock.find("p");
-        if (pTag.length > 0) {
-          overview = pTag.text().trim();
-        }
-      }
-
-      // Fallback description methods if overview not found
-      if (!overview) {
-        overview =
-          $('meta[name="description"]').attr("content") ||
-          $(".content, .description").first().text().trim() ||
-          $("p").first().text().trim() ||
-          "No description available";
-      }
-
-      // Clean up description
-      if (overview && overview.length > 500) {
-        overview = overview.substring(0, 500).trim() + "...";
-      }
-
       // Extract Email (multiple strategies)
       let email = null;
 
@@ -854,7 +827,6 @@ class ScholarshipScraper {
 
       return {
         title,
-        description: overview || "No description available",
         amount,
         deadline: deadlineDate,
         status: "active",
