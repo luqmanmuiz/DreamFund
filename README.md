@@ -1,22 +1,21 @@
 # DreamFund Platform
 
-An AI-powered scholarship matching platform that helps students find and apply for scholarships based on their academic profiles.
+Welcome to DreamFund! This is a website that helps students find scholarships that match their profile. It uses AI to read your academic documents and automatically finds scholarships you might be eligible for.
 
-## Features
+## What Can DreamFund Do?
 
-- 📄 **Document Upload & Processing**: Upload academic transcripts, essays, and recommendation letters
-- 🤖 **AI-Powered Extraction**: Automatically extract key information (name, CGPA, program) from documents
-- 🎯 **Smart Matching**: Match students with relevant scholarships based on their profiles
-- 👨‍💼 **Admin Dashboard**: Manage scholarships, users, and generate reports
-- 📊 **Analytics**: Track application success rates and platform usage
+- 📄 Upload your academic documents (transcripts)
+- 🤖 The AI reads these documents to understand your qualifications
+- 🎯 Shows you scholarships that match your profile
+- 👨‍💼 Has a special dashboard for administrators
+- 📊 Tracks how well the platform is helping students
 
-## Architecture
+## Parts of the Project
 
-The platform consists of three main services:
-
-1. **React Frontend** (Port 3000) - User interface
-2. **Node.js Backend** (Port 5000) - API server and file handling
-3. **Python Extraction Service** (Port 5001) - AI-powered document processing
+The project has three main parts that work together:
+1. A website that you see in your browser (runs on port 3000)
+2. A backend server that handles all the data (runs on port 5000)
+3. An AI service that reads your documents (runs on port 5001)
 
 ## Prerequisites
 
@@ -90,54 +89,88 @@ The platform consists of three main services:
    npm start
    \`\`\`
 
-## Service URLs
+## Where to Find Everything
 
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:5000
-- **Python Extraction**: http://localhost:5001
-- **Admin Dashboard**: http://localhost:3000/admin
+After starting the project, you can access:
+- The main website: http://localhost:3000
+- Admin dashboard: http://localhost:3000/admin
+- Backend server: http://localhost:5000
+- AI service: http://localhost:5001
 
-## API Endpoints
+## Setting Up Environment Variables
 
-### File Upload & Processing
-- `POST /api/upload` - Upload documents
-- `POST /api/extract` - Extract data from documents
+You'll need to create two files with settings for the project to work:
 
-### Authentication
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User login
-- `GET /api/auth/me` - Get current user
-- `PUT /api/auth/profile` - Update user profile
+1. In the `server` folder, create a file named `.env`:
+   ```
+   PORT=5000
+   MONGODB_URI=mongodb://localhost:27017/dreamfund
+   JWT_SECRET=your-jwt-secret
+   UPLOAD_PATH=./uploads
+   MAX_FILE_SIZE=10485760
+   ```
 
-### Scholarships
-- `GET /api/scholarships` - Get all scholarships
-- `POST /api/scholarships` - Create scholarship (admin)
-- `PUT /api/scholarships/:id` - Update scholarship (admin)
-- `DELETE /api/scholarships/:id` - Delete scholarship (admin)
+2. In the `client` folder, create a file named `.env`:
+   ```
+   REACT_APP_API_URL=http://localhost:5000
+   REACT_APP_EXTRACTION_URL=http://localhost:5001
+   ```
 
-### Admin
-- `GET /api/users` - Get all users (admin)
-- `GET /api/reports` - Get platform reports (admin)
+## About Files You Can Upload
 
-## Document Processing
+The system can read these types of files:
+- PDF files (.pdf)
+- Word documents (.doc, .docx)
+- Images (.jpg, .jpeg, .png, .gif)
 
-The platform supports the following file formats:
-- **PDF** (.pdf)
-- **Word Documents** (.doc, .docx)
-- **Images** (.jpg, .jpeg, .png, .gif)
+The AI can understand:
+- Student names
+- GPAs and CGPAs
+- What you're studying (your academic program)
+- Both Malaysian and international transcripts
+- Documents in English or Malay
 
-### Extracted Information
+## Fixing Common Problems
 
-The AI extraction service identifies:
-- **Student Name** - Using NER and pattern matching
-- **CGPA/GPA** - Prioritizes "FINAL CGPA" mentions
-- **Academic Program** - Degree and field of study
+1. **"Port already in use" error**
+   - Close any other applications that might be using ports 3000, 5000, or 5001
+   - Or restart your computer
 
-### Supported Academic Formats
+2. **Python packages not working**
+   Try this:
+   ```bash
+   cd extraction-service
+   pip install -r requirements.txt
+   python -m spacy download en_core_web_sm
+   ```
 
-- Malaysian academic transcripts
-- International transcripts
-- Bilingual documents (English/Malay)
+3. **Node.js errors**
+   Try this:
+   ```bash
+   rm -rf node_modules package-lock.json
+   npm install
+   ```
+
+4. **AI service not working**
+   - Make sure the Python service is running
+   - Check that you installed all Python packages
+   - Make sure all file paths are correct
+
+## Getting Help
+
+If you need help:
+1. Look at the error messages in your terminal
+2. Check your browser's console for errors (press F12 to open)
+3. Create an issue on GitHub
+4. Check the troubleshooting steps above
+
+## License
+
+This project is available under the MIT License - see the LICENSE file for details.
+
+---
+
+**Remember**: All three parts of the project (website, backend, and AI service) need to be running for everything to work properly.
 
 ## Project Structure
 
