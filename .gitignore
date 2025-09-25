@@ -1,0 +1,56 @@
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.iml
+
+# Logs / caches
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+.eslintcache
+.prettiercache
+.cache/
+.parcel-cache/
+.turbo/
+
+# Dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Build artifacts
+build/
+dist/
+coverage/
+.next/
+out/
+client/build/
+server/build/
+.vercel/
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+client/.env*
+server/.env*
+
+# Uploads / temp data
+uploads/
+server/uploads/
+tmp/
+temp/
+data/
+*.sqlite
+*.db
+
+# Python (if used)
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
