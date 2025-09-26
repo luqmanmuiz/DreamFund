@@ -227,8 +227,17 @@ class ScholarshipScraper {
             if (scholarshipData.deadline) {
               console.log(`\n📅 DEADLINE ANALYSIS for "${link.title}":`);
               console.log(`  Raw deadline text: "${scholarshipData.deadline}"`);
-              const [dd, mm, yyyy] = scholarshipData.deadline.split("-");
-              const parsedDate = new Date(`${yyyy}-${mm}-${dd}`); // ISO format for JS
+              
+              let parsedDate;
+              if (scholarshipData.deadline instanceof Date) {
+                parsedDate = scholarshipData.deadline;
+              } else if (typeof scholarshipData.deadline === 'string' && /^\d{1,2}-\d{1,2}-\d{4}$/.test(scholarshipData.deadline)) {
+                const [dd, mm, yyyy] = scholarshipData.deadline.split("-");
+                parsedDate = new Date(`${yyyy}-${mm}-${dd}`);
+              } else {
+                parsedDate = new Date(scholarshipData.deadline);
+              }
+              
               const currentDate = new Date();
               console.log(`  Parsed date: ${parsedDate}`);
               console.log(`  Current date: ${currentDate}`);
@@ -772,7 +781,6 @@ class ScholarshipScraper {
       // 2) If still empty, try extracting from sentences like "fields such as A, B, and C"
       if (eligibleCourses.length === 0) {
         const sources = [];
-        if (overview) sources.push(overview);
         sources.push(pageText);
         const sentenceRx = /(fields|disciplines|areas|courses)[^\.\n]{0,40}\b(such as|like|include|including|are|eligible|comprise|cover)\b([^\.\n]{10,200})/i;
         const splitCandidates = (segment) => {

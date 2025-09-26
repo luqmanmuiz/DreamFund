@@ -14,6 +14,15 @@ const ResultsPage = () => {
   const [message, setMessage] = useState("")
   const [applying, setApplying] = useState({})
   const [studentCtx, setStudentCtx] = useState({ cgpa: 0, program: '' })
+  const [studentName, setStudentName] = useState('')
+  const capitalizeWords = (str) => {
+    if (!str || typeof str !== 'string') return ''
+    return str
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+  }
 
   useEffect(() => {
     const fetchMatches = async () => {
@@ -34,6 +43,8 @@ const ResultsPage = () => {
           const cgpa = latest?.cgpa ? parseFloat(String(latest.cgpa).replace(/[^0-9.]/g, '')) : 0
           const program = latest?.program || ''
           setStudentCtx({ cgpa, program })
+          const name = latest?.name || latest?.studentName || latest?.fullName || ''
+          setStudentName(capitalizeWords(name))
 
           // Call public matches on backend
           let res
@@ -214,10 +225,9 @@ const ResultsPage = () => {
         ) : (
           <>
             <div style={{ marginBottom: "2rem", textAlign: "center" }}>
-              <h2>Found {matches.length} Matching Scholarships</h2>
+              <h2>{`Congrats${studentName ? `, ${studentName}` : ''}!`}</h2>
               <p style={{ color: "#6b7280" }}>
-                Total potential funding: $
-                {matches.reduce((sum, match) => sum + match.scholarship.amount, 0).toLocaleString()}
+                Here are {matches.length} scholarships you can apply for.
               </p>
             </div>
 
@@ -282,44 +292,31 @@ const ResultsPage = () => {
                       </ul>
                     </div>
 
-                    {/* Provider Info */}
-                    <div style={{ marginBottom: "1.5rem", fontSize: "0.9rem", color: "#6b7280" }}>
-                      <strong>Provider:</strong> {scholarship.provider.name}
-                      {scholarship.provider.website && (
-                        <div>
-                          <a
-                            href={scholarship.provider.website}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ color: "#3b82f6" }}
-                          >
-                            Visit Website
-                          </a>
-                        </div>
-                      )}
-                    </div>
-
                     {/* Apply Button */}
-                    <div>
-                      {match.applied ? (
-                        <button className="btn btn-success" disabled style={{ width: "100%" }}>
-                          ✓ Applied
-                        </button>
-                      ) : (isExpired && hasDeadline) ? (
-                        <button className="btn btn-secondary" disabled style={{ width: "100%" }}>
-                          Expired
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleApply(scholarship._id)}
-                          disabled={applying[scholarship._id]}
-                          className="btn btn-primary"
-                          style={{ width: "100%" }}
-                        >
-                          {applying[scholarship._id] ? "Applying..." : "Apply Now"}
-                        </button>
-                      )}
-                    </div>
+                    {match.applied ? (
+                      <button className="btn btn-success" disabled style={{ width: "100%" }}>
+                        ✓ Applied
+                      </button>
+                    ) : (isExpired && hasDeadline) ? (
+                      <button className="btn btn-secondary" disabled style={{ width: "100%" }}>
+                        Expired
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          if (scholarship.provider.website) {
+                            window.open(scholarship.provider.website, '_blank');
+                          } else {
+                            alert('No website available for this scholarship provider');
+                          }
+                        }}
+                        disabled={applying[scholarship._id]}
+                        className="btn btn-primary"
+                        style={{ width: "100%" }}
+                      >
+                        {applying[scholarship._id] ? "Applying..." : "Apply Now"}
+                      </button>
+                    )}
                   </div>
                 )
               })}

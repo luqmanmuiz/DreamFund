@@ -61,9 +61,6 @@ const LandingPage = () => {
                   <li>
                     <Link to="/upload">Upload Documents</Link>
                   </li>
-                  <li>
-                    <Link to={`/results/${user.id}`}>My Matches</Link>
-                  </li>
                   {user.role === "admin" && (
                     <li>
                       <Link to="/admin/dashboard">Admin Dashboard</Link>
@@ -175,7 +172,7 @@ const LandingPage = () => {
         }}
       >
         <div className="container">
-          <p>&copy; 2024 DreamFund. All rights reserved.</p>
+          <p>&copy; 2025 DreamFund. All rights reserved.</p>
           <p>Empowering students to achieve their educational dreams.</p>
         </div>
       </footer>

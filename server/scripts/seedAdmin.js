@@ -26,64 +26,6 @@ const seedAdmin = async () => {
 
     await admin.save()
     console.log("Admin user created successfully")
-
-    // Create sample scholarships
-    const sampleScholarships = [
-      {
-        title: "Academic Excellence Scholarship",
-        amount: 5000,
-        deadline: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days from now
-        requirements: {
-          minGPA: 3.5,
-          maxAge: 25,
-          majors: ["Computer Science", "Engineering", "Mathematics"],
-          financialNeed: "any",
-        },
-        provider: {
-          name: "DreamFund Foundation",
-          contact: "scholarships@dreamfund.com",
-          website: "https://dreamfund.com",
-        },
-      },
-      {
-        title: "Need-Based Support Grant",
-        amount: 3000,
-        deadline: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days from now
-        requirements: {
-          minGPA: 2.5,
-          maxAge: 30,
-          majors: [],
-          financialNeed: "high",
-        },
-        provider: {
-          name: "Community Support Fund",
-          contact: "support@community.org",
-          website: "https://community.org",
-        },
-      },
-      {
-        title: "STEM Innovation Award",
-        amount: 7500,
-        deadline: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000), // 120 days from now
-        requirements: {
-          minGPA: 3.0,
-          maxAge: 28,
-          majors: ["Computer Science", "Engineering", "Physics", "Chemistry", "Biology"],
-          financialNeed: "any",
-          extracurriculars: ["Research", "Internship"],
-        },
-        provider: {
-          name: "STEM Education Alliance",
-          contact: "awards@stem-alliance.org",
-          website: "https://stem-alliance.org",
-        },
-      },
-    ]
-
-    await Scholarship.insertMany(sampleScholarships)
-    console.log("Sample scholarships created successfully")
-
-    console.log("\n🎉 Database seeded successfully!")
     console.log(`📧 Admin Email: ${process.env.ADMIN_EMAIL}`)
     console.log(`🔑 Admin Password: ${process.env.ADMIN_PASSWORD}`)
   } catch (error) {
