@@ -737,7 +737,7 @@ class ScholarshipScraper {
 
       // 1) Look for sections likely titled "Preferred Discipline", "Eligible Courses", "Fields of Study"
       const possibleSectionHeadings = [
-        'preferred discipline', 'preferred disciplines', 'eligible courses', 'eligible programmes',
+        'preferred discipline', 'preferred disciplines', 'eligible courses', 'eligible programmes', 'fields',
         'field of study', 'fields of study', 'courses', 'programmes', 'programs', 'disciplines', 'areas of study'
       ];
 

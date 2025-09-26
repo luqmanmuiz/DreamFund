@@ -204,13 +204,6 @@ const UploadPage = () => {
     return "#ef4444" // red
   }
 
-  const saveExtractedData = () => {
-    // Save extracted data to local storage or send to backend
-    localStorage.setItem('extractedData', JSON.stringify(extractedData))
-    console.log("Saving extracted data:", extractedData)
-    setMessage("Extracted information saved successfully!")
-  }
-
   return (
     <div>
       {/* Header */}
@@ -474,21 +467,6 @@ const UploadPage = () => {
               {extractedData.length > 0 && (
                 <div style={{ marginTop: "1.5rem", textAlign: "center" }}>
                   <button
-                    className="btn btn-success"
-                    style={{ 
-                      padding: "0.75rem 1.5rem", 
-                      marginRight: "1rem",
-                      backgroundColor: "#10b981",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "6px",
-                      cursor: "pointer"
-                    }}
-                    onClick={saveExtractedData}
-                  >
-                    Save Extracted Information
-                  </button>
-                  <button
                     className="btn btn-secondary"
                     style={{ 
                       padding: "0.75rem 1.5rem",
@@ -512,62 +490,41 @@ const UploadPage = () => {
           )}
 
           {/* Next Steps */}
-          <div
-            style={{
-              marginTop: "3rem",
-              padding: "1.5rem",
-              background: "#eff6ff",
-              borderRadius: "8px",
-              border: "1px solid #93c5fd",
-            }}
-          >
-            <h3 style={{ color: "#1e40af", marginBottom: "1rem" }}>Next Steps</h3>
-            <ol style={{ color: "#1e40af", paddingLeft: "1.5rem" }}>
-              <li>Upload all relevant documents</li>
-              <li>Review and verify extracted information</li>
-              <li>Complete your profile with additional details</li>
-              <li>Review your scholarship matches</li>
-              <li>Apply to scholarships that interest you</li>
-            </ol>
-            <div style={{ marginTop: "1rem" }}>
-              <Link 
-                to="/profile" 
-                className="btn btn-secondary" 
-                style={{ 
-                  marginRight: "1rem",
-                  padding: "0.75rem 1.5rem",
-                  backgroundColor: "#6b7280",
-                  color: "white",
-                  textDecoration: "none",
-                  borderRadius: "6px",
-                  display: "inline-block"
-                }}
-              >
-                Complete Profile
-              </Link>
-              <Link 
-                to={user ? `/results/${user.id}` : "/results"}
-                className="btn btn-secondary" 
-                style={{ 
-                  padding: "0.75rem 1.5rem",
-                  backgroundColor: "#3b82f6",
-                  color: "white",
-                  textDecoration: "none",
-                  borderRadius: "6px",
-                  display: "inline-block"
-                }}
-                onClick={() => {
-                  try {
-                    if (Array.isArray(extractedData) && extractedData.length) {
-                      localStorage.setItem('extractedData', JSON.stringify(extractedData))
-                    }
-                  } catch (_) {}
-                }}
-              >
-                View Matches
-              </Link>
+          {extractedData.length > 0 && message.includes("success") && (
+            <div
+              style={{
+                marginTop: "3rem",
+                padding: "1.5rem",
+                background: "#eff6ff",
+                borderRadius: "8px",
+                border: "1px solid #93c5fd",
+              }}
+            >
+              <div style={{ marginTop: "1rem" }}>
+                <Link 
+                  to={user ? `/results/${user.id}` : "/results"}
+                  className="btn btn-secondary" 
+                  style={{ 
+                    padding: "0.75rem 1.5rem",
+                    backgroundColor: "#3b82f6",
+                    color: "white",
+                    textDecoration: "none",
+                    borderRadius: "6px",
+                    display: "inline-block"
+                  }}
+                  onClick={() => {
+                    try {
+                      if (Array.isArray(extractedData) && extractedData.length) {
+                        localStorage.setItem('extractedData', JSON.stringify(extractedData))
+                      }
+                    } catch (_) {}
+                  }}
+                >
+                  View Matches
+                </Link>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

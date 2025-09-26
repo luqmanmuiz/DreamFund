@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -19,7 +19,14 @@ export default function AdminLoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState("") // State for error message
   const router = useRouter()
-  const { login } = useAuth() // Use useAuth hook
+  const { login, user } = useAuth() // Get both login and user from useAuth
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user && user.isAdmin) {
+      router.replace("/admin/dashboard")
+    }
+  }, [user, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,8 +37,8 @@ export default function AdminLoginPage() {
       const result = await login(credentials)
       
       if (result.success) {
-        // Redirect will happen automatically via useEffect when user state changes
-        router.push("/admin/dashboard")
+        // Only use router.replace to avoid any race conditions
+        router.replace("/admin/dashboard")
       } else {
         setMessage(result.error || "Login failed")
       }

@@ -485,29 +485,7 @@ export default function UploadPage() {
               </div>
             )}
 
-            {/* Next Steps */}
-            <Card className="bg-blue-50 border-blue-200">
-              <CardHeader>
-                <CardTitle className="text-blue-900">Next Steps</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ol className="text-blue-800 space-y-2">
-                  <li>1. Upload all relevant documents</li>
-                  <li>2. Review and verify extracted information</li>
-                  <li>3. Complete your profile with additional details</li>
-                  <li>4. Review your scholarship matches</li>
-                  <li>5. Apply to scholarships that interest you</li>
-                </ol>
-                <div className="mt-4 space-x-4">
-                  <Link href="/profile">
-                    <Button variant="outline">Complete Profile</Button>
-                  </Link>
-                  <Link href="/results">
-                    <Button variant="outline">View Matches</Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
+           
           </CardContent>
         </Card>
       </main>

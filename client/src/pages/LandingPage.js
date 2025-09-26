@@ -80,7 +80,7 @@ const LandingPage = () => {
                   <li>
                     <button
                       className="btn btn-primary"
-                      onClick={() => setShowLogin(true)}
+                      onClick={() => window.location.href = 'http://localhost:3000/admin/login'}
                     >
                       Login
                     </button>
@@ -163,58 +163,7 @@ const LandingPage = () => {
             </div>
           </div>
         </div>
-      </section>
-
-      {/* Login Modal */}
-      {showLogin && (
-        <div className="modal-overlay" onClick={() => setShowLogin(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="form-container">
-              <h2>Login to DreamFund</h2>
-              {message && <div className="alert alert-error">{message}</div>}
-              <form onSubmit={handleLogin}>
-                <div className="form-group">
-                  <label className="form-label">Email</label>
-                  <input
-                    type="email"
-                    name="email"
-                    className="form-input"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Password</label>
-                  <input
-                    type="password"
-                    name="password"
-                    className="form-input"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <button
-                    type="submit"
-                    className="btn btn-primary"
-                    disabled={loading}
-                    style={{ width: "100%" }}
-                  >
-                    {loading ? "Logging in..." : "Login"}
-                  </button>
-                </div>
-              </form>
-              <div style={{ textAlign: "center", marginTop: "1rem", fontSize: "0.9rem", color: "#666" }}>
-                <p>Admin Login:</p>
-                <p>Email: admin@dreamfund.com</p>
-                <p>Password: admin123</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      </section>   
 
       {/* Footer */}
       <footer
