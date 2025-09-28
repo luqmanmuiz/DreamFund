@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
 import { useAuth } from "../../contexts/AuthContext"
 import axios from "axios"
+import AdminLayout from "../../components/AdminLayout"
 
 const ReportsPage = () => {
   const { user, logout } = useAuth()
@@ -40,187 +40,214 @@ const ReportsPage = () => {
   }
 
   return (
-    <div className="admin-layout">
-      {/* Sidebar */}
-      <aside className="admin-sidebar">
-        <h2>DreamFund Admin</h2>
-        <nav>
-          <ul className="admin-nav">
-            <li>
-              <Link to="/admin/dashboard">Dashboard</Link>
-            </li>
-            <li>
-              <Link to="/admin/scholarships">Scholarships</Link>
-            </li>
-            <li>
-              <Link to="/admin/users">Users</Link>
-            </li>
-            <li>
-              <Link to="/admin/reports" className="active">
-                Reports
-              </Link>
-            </li>
-            <li>
-              <button
-                onClick={logout}
+    <AdminLayout title="Reports & Analytics">
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+          gap: "1.5rem",
+          marginBottom: "2rem",
+        }}
+      >
+        <div
+          style={{
+            background: "white",
+            padding: "1.5rem",
+            borderRadius: "8px",
+            border: "1px solid #e5e7eb",
+            textAlign: "center",
+          }}
+        >
+          <div style={{ fontSize: "2rem", fontWeight: "700", color: "#667eea" }}>{stats.totalUsers}</div>
+          <div style={{ color: "#6b7280", fontSize: "0.9rem" }}>Total Users</div>
+        </div>
+        <div
+          style={{
+            background: "white",
+            padding: "1.5rem",
+            borderRadius: "8px",
+            border: "1px solid #e5e7eb",
+            textAlign: "center",
+          }}
+        >
+          <div style={{ fontSize: "2rem", fontWeight: "700", color: "#667eea" }}>{stats.totalScholarships}</div>
+          <div style={{ color: "#6b7280", fontSize: "0.9rem" }}>Total Scholarships</div>
+        </div>
+        <div
+          style={{
+            background: "white",
+            padding: "1.5rem",
+            borderRadius: "8px",
+            border: "1px solid #e5e7eb",
+            textAlign: "center",
+          }}
+        >
+          <div style={{ fontSize: "2rem", fontWeight: "700", color: "#667eea" }}>{stats.activeScholarships}</div>
+          <div style={{ color: "#6b7280", fontSize: "0.9rem" }}>Active Scholarships</div>
+        </div>
+        <div
+          style={{
+            background: "white",
+            padding: "1.5rem",
+            borderRadius: "8px",
+            border: "1px solid #e5e7eb",
+            textAlign: "center",
+          }}
+        >
+          <div style={{ fontSize: "2rem", fontWeight: "700", color: "#667eea" }}>{stats.totalApplications}</div>
+          <div style={{ color: "#6b7280", fontSize: "0.9rem" }}>Total Applications</div>
+        </div>
+      </div>
+
+      {userAnalytics.usersByMonth && (
+        <div
+          style={{
+            background: "white",
+            borderRadius: "8px",
+            border: "1px solid #e5e7eb",
+            marginBottom: "2rem",
+            overflow: "hidden",
+          }}
+        >
+          <h3
+            style={{
+              padding: "1rem 1.5rem",
+              margin: 0,
+              borderBottom: "1px solid #e5e7eb",
+              fontSize: "1.1rem",
+              fontWeight: "600",
+            }}
+          >
+            User Registration Trends
+          </h3>
+          <div style={{ padding: "1rem" }}>
+            {userAnalytics.usersByMonth.map((data, index) => (
+              <div
+                key={index}
                 style={{
-                  background: "none",
-                  border: "none",
-                  color: "#d1d5db",
-                  padding: "1rem 2rem",
-                  width: "100%",
-                  textAlign: "left",
-                  cursor: "pointer",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: "0.75rem 0",
+                  borderBottom: index < userAnalytics.usersByMonth.length - 1 ? "1px solid #f3f4f6" : "none",
                 }}
               >
-                Logout
-              </button>
-            </li>
-          </ul>
-        </nav>
-      </aside>
-
-      {/* Main Content */}
-      <main className="admin-content">
-        <div className="admin-header">
-          <h1>Reports & Analytics</h1>
-        </div>
-
-        {/* Overview Stats */}
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-number">{stats.totalUsers}</div>
-            <div className="stat-label">Total Users</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-number">{stats.totalScholarships}</div>
-            <div className="stat-label">Total Scholarships</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-number">{stats.activeScholarships}</div>
-            <div className="stat-label">Active Scholarships</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-number">{stats.totalApplications}</div>
-            <div className="stat-label">Total Applications</div>
+                <span style={{ fontWeight: "500" }}>
+                  {data._id.month}/{data._id.year}
+                </span>
+                <span style={{ color: "#667eea", fontWeight: "600" }}>{data.count} users</span>
+              </div>
+            ))}
           </div>
         </div>
+      )}
 
-        {/* User Registration Trends */}
-        {userAnalytics.usersByMonth && (
-          <div className="card">
-            <h3>User Registration Trends</h3>
-            <div className="table-container">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Month</th>
-                    <th>New Users</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {userAnalytics.usersByMonth.map((data, index) => (
-                    <tr key={index}>
-                      <td>
-                        {data._id.month}/{data._id.year}
-                      </td>
-                      <td>{data.count}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* Popular Majors */}
-        {userAnalytics.usersByMajor && (
-          <div className="card">
-            <h3>Popular Majors</h3>
-            <div className="table-container">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Major</th>
-                    <th>Number of Students</th>
-                    <th>Percentage</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {userAnalytics.usersByMajor.map((data, index) => {
-                    const percentage = ((data.count / stats.totalUsers) * 100).toFixed(1)
-                    return (
-                      <tr key={index}>
-                        <td>{data._id}</td>
-                        <td>{data.count}</td>
-                        <td>{percentage}%</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* Platform Health */}
-        <div className="card">
-          <h3>Platform Health Metrics</h3>
-          <div className="grid grid-2">
-            <div>
-              <h4>User Engagement</h4>
-              <ul style={{ listStyle: "none", padding: 0 }}>
-                <li style={{ marginBottom: "0.5rem" }}>
-                  <strong>Application Rate:</strong>{" "}
-                  {stats.totalApplications && stats.totalUsers
-                    ? (stats.totalApplications / stats.totalUsers).toFixed(1)
-                    : 0}{" "}
-                  applications per user
-                </li>
-                <li style={{ marginBottom: "0.5rem" }}>
-                  <strong>Active Scholarships:</strong> {stats.activeScholarships} out of {stats.totalScholarships}
-                </li>
-                <li style={{ marginBottom: "0.5rem" }}>
-                  <strong>Scholarship Utilization:</strong>{" "}
-                  {stats.totalScholarships > 0
-                    ? ((stats.totalApplications / stats.totalScholarships) * 100).toFixed(1)
-                    : 0}
-                  %
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4>System Status</h4>
-              <ul style={{ listStyle: "none", padding: 0 }}>
-                <li style={{ marginBottom: "0.5rem", color: "#10b981" }}>
-                  <strong>✓ Database:</strong> Connected
-                </li>
-                <li style={{ marginBottom: "0.5rem", color: "#10b981" }}>
-                  <strong>✓ API:</strong> Operational
-                </li>
-                <li style={{ marginBottom: "0.5rem", color: "#10b981" }}>
-                  <strong>✓ File Upload:</strong> Working
-                </li>
-              </ul>
-            </div>
+      {userAnalytics.usersByMajor && (
+        <div
+          style={{
+            background: "white",
+            borderRadius: "8px",
+            border: "1px solid #e5e7eb",
+            marginBottom: "2rem",
+            overflow: "hidden",
+          }}
+        >
+          <h3
+            style={{
+              padding: "1rem 1.5rem",
+              margin: 0,
+              borderBottom: "1px solid #e5e7eb",
+              fontSize: "1.1rem",
+              fontWeight: "600",
+            }}
+          >
+            Popular Majors
+          </h3>
+          <div style={{ padding: "1rem" }}>
+            {userAnalytics.usersByMajor.map((data, index) => {
+              const percentage = ((data.count / stats.totalUsers) * 100).toFixed(1)
+              return (
+                <div
+                  key={index}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "0.75rem 0",
+                    borderBottom: index < userAnalytics.usersByMajor.length - 1 ? "1px solid #f3f4f6" : "none",
+                  }}
+                >
+                  <span style={{ fontWeight: "500" }}>{data._id}</span>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ color: "#667eea", fontWeight: "600" }}>{data.count} students</div>
+                    <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>{percentage}%</div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
+      )}
 
-        {/* Export Options */}
-        <div className="card">
-          <h3>Export Data</h3>
-          <p style={{ color: "#6b7280", marginBottom: "1rem" }}>
-            Export platform data for external analysis or backup purposes.
-          </p>
-          <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-            <button className="btn btn-secondary">Export Users (CSV)</button>
-            <button className="btn btn-secondary">Export Scholarships (CSV)</button>
-            <button className="btn btn-secondary">Export Applications (CSV)</button>
-            <button className="btn btn-primary">Generate Full Report (PDF)</button>
-          </div>
+      <div
+        style={{
+          background: "white",
+          borderRadius: "8px",
+          border: "1px solid #e5e7eb",
+          padding: "1.5rem",
+        }}
+      >
+        <h3 style={{ margin: "0 0 1rem 0", fontSize: "1.1rem", fontWeight: "600" }}>Export Data</h3>
+        <p style={{ color: "#6b7280", marginBottom: "1.5rem", margin: 0 }}>
+          Export platform data for external analysis or backup purposes.
+        </p>
+        <div
+          style={{
+            display: "flex",
+            gap: "1rem",
+            flexWrap: "wrap",
+            marginTop: "1rem",
+          }}
+        >
+          <button
+            style={{
+              padding: "0.75rem 1rem",
+              background: "#f3f4f6",
+              border: "1px solid #d1d5db",
+              borderRadius: "6px",
+              cursor: "pointer",
+              fontWeight: "500",
+            }}
+          >
+            Export Users (CSV)
+          </button>
+          <button
+            style={{
+              padding: "0.75rem 1rem",
+              background: "#f3f4f6",
+              border: "1px solid #d1d5db",
+              borderRadius: "6px",
+              cursor: "pointer",
+              fontWeight: "500",
+            }}
+          >
+            Export Scholarships (CSV)
+          </button>
+          <button
+            style={{
+              padding: "0.75rem 1rem",
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+              fontWeight: "600",
+            }}
+          >
+            Generate Full Report (PDF)
+          </button>
         </div>
-      </main>
-    </div>
+      </div>
+    </AdminLayout>
   )
 }
 

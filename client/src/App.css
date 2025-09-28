@@ -120,17 +120,19 @@
   line-height: 1.6;
 }
 
-/* Admin Layout */
+/* Updated admin layout styles for toggle and resize functionality */
 .admin-layout {
   display: flex;
   min-height: 100vh;
+  position: relative;
 }
 
 .admin-sidebar {
-  width: 250px;
   background: #1f2937;
   color: white;
-  padding: 2rem 0;
+  position: relative;
+  flex-shrink: 0;
+  user-select: none;
 }
 
 .admin-sidebar h2 {
@@ -163,8 +165,8 @@
 
 .admin-content {
   flex: 1;
-  padding: 2rem;
   background: #f9fafb;
+  min-width: 0; /* Prevents flex item from overflowing */
 }
 
 .admin-header {
@@ -323,7 +325,7 @@
   font-weight: 600;
 }
 
-/* Responsive Design */
+/* Responsive design updates for new admin layout */
 @media (max-width: 768px) {
   .hero h1 {
     font-size: 2.5rem;
@@ -339,7 +341,8 @@
   }
 
   .admin-sidebar {
-    width: 100%;
+    width: 100% !important;
+    position: static;
   }
 
   .form-row {

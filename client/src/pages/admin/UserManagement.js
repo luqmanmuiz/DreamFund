@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
 import { useAuth } from "../../contexts/AuthContext"
 import axios from "axios"
+import AdminLayout from "../../components/AdminLayout"
 
 const UserManagement = () => {
   const { user, logout } = useAuth()
@@ -66,216 +66,140 @@ const UserManagement = () => {
     )
   }
 
+  const headerActions = <span style={{ color: "#6b7280", fontWeight: "500" }}>Total Users: {users.length}</span>
+
   return (
-    <div className="admin-layout">
-      {/* Sidebar */}
-      <aside className="admin-sidebar">
-        <h2>DreamFund Admin</h2>
-        <nav>
-          <ul className="admin-nav">
-            <li>
-              <Link to="/admin/dashboard">Dashboard</Link>
-            </li>
-            <li>
-              <Link to="/admin/scholarships">Scholarships</Link>
-            </li>
-            <li>
-              <Link to="/admin/users" className="active">
-                Users
-              </Link>
-            </li>
-            <li>
-              <Link to="/admin/reports">Reports</Link>
-            </li>
-            <li>
+    <AdminLayout title="User Management" headerActions={headerActions}>
+      {message && (
+        <div
+          style={{
+            padding: "0.75rem",
+            marginBottom: "1rem",
+            backgroundColor: message.includes("success") ? "#d1fae5" : "#fee2e2",
+            color: message.includes("success") ? "#065f46" : "#991b1b",
+            borderRadius: "6px",
+            fontSize: "0.9rem",
+          }}
+        >
+          {message}
+        </div>
+      )}
+
+      {showUserDetails && selectedUser && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000,
+          }}
+          onClick={() => setShowUserDetails(false)}
+        >
+          <div
+            style={{
+              background: "white",
+              borderRadius: "8px",
+              width: "90%",
+              maxWidth: "600px",
+              maxHeight: "80vh",
+              overflow: "auto",
+              padding: "2rem",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "1.5rem",
+              }}
+            >
+              <h3 style={{ margin: 0, fontSize: "1.5rem", fontWeight: "600" }}>User Details</h3>
               <button
-                onClick={logout}
+                onClick={() => setShowUserDetails(false)}
                 style={{
                   background: "none",
                   border: "none",
-                  color: "#d1d5db",
-                  padding: "1rem 2rem",
-                  width: "100%",
-                  textAlign: "left",
+                  fontSize: "1.5rem",
                   cursor: "pointer",
+                  color: "#6b7280",
                 }}
               >
-                Logout
+                ×
               </button>
-            </li>
-          </ul>
-        </nav>
-      </aside>
+            </div>
 
-      {/* Main Content */}
-      <main className="admin-content">
-        <div className="admin-header">
-          <h1>User Management</h1>
-          <div>
-            <span style={{ color: "#6b7280" }}>Total Users: {users.length}</span>
+            <div style={{ marginBottom: "1rem" }}>
+              <strong>Name:</strong> {selectedUser.name}
+            </div>
+            <div style={{ marginBottom: "1rem" }}>
+              <strong>Email:</strong> {selectedUser.email}
+            </div>
+            <div style={{ marginBottom: "1rem" }}>
+              <strong>Role:</strong> {selectedUser.role}
+            </div>
+            <div style={{ marginBottom: "1rem" }}>
+              <strong>Joined:</strong> {formatDate(selectedUser.createdAt)}
+            </div>
+
+            {selectedUser.profile && (
+              <div style={{ marginTop: "1.5rem" }}>
+                <h4 style={{ marginBottom: "1rem" }}>Profile Information</h4>
+                <div style={{ marginBottom: "0.5rem" }}>
+                  <strong>Age:</strong> {selectedUser.profile.age || "Not provided"}
+                </div>
+                <div style={{ marginBottom: "0.5rem" }}>
+                  <strong>GPA:</strong> {selectedUser.profile.gpa || "Not provided"}
+                </div>
+                <div style={{ marginBottom: "0.5rem" }}>
+                  <strong>Major:</strong> {selectedUser.profile.major || "Not provided"}
+                </div>
+                <div style={{ marginBottom: "0.5rem" }}>
+                  <strong>University:</strong> {selectedUser.profile.university || "Not provided"}
+                </div>
+              </div>
+            )}
           </div>
         </div>
+      )}
 
-        {message && (
-          <div className={`alert ${message.includes("success") ? "alert-success" : "alert-error"}`}>{message}</div>
-        )}
-
-        {/* User Details Modal */}
-        {showUserDetails && selectedUser && (
-          <div className="modal-overlay" onClick={() => setShowUserDetails(false)}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <div className="card" style={{ margin: 0, maxWidth: "600px", maxHeight: "80vh", overflow: "auto" }}>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "1rem",
-                  }}
-                >
-                  <h3>User Details</h3>
-                  <button
-                    onClick={() => setShowUserDetails(false)}
-                    style={{ background: "none", border: "none", fontSize: "1.5rem", cursor: "pointer" }}
-                  >
-                    ×
-                  </button>
-                </div>
-
-                <div className="form-row">
-                  <div>
-                    <strong>Name:</strong> {selectedUser.name}
-                  </div>
-                  <div>
-                    <strong>Email:</strong> {selectedUser.email}
-                  </div>
-                </div>
-
-                <div className="form-row" style={{ marginTop: "1rem" }}>
-                  <div>
-                    <strong>Role:</strong> {selectedUser.role}
-                  </div>
-                  <div>
-                    <strong>Joined:</strong> {formatDate(selectedUser.createdAt)}
-                  </div>
-                </div>
-
-                {selectedUser.profile && (
-                  <div style={{ marginTop: "1.5rem" }}>
-                    <h4>Profile Information</h4>
-                    <div className="form-row">
-                      <div>
-                        <strong>Age:</strong> {selectedUser.profile.age || "Not provided"}
-                      </div>
-                      <div>
-                        <strong>GPA:</strong> {selectedUser.profile.gpa || "Not provided"}
-                      </div>
-                    </div>
-                    <div className="form-row" style={{ marginTop: "0.5rem" }}>
-                      <div>
-                        <strong>Major:</strong> {selectedUser.profile.major || "Not provided"}
-                      </div>
-                      <div>
-                        <strong>University:</strong> {selectedUser.profile.university || "Not provided"}
-                      </div>
-                    </div>
-                    <div style={{ marginTop: "0.5rem" }}>
-                      <strong>Financial Need:</strong> {selectedUser.profile.financialNeed || "Not provided"}
-                    </div>
-
-                    {selectedUser.profile.extracurriculars && selectedUser.profile.extracurriculars.length > 0 && (
-                      <div style={{ marginTop: "1rem" }}>
-                        <strong>Extracurriculars:</strong>
-                        <ul style={{ marginTop: "0.5rem", paddingLeft: "1.5rem" }}>
-                          {selectedUser.profile.extracurriculars.map((activity, index) => (
-                            <li key={index}>{activity}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {selectedUser.profile.achievements && selectedUser.profile.achievements.length > 0 && (
-                      <div style={{ marginTop: "1rem" }}>
-                        <strong>Achievements:</strong>
-                        <ul style={{ marginTop: "0.5rem", paddingLeft: "1.5rem" }}>
-                          {selectedUser.profile.achievements.map((achievement, index) => (
-                            <li key={index}>{achievement}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {selectedUser.documents && selectedUser.documents.length > 0 && (
-                  <div style={{ marginTop: "1.5rem" }}>
-                    <h4>Uploaded Documents</h4>
-                    <ul style={{ marginTop: "0.5rem" }}>
-                      {selectedUser.documents.map((doc, index) => (
-                        <li key={index} style={{ marginBottom: "0.5rem" }}>
-                          <strong>{doc.originalName}</strong>
-                          <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>
-                            Uploaded: {formatDate(doc.uploadDate)}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {selectedUser.scholarshipMatches && selectedUser.scholarshipMatches.length > 0 && (
-                  <div style={{ marginTop: "1.5rem" }}>
-                    <h4>Scholarship Applications</h4>
-                    <div style={{ marginTop: "0.5rem" }}>
-                      {selectedUser.scholarshipMatches.map((match, index) => (
-                        <div
-                          key={index}
-                          style={{
-                            marginBottom: "0.5rem",
-                            padding: "0.5rem",
-                            background: "#f9fafb",
-                            borderRadius: "4px",
-                          }}
-                        >
-                          <strong>{match.scholarship?.title || "Unknown Scholarship"}</strong>
-                          <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>
-                            Status: {match.status} | Match Score: {match.matchScore}%
-                            {match.appliedDate && ` | Applied: ${formatDate(match.appliedDate)}`}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Users Table */}
-        <div className="table-container">
-          <table className="table">
+      <div
+        style={{
+          background: "white",
+          borderRadius: "8px",
+          border: "1px solid #e5e7eb",
+          overflow: "hidden",
+        }}
+      >
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Joined</th>
-                <th>Profile Status</th>
-                <th>Applications</th>
-                <th>Actions</th>
+              <tr style={{ backgroundColor: "#f9fafb" }}>
+                <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600" }}>Name</th>
+                <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600" }}>Email</th>
+                <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600" }}>Role</th>
+                <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600" }}>Joined</th>
+                <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600" }}>Profile</th>
+                <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {users.map((userData) => (
-                <tr key={userData._id}>
-                  <td>{userData.name}</td>
-                  <td>{userData.email}</td>
-                  <td>
+                <tr key={userData._id} style={{ borderTop: "1px solid #f3f4f6" }}>
+                  <td style={{ padding: "1rem", fontWeight: "500" }}>{userData.name}</td>
+                  <td style={{ padding: "1rem", color: "#6b7280" }}>{userData.email}</td>
+                  <td style={{ padding: "1rem" }}>
                     <span
                       style={{
                         padding: "0.25rem 0.75rem",
-                        borderRadius: "20px",
+                        borderRadius: "12px",
                         fontSize: "0.8rem",
                         fontWeight: "600",
                         backgroundColor: userData.role === "admin" ? "#fef3c7" : "#d1fae5",
@@ -285,12 +209,12 @@ const UserManagement = () => {
                       {userData.role}
                     </span>
                   </td>
-                  <td>{formatDate(userData.createdAt)}</td>
-                  <td>
+                  <td style={{ padding: "1rem", color: "#6b7280" }}>{formatDate(userData.createdAt)}</td>
+                  <td style={{ padding: "1rem" }}>
                     <span
                       style={{
                         padding: "0.25rem 0.75rem",
-                        borderRadius: "20px",
+                        borderRadius: "12px",
                         fontSize: "0.8rem",
                         fontWeight: "600",
                         backgroundColor: userData.profile?.major ? "#d1fae5" : "#fee2e2",
@@ -300,55 +224,46 @@ const UserManagement = () => {
                       {userData.profile?.major ? "Complete" : "Incomplete"}
                     </span>
                   </td>
-                  <td>{userData.scholarshipMatches?.length || 0}</td>
-                  <td>
-                    <button
-                      onClick={() => viewUserDetails(userData._id)}
-                      className="btn btn-secondary"
-                      style={{ marginRight: "0.5rem", padding: "0.5rem 1rem", fontSize: "0.8rem" }}
-                    >
-                      View
-                    </button>
-                    {userData.role !== "admin" && (
+                  <td style={{ padding: "1rem" }}>
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
                       <button
-                        onClick={() => handleDeleteUser(userData._id)}
-                        className="btn btn-danger"
-                        style={{ padding: "0.5rem 1rem", fontSize: "0.8rem" }}
+                        onClick={() => viewUserDetails(userData._id)}
+                        style={{
+                          padding: "0.5rem 0.75rem",
+                          background: "#f3f4f6",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                          fontSize: "0.8rem",
+                        }}
                       >
-                        Delete
+                        View
                       </button>
-                    )}
+                      {userData.role !== "admin" && (
+                        <button
+                          onClick={() => handleDeleteUser(userData._id)}
+                          style={{
+                            padding: "0.5rem 0.75rem",
+                            background: "#ef4444",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "4px",
+                            cursor: "pointer",
+                            fontSize: "0.8rem",
+                          }}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </main>
-
-      <style jsx>{`
-        .modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.5);
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          z-index: 1000;
-        }
-        
-        .modal-content {
-          background: white;
-          border-radius: 12px;
-          width: 90%;
-          max-height: 90vh;
-          overflow-y: auto;
-        }
-      `}</style>
-    </div>
+      </div>
+    </AdminLayout>
   )
 }
 
