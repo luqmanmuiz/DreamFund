@@ -6,5 +6,3 @@ Pillow==10.0.1
 pytesseract==0.3.10
 Werkzeug==2.3.7
 gunicorn==21.2.0
-# Install spaCy model after installing spacy
-# Run: python -m spacy download en_core_web_sm
