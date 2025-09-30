@@ -7,7 +7,7 @@ import { useAuth } from "../contexts/AuthContext"
 
 const UploadPage = () => {
   const [files, setFiles] = useState([])
-  const { user } = useAuth()
+  const { user, updateProfileWithExtractedData } = useAuth()
   const [uploading, setUploading] = useState(false)
   const [extracting, setExtracting] = useState(false)
   const [message, setMessage] = useState("")
@@ -181,7 +181,32 @@ const UploadPage = () => {
           "Files uploaded but extraction service is unavailable. Please start the Python extraction service on port 5001 and try again.",
         )
       } else {
-        setMessage("Files uploaded and data extracted successfully!")
+        // Save extracted data to user profile if user is logged in
+        if (user && validResults.length > 0) {
+          const latestResult = validResults[validResults.length - 1] // Use the latest extraction
+          if (latestResult.name !== "Not found" || latestResult.cgpa !== "Not found" || latestResult.program !== "Not found") {
+            try {
+              const result = await updateProfileWithExtractedData({
+                name: latestResult.name !== "Not found" ? latestResult.name : undefined,
+                cgpa: latestResult.cgpa !== "Not found" ? latestResult.cgpa : undefined,
+                program: latestResult.program !== "Not found" ? latestResult.program : undefined,
+              })
+              
+              if (result.success) {
+                setMessage("Files uploaded, data extracted, and profile updated successfully!")
+              } else {
+                setMessage("Files uploaded and data extracted successfully! (Profile update failed)")
+              }
+            } catch (error) {
+              console.error("Profile update error:", error)
+              setMessage("Files uploaded and data extracted successfully! (Profile update failed)")
+            }
+          } else {
+            setMessage("Files uploaded and data extracted successfully!")
+          }
+        } else {
+          setMessage("Files uploaded and data extracted successfully!")
+        }
       }
     } catch (error) {
       console.error("Upload error:", error)

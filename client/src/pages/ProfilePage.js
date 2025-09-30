@@ -7,31 +7,19 @@ import { useAuth } from "../contexts/AuthContext"
 const ProfilePage = () => {
   const { user, updateProfile, loading: authLoading } = useAuth()
   const [formData, setFormData] = useState({
-    age: "",
     gpa: "",
     major: "",
     university: "",
-    graduationYear: "",
-    financialNeed: "",
-    extracurriculars: [],
-    achievements: [],
   })
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
-  const [newExtracurricular, setNewExtracurricular] = useState("")
-  const [newAchievement, setNewAchievement] = useState("")
 
   useEffect(() => {
     if (user?.profile) {
       setFormData({
-        age: user.profile.age || "",
         gpa: user.profile.gpa || "",
         major: user.profile.major || "",
         university: user.profile.university || "",
-        graduationYear: user.profile.graduationYear || "",
-        financialNeed: user.profile.financialNeed || "",
-        extracurriculars: user.profile.extracurriculars || [],
-        achievements: user.profile.achievements || [],
       })
     }
   }, [user])
@@ -56,47 +44,12 @@ const ProfilePage = () => {
     }))
   }
 
-  const addExtracurricular = () => {
-    if (newExtracurricular.trim()) {
-      setFormData((prev) => ({
-        ...prev,
-        extracurriculars: [...prev.extracurriculars, newExtracurricular.trim()],
-      }))
-      setNewExtracurricular("")
-    }
-  }
-
-  const removeExtracurricular = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      extracurriculars: prev.extracurriculars.filter((_, i) => i !== index),
-    }))
-  }
-
-  const addAchievement = () => {
-    if (newAchievement.trim()) {
-      setFormData((prev) => ({
-        ...prev,
-        achievements: [...prev.achievements, newAchievement.trim()],
-      }))
-      setNewAchievement("")
-    }
-  }
-
-  const removeAchievement = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      achievements: prev.achievements.filter((_, i) => i !== index),
-    }))
-  }
-
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
     setMessage("")
 
     const result = await updateProfile(formData)
-
     if (result.success) {
       setMessage("Profile updated successfully!")
     } else {
@@ -132,24 +85,14 @@ const ProfilePage = () => {
       <header className="header">
         <div className="header-content">
           <Link to="/" className="logo">
+            <span className="logo-icon">🎓</span>
             DreamFund
           </Link>
           <nav>
             <ul className="nav-links">
               <li>
-                <Link to="/profile">Profile</Link>
+                <Link to="/">Home</Link>
               </li>
-              <li>
-                <Link to="/upload">Upload Documents</Link>
-              </li>
-              <li>
-                <Link to={`/results/${user.id}`}>My Matches</Link>
-              </li>
-              {user.role === "admin" && (
-                <li>
-                  <Link to="/admin/dashboard">Admin</Link>
-                </li>
-              )}
             </ul>
           </nav>
         </div>
@@ -167,36 +110,23 @@ const ProfilePage = () => {
           )}
 
           <form onSubmit={handleSubmit}>
-            {/* Basic Information */}
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Age</label>
-                <input
-                  type="number"
-                  name="age"
-                  className="form-input"
-                  value={formData.age}
-                  onChange={handleInputChange}
-                  min="16"
-                  max="100"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">GPA</label>
-                <input
-                  type="number"
-                  name="gpa"
-                  className="form-input"
-                  value={formData.gpa}
-                  onChange={handleInputChange}
-                  min="0"
-                  max="4"
-                  step="0.01"
-                  placeholder="e.g., 3.75"
-                />
-              </div>
+            {/* GPA */}
+            <div className="form-group">
+              <label className="form-label">GPA</label>
+              <input
+                type="number"
+                name="gpa"
+                className="form-input"
+                value={formData.gpa}
+                onChange={handleInputChange}
+                min="0"
+                max="4"
+                step="0.01"
+                placeholder="e.g., 3.75"
+              />
             </div>
 
+            {/* Major */}
             <div className="form-group">
               <label className="form-label">Major</label>
               <select name="major" className="form-select" value={formData.major} onChange={handleInputChange}>
@@ -209,145 +139,20 @@ const ProfilePage = () => {
               </select>
             </div>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">University</label>
-                <input
-                  type="text"
-                  name="university"
-                  className="form-input"
-                  value={formData.university}
-                  onChange={handleInputChange}
-                  placeholder="e.g., Harvard University"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Expected Graduation Year</label>
-                <input
-                  type="number"
-                  name="graduationYear"
-                  className="form-input"
-                  value={formData.graduationYear}
-                  onChange={handleInputChange}
-                  min="2024"
-                  max="2030"
-                />
-              </div>
-            </div>
-
+            {/* University */}
             <div className="form-group">
-              <label className="form-label">Financial Need Level</label>
-              <select
-                name="financialNeed"
-                className="form-select"
-                value={formData.financialNeed}
+              <label className="form-label">University</label>
+              <input
+                type="text"
+                name="university"
+                className="form-input"
+                value={formData.university}
                 onChange={handleInputChange}
-              >
-                <option value="">Select financial need level</option>
-                <option value="low">Low - Family income &gt; $75,000</option>
-                <option value="medium">Medium - Family income $30,000 - $75,000</option>
-                <option value="high">High - Family income &lt; $30,000</option>
-              </select>
+                placeholder="e.g., Harvard University"
+              />
             </div>
 
-            {/* Extracurriculars */}
-            <div className="form-group">
-              <label className="form-label">Extracurricular Activities</label>
-              <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={newExtracurricular}
-                  onChange={(e) => setNewExtracurricular(e.target.value)}
-                  placeholder="e.g., Student Government, Sports, Volunteer Work"
-                  style={{ flex: 1 }}
-                />
-                <button type="button" onClick={addExtracurricular} className="btn btn-secondary">
-                  Add
-                </button>
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                {formData.extracurriculars.map((activity, index) => (
-                  <span
-                    key={index}
-                    style={{
-                      background: "#e5e7eb",
-                      padding: "0.5rem 1rem",
-                      borderRadius: "20px",
-                      fontSize: "0.9rem",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.5rem",
-                    }}
-                  >
-                    {activity}
-                    <button
-                      type="button"
-                      onClick={() => removeExtracurricular(index)}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        color: "#ef4444",
-                        cursor: "pointer",
-                        fontSize: "1.2rem",
-                      }}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Achievements */}
-            <div className="form-group">
-              <label className="form-label">Achievements & Awards</label>
-              <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={newAchievement}
-                  onChange={(e) => setNewAchievement(e.target.value)}
-                  placeholder="e.g., Dean's List, National Merit Scholar"
-                  style={{ flex: 1 }}
-                />
-                <button type="button" onClick={addAchievement} className="btn btn-secondary">
-                  Add
-                </button>
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                {formData.achievements.map((achievement, index) => (
-                  <span
-                    key={index}
-                    style={{
-                      background: "#e5e7eb",
-                      padding: "0.5rem 1rem",
-                      borderRadius: "20px",
-                      fontSize: "0.9rem",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.5rem",
-                    }}
-                  >
-                    {achievement}
-                    <button
-                      type="button"
-                      onClick={() => removeAchievement(index)}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        color: "#ef4444",
-                        cursor: "pointer",
-                        fontSize: "1.2rem",
-                      }}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
-
+            {/* Submit Button */}
             <div className="form-group">
               <button
                 type="submit"

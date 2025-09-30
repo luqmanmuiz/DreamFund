@@ -7,6 +7,7 @@ import LandingPage from "./pages/LandingPage"
 import UploadPage from "./pages/UploadPage"
 import ProfilePage from "./pages/ProfilePage"
 import ResultsPage from "./pages/ResultsPage"
+import OTPLoginPage from "./pages/OTPLoginPage"
 import AdminLogin from "./pages/admin/AdminLogin"
 import AdminDashboard from "./pages/admin/AdminDashboard"
 import ScholarshipManagement from "./pages/admin/ScholarshipManagement"
@@ -27,6 +28,7 @@ function App() {
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<OTPLoginPage />} />
               <Route path="/upload" element={<UploadPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/results/:userId" element={<ResultsPage />} />

@@ -52,40 +52,180 @@ const LandingPage = () => {
             DreamFund
           </Link>
           <nav>
-            <ul className="nav-links">
+            <ul className="nav-links" style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '1rem',
+              listStyle: 'none',
+              margin: 0,
+              padding: 0
+            }}>
               {user ? (
                 <>
-                  <li>
-                    <Link to="/profile" className="nav-link">
-                      Profile
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/upload" className="nav-link">
-                      Upload Documents
-                    </Link>
-                  </li>
-                  {user.role === "admin" && (
-                    <li>
-                      <Link to="/admin/dashboard" className="nav-link">
-                        Admin Dashboard
-                      </Link>
-                    </li>
-                  )}
-                  <li>
-                    <button className="btn btn-secondary" onClick={logout}>
-                      Logout
-                    </button>
-                  </li>
-                </>
+                <li>
+                  <Link to="/upload" className="nav-link" style={{
+                    color: 'white',
+                    textDecoration: 'none',
+                    padding: '0.6rem 1.2rem',
+                    borderRadius: '8px',
+                    transition: 'all 0.3s ease',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontWeight: '500',
+                    fontSize: '0.95rem'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}>
+                    Upload Documents
+                  </Link>
+                </li>
+                
+                <li>
+                  <Link to="/profile" className="nav-link" style={{
+                    color: 'white',
+                    textDecoration: 'none',
+                    padding: '0.6rem 1.2rem',
+                    borderRadius: '8px',
+                    transition: 'all 0.3s ease',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontWeight: '500',
+                    fontSize: '0.95rem'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}>
+                    Profile
+                  </Link>
+                </li>
+                
+                <li>
+                  <Link to="/results" className="nav-link" style={{
+                    color: 'white',
+                    textDecoration: 'none',
+                    padding: '0.6rem 1.2rem',
+                    borderRadius: '8px',
+                    transition: 'all 0.3s ease',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontWeight: '500',
+                    fontSize: '0.95rem'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}>
+                    My Matches
+                  </Link>
+                </li>
+                
+                <li style={{ marginLeft: '1rem' }}>
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={logout}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.2)',
+                      color: 'white',
+                      border: '1.5px solid rgba(255, 255, 255, 0.4)',
+                      padding: '0.6rem 1.5rem',
+                      borderRadius: '8px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                      backdropFilter: 'blur(10px)',
+                      fontSize: '0.95rem',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.background = 'rgba(255, 255, 255, 0.3)';
+                      e.target.style.borderColor = 'rgba(255, 255, 255, 0.6)';
+                      e.target.style.transform = 'translateY(-2px)';
+                      e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.background = 'rgba(255, 255, 255, 0.2)';
+                      e.target.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+                      e.target.style.transform = 'translateY(0)';
+                      e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+                    }}
+                  >
+                    Logout
+                  </button>
+                </li>
+              </>
               ) : (
                 <>
+                  <li>
+                    <Link 
+                      to="/login" 
+                      className="btn btn-primary"
+                      style={{
+                        background: 'white',
+                        color: '#667eea',
+                        border: 'none',
+                        padding: '0.5rem 1.25rem',
+                        borderRadius: '6px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        textDecoration: 'none',
+                        display: 'inline-block',
+                        transition: 'transform 0.2s, box-shadow 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.transform = 'translateY(-2px)';
+                        e.target.style.boxShadow = '0 4px 12px rgba(255, 255, 255, 0.3)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.transform = 'translateY(0)';
+                        e.target.style.boxShadow = 'none';
+                      }}
+                    >
+                      Student Login
+                    </Link>
+                  </li>
                   <li>
                     <button
                       className="btn btn-primary"
                       onClick={() => (window.location.href = "http://localhost:3000/admin/login")}
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.15)',
+                        color: 'white',
+                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                        padding: '0.5rem 1.25rem',
+                        borderRadius: '6px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        backdropFilter: 'blur(10px)'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.background = 'rgba(255, 255, 255, 0.25)';
+                        e.target.style.borderColor = 'rgba(255, 255, 255, 0.5)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.background = 'rgba(255, 255, 255, 0.15)';
+                        e.target.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+                      }}
                     >
-                      Login
+                      Admin Login
                     </button>
                   </li>
                 </>

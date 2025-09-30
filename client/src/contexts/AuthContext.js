@@ -97,6 +97,35 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  const loginWithOTP = async (email, otpCode) => {
+    try {
+      const response = await axios.post("http://localhost:5000/api/otp/verify-otp", { 
+        email, 
+        otpCode 
+      })
+
+      const { token: newToken, user: userData, message } = response.data
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem("token", newToken)
+      }
+      setToken(newToken)
+      setUser(userData)
+
+      return { 
+        success: true, 
+        message: message || "Login successful",
+        user: userData
+      }
+    } catch (error) {
+      console.error("OTP Login error:", error)
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || "OTP verification failed",
+      }
+    }
+  }
+
   const register = async (name, email, password) => {
     try {
       // Try Next.js API route first
@@ -147,12 +176,27 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  const updateProfileWithExtractedData = async (extractedData) => {
+    try {
+      const response = await axios.put("/api/auth/profile/extracted-data", extractedData)
+      setUser(response.data.user)
+      return { success: true, message: response.data.message }
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || "Profile update with extracted data failed",
+      }
+    }
+  }
+
   const value = {
     user,
     login,
+    loginWithOTP,
     register,
     logout,
     updateProfile,
+    updateProfileWithExtractedData,
     loading,
     isAuthenticated: !!user,
     isAdmin: user?.role === "admin",

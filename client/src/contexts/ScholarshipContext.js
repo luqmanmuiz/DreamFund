@@ -71,7 +71,7 @@ export const ScholarshipProvider = ({ children }) => {
     }
   }, [])
 
-  const getScholarshipMatches = async (userId) => {
+  const getScholarshipMatches = useCallback(async (userId) => {
     setLoading(true);
     setError(null);
     try {
@@ -98,9 +98,9 @@ export const ScholarshipProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const applyForScholarship = async (scholarshipId) => {
+  const applyForScholarship = useCallback(async (scholarshipId) => {
     try {
       const response = await axios.post(
         `/api/scholarships/${scholarshipId}/apply`
@@ -112,9 +112,9 @@ export const ScholarshipProvider = ({ children }) => {
         message: error.response?.data?.message || "Application failed",
       };
     }
-  };
+  }, []);
 
-  const createScholarship = async (scholarshipData) => {
+  const createScholarship = useCallback(async (scholarshipData) => {
     try {
       const response = await axios.post("/api/scholarships", scholarshipData);
 
@@ -136,9 +136,9 @@ export const ScholarshipProvider = ({ children }) => {
           error.response?.data?.message || "Failed to create scholarship",
       };
     }
-  };
+  }, []);
 
-  const updateScholarship = async (id, scholarshipData) => {
+  const updateScholarship = useCallback(async (id, scholarshipData) => {
     try {
       const response = await axios.put(
         `/api/scholarships/${id}`,
@@ -162,9 +162,9 @@ export const ScholarshipProvider = ({ children }) => {
           error.response?.data?.message || "Failed to update scholarship",
       };
     }
-  };
+  }, []);
 
-  const deleteScholarship = async (id) => {
+  const deleteScholarship = useCallback(async (id) => {
     try {
       await axios.delete(`/api/scholarships/${id}`);
 
@@ -183,7 +183,7 @@ export const ScholarshipProvider = ({ children }) => {
           error.response?.data?.message || "Failed to delete scholarship",
       };
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchScholarships();

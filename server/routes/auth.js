@@ -164,7 +164,7 @@ router.get('/me', auth, async (req, res) => {
 // Update profile
 router.put('/profile', auth, async (req, res) => {
   try {
-    const { name, email } = req.body
+    const { name, email, profile } = req.body
 
     // Don't allow updating mock admin
     if (req.user.userId === 'admin-1') {
@@ -184,9 +184,20 @@ router.put('/profile', auth, async (req, res) => {
       }
     }
 
-    // Update user
+    // Update basic user info
     if (name) user.name = name
     if (email) user.email = email
+
+    // Update profile data if provided
+    if (profile) {
+      if (profile.gpa !== undefined) user.profile.gpa = Number(profile.gpa) || 0
+      if (profile.program !== undefined) user.profile.program = profile.program || ""
+      if (profile.major !== undefined) user.profile.major = profile.major || ""
+      if (profile.age !== undefined) user.profile.age = Number(profile.age) || 0
+      if (profile.financialNeed !== undefined) user.profile.financialNeed = profile.financialNeed || "any"
+      if (profile.extracurriculars !== undefined) user.profile.extracurriculars = Array.isArray(profile.extracurriculars) ? profile.extracurriculars : []
+      if (profile.achievements !== undefined) user.profile.achievements = Array.isArray(profile.achievements) ? profile.achievements : []
+    }
 
     await user.save()
 
@@ -195,12 +206,150 @@ router.put('/profile', auth, async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        profile: user.profile
       }
     })
   } catch (error) {
     console.error('Profile update error:', error)
     res.status(500).json({ message: 'Server error during profile update' })
+  }
+})
+
+// Update profile with extracted data from documents
+router.put('/profile/extracted-data', auth, async (req, res) => {
+  try {
+    const { name, cgpa, program } = req.body
+
+    // Don't allow updating mock admin
+    if (req.user.userId === 'admin-1') {
+      return res.status(400).json({ message: 'Cannot update admin profile' })
+    }
+
+    const user = await User.findById(req.user.userId)
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' })
+    }
+
+    console.log('Updating profile with extracted data:', { name, cgpa, program })
+
+    // Update profile with extracted data
+    if (name && name !== 'Not found') {
+      user.name = name
+    }
+    if (cgpa !== undefined && cgpa !== null && cgpa !== 'Not found') {
+      const gpaValue = Number(cgpa)
+      if (!isNaN(gpaValue) && gpaValue >= 0 && gpaValue <= 4.0) {
+        user.profile.gpa = gpaValue
+        console.log(`Updated GPA to: ${gpaValue}`)
+      }
+    }
+    if (program && program !== 'Not found') {
+      user.profile.program = program
+      user.profile.major = program // Also update major field for compatibility
+      console.log(`Updated program to: ${program}`)
+    }
+
+    await user.save()
+
+    console.log('Updated user profile:', user.profile)
+
+    res.json({
+      success: true,
+      message: 'Profile updated with extracted data',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        profile: user.profile
+      }
+    })
+  } catch (error) {
+    console.error('Profile update with extracted data error:', error)
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error during profile update' 
+    })
+  }
+})
+
+// Debug route to check user profile data
+router.get('/profile/debug/:userId', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId)
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' })
+    }
+
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        profile: user.profile
+      }
+    })
+  } catch (error) {
+    console.error('Profile debug error:', error)
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error during profile debug' 
+    })
+  }
+})
+
+// Manual profile update route for testing (no auth required for testing)
+router.put('/profile/manual-update/:userId', async (req, res) => {
+  try {
+    const { name, cgpa, program } = req.body
+    const userId = req.params.userId
+
+    const user = await User.findById(userId)
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' })
+    }
+
+    console.log('Manual profile update:', { userId, name, cgpa, program })
+
+    // Update profile with extracted data
+    if (name && name !== 'Not found') {
+      user.name = name
+    }
+    if (cgpa !== undefined && cgpa !== null && cgpa !== 'Not found') {
+      const gpaValue = Number(cgpa)
+      if (!isNaN(gpaValue) && gpaValue >= 0 && gpaValue <= 4.0) {
+        user.profile.gpa = gpaValue
+        console.log(`Updated GPA to: ${gpaValue}`)
+      }
+    }
+    if (program && program !== 'Not found') {
+      user.profile.program = program
+      user.profile.major = program // Also update major field for compatibility
+      console.log(`Updated program to: ${program}`)
+    }
+
+    await user.save()
+
+    console.log('Updated user profile:', user.profile)
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        profile: user.profile
+      }
+    })
+  } catch (error) {
+    console.error('Manual profile update error:', error)
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error during profile update' 
+    })
   }
 })
 

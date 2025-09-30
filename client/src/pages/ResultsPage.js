@@ -4,6 +4,14 @@ import { useState, useEffect } from "react"
 import { Link, useParams } from "react-router-dom"
 import { useAuth } from "../contexts/AuthContext"
 import { useScholarships } from "../contexts/ScholarshipContext"
+import {
+  trackScholarshipClick,
+  markPendingFeedback,
+  getNextFeedbackNeeded,
+  markFeedbackShown,
+  clearPendingFeedback,
+} from "../utils/sessionUtils"
+import FeedbackBanner from "../components/FeedbackBanner"
 
 const ResultsPage = () => {
   const { userId } = useParams()
@@ -15,6 +23,7 @@ const ResultsPage = () => {
   const [applying, setApplying] = useState({})
   const [studentCtx, setStudentCtx] = useState({ cgpa: 0, program: "" })
   const [studentName, setStudentName] = useState("")
+  const [feedbackScholarship, setFeedbackScholarship] = useState(null);
 
   const capitalizeWords = (str) => {
     if (!str || typeof str !== "string") return ""
@@ -25,6 +34,7 @@ const ResultsPage = () => {
       .join(" ")
   }
 
+  // MOVED: All useEffect hooks to the TOP, before any conditional returns
   useEffect(() => {
     const fetchMatches = async () => {
       setLoading(true)
@@ -76,6 +86,38 @@ const ResultsPage = () => {
     fetchMatches()
   }, [user, userId, getScholarshipMatches])
 
+  // MOVED: Feedback check useEffect to the TOP
+  useEffect(() => {
+    const checkForFeedback = () => {
+      // Only check if document is visible
+      if (document.visibilityState === "visible") {
+        const scholarshipId = getNextFeedbackNeeded();
+        if (scholarshipId && !feedbackScholarship) {
+          // Find the scholarship details
+          const scholarship = matches.find(m => m.scholarship._id === scholarshipId);
+          if (scholarship) {
+            setFeedbackScholarship({
+              id: scholarshipId,
+              title: scholarship.scholarship.title,
+            });
+            markFeedbackShown(scholarshipId);
+          }
+        }
+      }
+    };
+
+    // Check immediately
+    checkForFeedback();
+
+    // Listen for page visibility changes (user returning to tab)
+    document.addEventListener("visibilitychange", checkForFeedback);
+
+    return () => {
+      document.removeEventListener("visibilitychange", checkForFeedback);
+    };
+  }, [matches, feedbackScholarship]);
+
+  // NOW the conditional returns can come AFTER all hooks
   if (authLoading) {
     return (
       <div
@@ -101,8 +143,6 @@ const ResultsPage = () => {
     )
   }
 
-  // Do not force login: allow anonymous results view
-
   const handleApply = async (scholarshipId) => {
     setApplying((prev) => ({ ...prev, [scholarshipId]: true }))
     setMessage("")
@@ -120,6 +160,35 @@ const ResultsPage = () => {
 
     setApplying((prev) => ({ ...prev, [scholarshipId]: false }))
   }
+
+  const handleApplyNowClick = async (scholarship) => {
+    if (!scholarship.provider.website) {
+      alert("No website available for this scholarship provider");
+      return;
+    }
+
+    // Track the click asynchronously (non-blocking)
+    trackScholarshipClick(
+      scholarship._id,
+      user?._id || null
+    ).catch(err => {
+      // Silently fail - tracking shouldn't block the user
+      console.log("Tracking failed:", err);
+    });
+
+    // Mark this scholarship for feedback
+    markPendingFeedback(scholarship._id);
+
+    // Immediately open the scholarship website
+    window.open(scholarship.provider.website, "_blank");
+  };
+
+  const handleFeedbackClose = (responseType) => {
+    if (feedbackScholarship) {
+      clearPendingFeedback(feedbackScholarship.id);
+      setFeedbackScholarship(null);
+    }
+  };
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -466,13 +535,7 @@ const ResultsPage = () => {
                         </button>
                       ) : (
                         <button
-                          onClick={() => {
-                            if (scholarship.provider.website) {
-                              window.open(scholarship.provider.website, "_blank")
-                            } else {
-                              alert("No website available for this scholarship provider")
-                            }
-                          }}
+                          onClick={() => handleApplyNowClick(scholarship)}
                           disabled={applying[scholarship._id]}
                           style={{
                             width: "100%",
@@ -498,6 +561,15 @@ const ResultsPage = () => {
           </div>
         )}
       </div>
+
+      {/* Feedback Banner */}
+      {feedbackScholarship && (
+        <FeedbackBanner
+          scholarshipId={feedbackScholarship.id}
+          scholarshipTitle={feedbackScholarship.title}
+          onClose={handleFeedbackClose}
+        />
+      )}
     </div>
   )
 }

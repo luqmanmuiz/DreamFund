@@ -529,15 +529,36 @@ router.get("/matches/:userId", auth, async (req, res) => {
     const studentCgpa = Number(user?.profile?.gpa || 0);
     const studentProgram = normalize(user?.profile?.program || user?.profile?.major || "");
 
+    console.log("🔍 Starting scholarship matching for user:", {
+      userId: user._id,
+      studentCgpa,
+      studentProgram,
+      profile: user.profile
+    });
+
     const scholarships = await Scholarship.find({ status: "active" });
+    console.log(`📚 Found ${scholarships.length} active scholarships to check`);
+    
     const matches = [];
+    let filteredCount = 0;
 
     for (const scholarship of scholarships) {
+      // 1. Check deadline - skip expired scholarships
+      const now = new Date();
+      const deadlineOk = !scholarship.deadline || scholarship.deadline > now;
+      
+      if (!deadlineOk) {
+        console.log(`⏰ Skipping expired scholarship: ${scholarship.title} (deadline: ${scholarship.deadline})`);
+        filteredCount++;
+        continue; // Skip expired scholarships
+      }
+
+      // 2. Check CGPA requirements
       const req = scholarship.requirements || {};
       const minGpa = typeof req.minGPA === "number" ? req.minGPA : null;
       const cgpaOk = minGpa === null || isNaN(minGpa) ? true : studentCgpa >= minGpa;
 
-      // Program match against eligibleCourses; if empty/null, treat as open
+      // 3. Check program/course requirements
       const courses = Array.isArray(scholarship.eligibleCourses) ? scholarship.eligibleCourses : [];
       const hasCourseConstraint = courses.length > 0;
       const programOk = !hasCourseConstraint
@@ -548,23 +569,77 @@ router.get("/matches/:userId", auth, async (req, res) => {
             return cc === studentProgram || cc.includes(studentProgram) || studentProgram.includes(cc);
           });
 
-      if (cgpaOk && programOk) {
-        // basic score: weight cgpa distance and program match
+      console.log(`🔍 Checking scholarship: ${scholarship.title}`, {
+        deadline: scholarship.deadline,
+        deadlineOk,
+        minGpa,
+        studentCgpa,
+        cgpaOk,
+        courses,
+        studentProgram,
+        programOk,
+        hasCourseConstraint
+      });
+
+      // Only include scholarships that pass all filters
+      if (deadlineOk && cgpaOk && programOk) {
+        // Calculate match score
         let matchScore = 50;
+        
+        // Bonus for meeting CGPA requirements
         if (minGpa && !isNaN(minGpa)) {
           const delta = Math.max(0, Math.min(1, (studentCgpa - minGpa) / 1.0));
           matchScore += Math.round(delta * 30);
         }
-        if (hasCourseConstraint && programOk) matchScore += 20;
+        
+        // Bonus for program match
+        if (hasCourseConstraint && programOk) {
+          matchScore += 20;
+        }
+        
+        // Bonus for having deadline (shows it's a real, time-limited opportunity)
+        if (scholarship.deadline) {
+          matchScore += 10;
+        }
 
         matches.push({ scholarship, matchScore });
       }
     }
 
+    console.log(`📊 Filtering results: ${matches.length} matches, ${filteredCount} filtered out`);
     matches.sort((a, b) => b.matchScore - a.matchScore);
     res.json(matches);
   } catch (error) {
     console.error("Get matches error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// @route   GET /api/scholarships/debug/filtering
+// @desc    Debug route to check filtering logic
+// @access  Public
+router.get("/debug/filtering", async (req, res) => {
+  try {
+    const now = new Date();
+    const scholarships = await Scholarship.find({ status: "active" });
+    
+    const debugInfo = {
+      totalActiveScholarships: scholarships.length,
+      currentTime: now,
+      scholarshipDetails: scholarships.map(scholarship => ({
+        id: scholarship._id,
+        title: scholarship.title,
+        deadline: scholarship.deadline,
+        isExpired: scholarship.deadline ? scholarship.deadline <= now : false,
+        requirements: scholarship.requirements,
+        eligibleCourses: scholarship.eligibleCourses,
+        amount: scholarship.amount
+      }))
+    };
+    
+    res.json(debugInfo);
+  } catch (error) {
+    console.error("Debug filtering error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -579,14 +654,34 @@ router.post("/public-matches", async (req, res) => {
     const studentCgpa = Number(cgpa || 0);
     const studentProgram = normalize(program || "");
 
+    console.log("🔍 Starting public scholarship matching:", {
+      studentCgpa,
+      studentProgram
+    });
+
     const scholarships = await Scholarship.find({ status: "active" });
+    console.log(`📚 Found ${scholarships.length} active scholarships to check`);
+    
     const matches = [];
+    let filteredCount = 0;
 
     for (const scholarship of scholarships) {
+      // 1. Check deadline - skip expired scholarships
+      const now = new Date();
+      const deadlineOk = !scholarship.deadline || scholarship.deadline > now;
+      
+      if (!deadlineOk) {
+        console.log(`⏰ Public: Skipping expired scholarship: ${scholarship.title} (deadline: ${scholarship.deadline})`);
+        filteredCount++;
+        continue; // Skip expired scholarships
+      }
+
+      // 2. Check CGPA requirements
       const reqs = scholarship.requirements || {};
       const minGpa = typeof reqs.minGPA === "number" ? reqs.minGPA : null;
       const cgpaOk = minGpa === null || isNaN(minGpa) ? true : studentCgpa >= minGpa;
 
+      // 3. Check program/course requirements
       const courses = Array.isArray(scholarship.eligibleCourses) ? scholarship.eligibleCourses : [];
       const hasCourseConstraint = courses.length > 0;
       const programOk = !hasCourseConstraint
@@ -597,18 +692,48 @@ router.post("/public-matches", async (req, res) => {
             return cc === studentProgram || cc.includes(studentProgram) || studentProgram.includes(cc);
           });
 
-      if (cgpaOk && programOk) {
+      console.log(`🔍 Public: Checking scholarship: ${scholarship.title}`, {
+        deadline: scholarship.deadline,
+        deadlineOk,
+        minGpa,
+        studentCgpa,
+        cgpaOk,
+        courses,
+        studentProgram,
+        programOk,
+        hasCourseConstraint
+      });
+
+      // Only include scholarships that pass all filters
+      if (deadlineOk && cgpaOk && programOk) {
+        // Calculate match score
         let matchScore = 50;
+        
+        // Bonus for meeting CGPA requirements
         if (minGpa && !isNaN(minGpa)) {
           const delta = Math.max(0, Math.min(1, (studentCgpa - minGpa) / 1.0));
           matchScore += Math.round(delta * 30);
         }
-        if (hasCourseConstraint && programOk) matchScore += 20;
+        
+        // Bonus for program match
+        if (hasCourseConstraint && programOk) {
+          matchScore += 20;
+        }
+        
+        // Bonus for having deadline (shows it's a real, time-limited opportunity)
+        if (scholarship.deadline) {
+          matchScore += 10;
+        }
 
         matches.push({ scholarship, matchScore });
+        console.log(`✅ Public: Match found: ${scholarship.title} (Score: ${matchScore})`);
+      } else {
+        console.log(`❌ Public: Filtered out: ${scholarship.title} (Deadline: ${deadlineOk}, CGPA: ${cgpaOk}, Program: ${programOk})`);
+        filteredCount++;
       }
     }
 
+    console.log(`📊 Public filtering results: ${matches.length} matches, ${filteredCount} filtered out`);
     matches.sort((a, b) => b.matchScore - a.matchScore);
     res.json(matches);
   } catch (error) {
