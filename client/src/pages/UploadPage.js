@@ -33,7 +33,9 @@ const UploadPage = () => {
 
     const validFiles = fileArray.filter((file) => {
       if (!allowedTypes.includes(file.type)) {
-        setMessage(`Invalid file type: ${file.name}. Only PDF, DOC, DOCX, JPG, PNG, and GIF files are allowed.`)
+        setMessage(
+          `Invalid file type: ${file.name}. Only PDF, DOC, DOCX, JPG, PNG, and GIF files are allowed.`
+        )
         return false
       }
 
@@ -91,11 +93,15 @@ const UploadPage = () => {
         formData.append("document", file)
 
         // Upload to the Express.js backend server on port 5000
-        const response = await axios.post("http://localhost:5000/api/upload", formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        })
+        const response = await axios.post(
+          "http://localhost:5000/api/upload",
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        )
 
         return {
           file: file,
@@ -112,11 +118,15 @@ const UploadPage = () => {
       const extractionPromises = uploadResults.map(async (result) => {
         try {
           // Call the Node.js backend which will communicate with Python service
-          const extractResponse = await axios.post("http://localhost:5000/api/extract", {
-            fileId: result.uploadResponse.fileId || result.uploadResponse.id,
-            fileName: result.file.name,
-            filePath: result.uploadResponse.filePath || result.uploadResponse.path,
-          })
+          const extractResponse = await axios.post(
+            "http://localhost:5000/api/extract",
+            {
+              fileId: result.uploadResponse.fileId || result.uploadResponse.id,
+              fileName: result.file.name,
+              filePath:
+                result.uploadResponse.filePath || result.uploadResponse.path,
+            }
+          )
 
           const extractResult = extractResponse.data
 
@@ -125,11 +135,21 @@ const UploadPage = () => {
             name: extractResult.name || "Not found",
             cgpa: extractResult.cgpa?.toString() || "Not found",
             program: extractResult.program || "Not found",
-            confidence: extractResult.confidence || { name: 0, cgpa: 0, program: 0 },
+            confidence: extractResult.confidence || {
+              name: 0,
+              cgpa: 0,
+              program: 0,
+              overall: 0,
+            },
+            extractionMethods: extractResult.extraction_methods || {},
+            qualityTier: extractResult.quality_tier || "unknown",
             error: extractResult.error || null,
           }
         } catch (extractError) {
-          console.error(`Extraction failed for ${result.file.name}:`, extractError)
+          console.error(
+            `Extraction failed for ${result.file.name}:`,
+            extractError
+          )
 
           // Check if it's a service unavailable error
           if (extractError.response?.status === 503) {
@@ -138,8 +158,11 @@ const UploadPage = () => {
               name: "Service unavailable",
               cgpa: "Service unavailable",
               program: "Service unavailable",
-              confidence: { name: 0, cgpa: 0, program: 0 },
-              error: "Python extraction service is not running on port 5001. Please start the extraction service.",
+              confidence: { name: 0, cgpa: 0, program: 0, overall: 0 },
+              extractionMethods: {},
+              qualityTier: "unknown",
+              error:
+                "Python extraction service is not running on port 5001. Please start the extraction service.",
             }
           }
 
@@ -148,8 +171,13 @@ const UploadPage = () => {
             name: "Extraction failed",
             cgpa: "Extraction failed",
             program: "Extraction failed",
-            confidence: { name: 0, cgpa: 0, program: 0 },
-            error: extractError.response?.data?.message || extractError.message || "Extraction service unavailable",
+            confidence: { name: 0, cgpa: 0, program: 0, overall: 0 },
+            extractionMethods: {},
+            qualityTier: "unknown",
+            error:
+              extractError.response?.data?.message ||
+              extractError.message ||
+              "Extraction service unavailable",
           }
         }
       })
@@ -173,33 +201,53 @@ const UploadPage = () => {
 
       // Check if any extractions failed due to service unavailability
       const serviceUnavailable = validResults.some(
-        (result) => result.error && result.error.includes("Python extraction service"),
+        (result) =>
+          result.error && result.error.includes("Python extraction service")
       )
 
       if (serviceUnavailable) {
         setMessage(
-          "Files uploaded but extraction service is unavailable. Please start the Python extraction service on port 5001 and try again.",
+          "Files uploaded but extraction service is unavailable. Please start the Python extraction service on port 5001 and try again."
         )
       } else {
         // Save extracted data to user profile if user is logged in
         if (user && validResults.length > 0) {
           const latestResult = validResults[validResults.length - 1] // Use the latest extraction
-          if (latestResult.name !== "Not found" || latestResult.cgpa !== "Not found" || latestResult.program !== "Not found") {
+          if (
+            latestResult.name !== "Not found" ||
+            latestResult.cgpa !== "Not found" ||
+            latestResult.program !== "Not found"
+          ) {
             try {
               const result = await updateProfileWithExtractedData({
-                name: latestResult.name !== "Not found" ? latestResult.name : undefined,
-                cgpa: latestResult.cgpa !== "Not found" ? latestResult.cgpa : undefined,
-                program: latestResult.program !== "Not found" ? latestResult.program : undefined,
+                name:
+                  latestResult.name !== "Not found"
+                    ? latestResult.name
+                    : undefined,
+                cgpa:
+                  latestResult.cgpa !== "Not found"
+                    ? latestResult.cgpa
+                    : undefined,
+                program:
+                  latestResult.program !== "Not found"
+                    ? latestResult.program
+                    : undefined,
               })
-              
+
               if (result.success) {
-                setMessage("Files uploaded, data extracted, and profile updated successfully!")
+                setMessage(
+                  "Files uploaded, data extracted, and profile updated successfully!"
+                )
               } else {
-                setMessage("Files uploaded and data extracted successfully! (Profile update failed)")
+                setMessage(
+                  "Files uploaded and data extracted successfully! (Profile update failed)"
+                )
               }
             } catch (error) {
               console.error("Profile update error:", error)
-              setMessage("Files uploaded and data extracted successfully! (Profile update failed)")
+              setMessage(
+                "Files uploaded and data extracted successfully! (Profile update failed)"
+              )
             }
           } else {
             setMessage("Files uploaded and data extracted successfully!")
@@ -211,7 +259,9 @@ const UploadPage = () => {
     } catch (error) {
       console.error("Upload error:", error)
       if (error.code === "ERR_NETWORK" || error.code === "ECONNREFUSED") {
-        setMessage("Cannot connect to the server. Please make sure the backend server is running on port 5000.")
+        setMessage(
+          "Cannot connect to the server. Please make sure the backend server is running on port 5000."
+        )
       } else {
         setMessage(error.response?.data?.message || "Upload failed")
       }
@@ -232,7 +282,9 @@ const UploadPage = () => {
     const k = 1024
     const sizes = ["Bytes", "KB", "MB", "GB"]
     const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+    return (
+      Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+    )
   }
 
   const getConfidenceColor = (confidence) => {
@@ -241,8 +293,41 @@ const UploadPage = () => {
     return "#ef4444" // red
   }
 
+  const getConfidenceTier = (confidence) => {
+    if (confidence >= 0.85) return "high"
+    if (confidence >= 0.7) return "medium"
+    return "low"
+  }
+
+  const getConfidenceLabel = (confidence) => {
+    const tier = getConfidenceTier(confidence)
+    if (tier === "high") return "High Confidence"
+    if (tier === "medium") return "Medium Confidence"
+    return "Low Confidence - Verify"
+  }
+
+  const getConfidenceIcon = (confidence) => {
+    const tier = getConfidenceTier(confidence)
+    if (tier === "high") return "✓"
+    if (tier === "medium") return "⚠"
+    return "⚠"
+  }
+
+  const getMethodLabel = (method) => {
+    if (method === "custom_ner") return "ML Model"
+    if (method === "custom_ner_cleaned") return "ML Model (cleaned)"
+    if (method === "rules") return "Pattern Matching"
+    if (method === "spacy_fallback") return "Fallback NER"
+    return "Unknown"
+  }
+
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)" }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
+      }}
+    >
       {/* Header */}
       <header className="header">
         <div className="header-content">
@@ -260,7 +345,10 @@ const UploadPage = () => {
         </div>
       </header>
 
-      <div className="container" style={{ padding: "3rem 1rem", maxWidth: "900px", margin: "0 auto" }}>
+      <div
+        className="container"
+        style={{ padding: "3rem 1rem", maxWidth: "900px", margin: "0 auto" }}
+      >
         <div
           style={{
             background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
@@ -273,12 +361,28 @@ const UploadPage = () => {
           }}
         >
           <div style={{ fontSize: "3.5rem", marginBottom: "1rem" }}>📚</div>
-          <h1 style={{ fontSize: "2.5rem", fontWeight: "700", marginBottom: "1rem", margin: 0 }}>
+          <h1
+            style={{
+              fontSize: "2.5rem",
+              fontWeight: "700",
+              marginBottom: "1rem",
+              margin: 0,
+            }}
+          >
             Upload Your Documents
           </h1>
-          <p style={{ fontSize: "1.1rem", opacity: "0.9", maxWidth: "600px", margin: "0 auto", lineHeight: "1.6" }}>
-            Upload your academic transcripts, essays, and recommendation letters. Our AI will automatically extract key
-            information to match you with perfect scholarships.
+          <p
+            style={{
+              fontSize: "1.1rem",
+              opacity: "0.9",
+              maxWidth: "600px",
+              margin: "0 auto",
+              lineHeight: "1.6",
+            }}
+          >
+            Upload your academic transcripts, essays, and recommendation
+            letters. Our AI will automatically extract key information to match
+            you with perfect scholarships.
           </p>
         </div>
 
@@ -300,23 +404,29 @@ const UploadPage = () => {
                 background: message.includes("success")
                   ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
                   : message.includes("Error") ||
-                      message.includes("failed") ||
-                      message.includes("unavailable") ||
-                      message.includes("Cannot connect")
-                    ? "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)"
-                    : "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                    message.includes("failed") ||
+                    message.includes("unavailable") ||
+                    message.includes("Cannot connect")
+                  ? "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)"
+                  : "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
                 color: "white",
                 fontWeight: "500",
                 boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                }}
+              >
                 <span style={{ fontSize: "1.2rem" }}>
                   {message.includes("success")
                     ? "✅"
                     : message.includes("Error") || message.includes("failed")
-                      ? "❌"
-                      : "ℹ️"}
+                    ? "❌"
+                    : "ℹ️"}
                 </span>
                 <span>{message}</span>
               </div>
@@ -337,7 +447,8 @@ const UploadPage = () => {
                         height: "100%",
                         backgroundColor: "white",
                         borderRadius: "3px",
-                        animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+                        animation:
+                          "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
                       }}
                     ></div>
                   </div>
@@ -403,7 +514,9 @@ const UploadPage = () => {
                   color: "#1f2937",
                 }}
               >
-                {uploading ? "Processing your documents..." : "Drop files here or click to browse"}
+                {uploading
+                  ? "Processing your documents..."
+                  : "Drop files here or click to browse"}
               </h3>
               <p
                 style={{
@@ -415,7 +528,9 @@ const UploadPage = () => {
               >
                 Supported formats: PDF, DOC, DOCX, JPG, PNG, GIF
                 <br />
-                <span style={{ fontSize: "0.9rem", opacity: 0.8 }}>Maximum 10MB per file</span>
+                <span style={{ fontSize: "0.9rem", opacity: 0.8 }}>
+                  Maximum 10MB per file
+                </span>
               </p>
             </div>
 
@@ -454,7 +569,8 @@ const UploadPage = () => {
                   📋 Selected Files
                   <span
                     style={{
-                      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                      background:
+                        "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                       color: "white",
                       padding: "0.25rem 0.75rem",
                       borderRadius: "20px",
@@ -471,7 +587,8 @@ const UploadPage = () => {
                     style={{
                       padding: "0.75rem 1.5rem",
                       fontSize: "0.9rem",
-                      background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                      background:
+                        "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
                       color: "white",
                       border: "none",
                       borderRadius: "10px",
@@ -480,8 +597,12 @@ const UploadPage = () => {
                       transition: "transform 0.2s ease",
                       boxShadow: "0 4px 12px rgba(239, 68, 68, 0.3)",
                     }}
-                    onMouseEnter={(e) => (e.target.style.transform = "translateY(-2px)")}
-                    onMouseLeave={(e) => (e.target.style.transform = "translateY(0)")}
+                    onMouseEnter={(e) =>
+                      (e.target.style.transform = "translateY(-2px)")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.target.style.transform = "translateY(0)")
+                    }
                   >
                     Clear All
                   </button>
@@ -496,7 +617,8 @@ const UploadPage = () => {
                       justifyContent: "space-between",
                       alignItems: "center",
                       padding: "1.5rem",
-                      background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
+                      background:
+                        "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
                       borderRadius: "12px",
                       border: "1px solid #e2e8f0",
                       opacity: uploading ? 0.7 : 1,
@@ -504,13 +626,20 @@ const UploadPage = () => {
                       boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "1rem",
+                      }}
+                    >
                       <div
                         style={{
                           width: "48px",
                           height: "48px",
                           borderRadius: "12px",
-                          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                          background:
+                            "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -520,8 +649,22 @@ const UploadPage = () => {
                         📄
                       </div>
                       <div>
-                        <div style={{ fontWeight: "600", color: "#1f2937", fontSize: "1rem" }}>{file.name}</div>
-                        <div style={{ fontSize: "0.9rem", color: "#6b7280", marginTop: "0.25rem" }}>
+                        <div
+                          style={{
+                            fontWeight: "600",
+                            color: "#1f2937",
+                            fontSize: "1rem",
+                          }}
+                        >
+                          {file.name}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "0.9rem",
+                            color: "#6b7280",
+                            marginTop: "0.25rem",
+                          }}
+                        >
                           {formatFileSize(file.size)}
                         </div>
                       </div>
@@ -531,7 +674,8 @@ const UploadPage = () => {
                       style={{
                         padding: "0.75rem 1.25rem",
                         fontSize: "0.9rem",
-                        background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                        background:
+                          "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
                         color: "white",
                         border: "none",
                         borderRadius: "8px",
@@ -542,8 +686,14 @@ const UploadPage = () => {
                         boxShadow: "0 2px 8px rgba(239, 68, 68, 0.3)",
                       }}
                       disabled={uploading}
-                      onMouseEnter={(e) => !uploading && (e.target.style.transform = "translateY(-1px)")}
-                      onMouseLeave={(e) => !uploading && (e.target.style.transform = "translateY(0)")}
+                      onMouseEnter={(e) =>
+                        !uploading &&
+                        (e.target.style.transform = "translateY(-1px)")
+                      }
+                      onMouseLeave={(e) =>
+                        !uploading &&
+                        (e.target.style.transform = "translateY(0)")
+                      }
                     >
                       Remove
                     </button>
@@ -568,21 +718,28 @@ const UploadPage = () => {
                 color: "white",
                 border: "none",
                 borderRadius: "12px",
-                cursor: uploading || files.length === 0 ? "not-allowed" : "pointer",
+                cursor:
+                  uploading || files.length === 0 ? "not-allowed" : "pointer",
                 transition: "all 0.3s ease",
-                boxShadow: uploading || files.length === 0 ? "none" : "0 8px 25px rgba(102, 126, 234, 0.4)",
-                transform: uploading || files.length === 0 ? "none" : "translateY(0)",
+                boxShadow:
+                  uploading || files.length === 0
+                    ? "none"
+                    : "0 8px 25px rgba(102, 126, 234, 0.4)",
+                transform:
+                  uploading || files.length === 0 ? "none" : "translateY(0)",
               }}
               onMouseEnter={(e) => {
                 if (!uploading && files.length > 0) {
                   e.target.style.transform = "translateY(-2px)"
-                  e.target.style.boxShadow = "0 12px 35px rgba(102, 126, 234, 0.5)"
+                  e.target.style.boxShadow =
+                    "0 12px 35px rgba(102, 126, 234, 0.5)"
                 }
               }}
               onMouseLeave={(e) => {
                 if (!uploading && files.length > 0) {
                   e.target.style.transform = "translateY(0)"
-                  e.target.style.boxShadow = "0 8px 25px rgba(102, 126, 234, 0.4)"
+                  e.target.style.boxShadow =
+                    "0 8px 25px rgba(102, 126, 234, 0.4)"
                 }
               }}
             >
@@ -590,7 +747,9 @@ const UploadPage = () => {
                 ? extracting
                   ? "🔍 Extracting Data..."
                   : "📤 Uploading..."
-                : `🚀 Upload & Extract ${files.length} File${files.length !== 1 ? "s" : ""}`}
+                : `🚀 Upload & Extract ${files.length} File${
+                    files.length !== 1 ? "s" : ""
+                  }`}
             </button>
           </div>
 
@@ -627,7 +786,8 @@ const UploadPage = () => {
                     style={{
                       marginBottom: "1.5rem",
                       padding: "2rem",
-                      background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
+                      background:
+                        "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
                       borderRadius: "16px",
                       border: "1px solid #e2e8f0",
                       boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
@@ -646,7 +806,8 @@ const UploadPage = () => {
                           width: "40px",
                           height: "40px",
                           borderRadius: "10px",
-                          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                          background:
+                            "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -674,7 +835,8 @@ const UploadPage = () => {
                           fontSize: "0.95rem",
                           marginBottom: "1.5rem",
                           padding: "1rem",
-                          background: "linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)",
+                          background:
+                            "linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)",
                           borderRadius: "10px",
                           border: "1px solid #fecaca",
                           display: "flex",
@@ -690,14 +852,33 @@ const UploadPage = () => {
                     <div
                       style={{
                         display: "grid",
-                        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                        gridTemplateColumns:
+                          "repeat(auto-fit, minmax(200px, 1fr))",
                         gap: "1.5rem",
                       }}
                     >
                       {[
-                        { label: "Name", value: data.name, confidence: data.confidence?.name, icon: "👤" },
-                        { label: "CGPA", value: data.cgpa, confidence: data.confidence?.cgpa, icon: "📊" },
-                        { label: "Program", value: data.program, confidence: data.confidence?.program, icon: "🎓" },
+                        {
+                          label: "Name",
+                          value: data.name,
+                          confidence: data.confidence?.name,
+                          method: data.extractionMethods?.name,
+                          icon: "👤",
+                        },
+                        {
+                          label: "CGPA",
+                          value: data.cgpa,
+                          confidence: data.confidence?.cgpa,
+                          method: data.extractionMethods?.cgpa,
+                          icon: "📊",
+                        },
+                        {
+                          label: "Program",
+                          value: data.program,
+                          confidence: data.confidence?.program,
+                          method: data.extractionMethods?.program,
+                          icon: "🎓",
+                        },
                       ].map((item, idx) => (
                         <div
                           key={idx}
@@ -705,7 +886,13 @@ const UploadPage = () => {
                             padding: "1.25rem",
                             background: "white",
                             borderRadius: "12px",
-                            border: "1px solid #e2e8f0",
+                            border: `2px solid ${
+                              item.confidence >= 0.85
+                                ? "#d1fae5" // green border for high confidence
+                                : item.confidence >= 0.7
+                                ? "#fef3c7" // yellow border for medium
+                                : "#fee2e2" // red border for low
+                            }`,
                             boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
                           }}
                         >
@@ -717,7 +904,9 @@ const UploadPage = () => {
                               marginBottom: "0.75rem",
                             }}
                           >
-                            <span style={{ fontSize: "1.1rem" }}>{item.icon}</span>
+                            <span style={{ fontSize: "1.1rem" }}>
+                              {item.icon}
+                            </span>
                             <label
                               style={{
                                 fontSize: "0.9rem",
@@ -728,41 +917,166 @@ const UploadPage = () => {
                               {item.label}
                             </label>
                           </div>
+
+                          <div style={{ marginBottom: "0.5rem" }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "0.75rem",
+                                flexWrap: "wrap",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontWeight: "600",
+                                  color: "#1f2937",
+                                  fontSize: "1rem",
+                                }}
+                              >
+                                {item.value || "Not found"}
+                              </span>
+                              {item.confidence > 0 && (
+                                <span
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    padding: "0.25rem 0.75rem",
+                                    borderRadius: "20px",
+                                    backgroundColor: getConfidenceColor(
+                                      item.confidence
+                                    ),
+                                    color: "white",
+                                    fontWeight: "600",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "0.25rem",
+                                  }}
+                                >
+                                  {getConfidenceIcon(item.confidence)}{" "}
+                                  {Math.round(item.confidence * 100)}%
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Confidence details */}
+                          {item.confidence > 0 && (
+                            <div
+                              style={{
+                                fontSize: "0.75rem",
+                                color: "#6b7280",
+                                marginTop: "0.5rem",
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: "0.25rem",
+                              }}
+                            >
+                              <div>
+                                <strong>Confidence:</strong>{" "}
+                                {getConfidenceLabel(item.confidence)}
+                              </div>
+                              {item.method && (
+                                <div>
+                                  <strong>Method:</strong>{" "}
+                                  {getMethodLabel(item.method)}
+                                </div>
+                              )}
+                              {item.confidence < 0.7 && (
+                                <div
+                                  style={{
+                                    color: "#dc2626",
+                                    fontWeight: "600",
+                                    marginTop: "0.25rem",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "0.25rem",
+                                  }}
+                                >
+                                  ⚠️ Please verify this value manually
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {/* Overall quality indicator */}
+                    {data.confidence?.overall > 0 && (
+                      <div
+                        style={{
+                          marginTop: "1.5rem",
+                          padding: "1rem",
+                          borderRadius: "10px",
+                          background:
+                            data.qualityTier === "high"
+                              ? "linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)"
+                              : data.qualityTier === "medium"
+                              ? "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)"
+                              : "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
+                          border: `1px solid ${
+                            data.qualityTier === "high"
+                              ? "#10b981"
+                              : data.qualityTier === "medium"
+                              ? "#f59e0b"
+                              : "#ef4444"
+                          }`,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            flexWrap: "wrap",
+                            gap: "0.5rem",
+                          }}
+                        >
                           <div
                             style={{
                               display: "flex",
                               alignItems: "center",
-                              gap: "0.75rem",
-                              flexWrap: "wrap",
+                              gap: "0.5rem",
                             }}
                           >
-                            <span
-                              style={{
-                                fontWeight: "600",
-                                color: "#1f2937",
-                                fontSize: "1rem",
-                              }}
-                            >
-                              {item.value || "Not found"}
+                            <span style={{ fontSize: "1.2rem" }}>
+                              {data.qualityTier === "high"
+                                ? "✅"
+                                : data.qualityTier === "medium"
+                                ? "⚠️"
+                                : "❌"}
                             </span>
-                            {item.confidence > 0 && (
-                              <span
-                                style={{
-                                  fontSize: "0.75rem",
-                                  padding: "0.25rem 0.75rem",
-                                  borderRadius: "20px",
-                                  backgroundColor: getConfidenceColor(item.confidence),
-                                  color: "white",
-                                  fontWeight: "600",
-                                }}
-                              >
-                                {Math.round(item.confidence * 100)}%
-                              </span>
-                            )}
+                            <span
+                              style={{ fontWeight: "600", color: "#1f2937" }}
+                            >
+                              Overall Extraction Quality:{" "}
+                              {getConfidenceLabel(data.confidence.overall)}
+                            </span>
                           </div>
+                          <span
+                            style={{
+                              fontSize: "0.9rem",
+                              fontWeight: "600",
+                              color: "#1f2937",
+                            }}
+                          >
+                            {Math.round(data.confidence.overall * 100)}%
+                          </span>
                         </div>
-                      ))}
-                    </div>
+                        {data.qualityTier === "low" && (
+                          <div
+                            style={{
+                              marginTop: "0.75rem",
+                              fontSize: "0.85rem",
+                              color: "#7f1d1d",
+                              fontWeight: "500",
+                            }}
+                          >
+                            💡 Tip: Some extracted values have low confidence.
+                            Please review and correct them before proceeding.
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
 
@@ -771,7 +1085,8 @@ const UploadPage = () => {
                   <button
                     style={{
                       padding: "1rem 2rem",
-                      background: "linear-gradient(135deg, #6b7280 0%, #4b5563 100%)",
+                      background:
+                        "linear-gradient(135deg, #6b7280 0%, #4b5563 100%)",
                       color: "white",
                       border: "none",
                       borderRadius: "10px",
@@ -786,8 +1101,12 @@ const UploadPage = () => {
                       setExtractedData([])
                       setMessage("")
                     }}
-                    onMouseEnter={(e) => (e.target.style.transform = "translateY(-2px)")}
-                    onMouseLeave={(e) => (e.target.style.transform = "translateY(0)")}
+                    onMouseEnter={(e) =>
+                      (e.target.style.transform = "translateY(-2px)")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.target.style.transform = "translateY(0)")
+                    }
                   >
                     📤 Upload More Files
                   </button>
@@ -827,13 +1146,15 @@ const UploadPage = () => {
                   lineHeight: "1.5",
                 }}
               >
-                Your information has been extracted and analyzed. Ready to find your perfect scholarship matches?
+                Your information has been extracted and analyzed. Ready to find
+                your perfect scholarship matches?
               </p>
               <Link
                 to={user ? `/results/${user.id}` : "/results"}
                 style={{
                   padding: "1rem 2.5rem",
-                  background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                  background:
+                    "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
                   color: "white",
                   textDecoration: "none",
                   borderRadius: "12px",
@@ -846,17 +1167,22 @@ const UploadPage = () => {
                 onClick={() => {
                   try {
                     if (Array.isArray(extractedData) && extractedData.length) {
-                      localStorage.setItem("extractedData", JSON.stringify(extractedData))
+                      localStorage.setItem(
+                        "extractedData",
+                        JSON.stringify(extractedData)
+                      )
                     }
                   } catch (_) {}
                 }}
                 onMouseEnter={(e) => {
                   e.target.style.transform = "translateY(-2px)"
-                  e.target.style.boxShadow = "0 12px 35px rgba(59, 130, 246, 0.5)"
+                  e.target.style.boxShadow =
+                    "0 12px 35px rgba(59, 130, 246, 0.5)"
                 }}
                 onMouseLeave={(e) => {
                   e.target.style.transform = "translateY(0)"
-                  e.target.style.boxShadow = "0 8px 25px rgba(59, 130, 246, 0.4)"
+                  e.target.style.boxShadow =
+                    "0 8px 25px rgba(59, 130, 246, 0.4)"
                 }}
               >
                 🔍 View Scholarship Matches

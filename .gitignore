@@ -54,3 +54,20 @@ venv/
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# ===== NEW: Extraction Service =====
+# Training data & transcripts (sensitive/private data)
+extraction-service/transcripts/
+extraction-service/extracted_texts/
+extraction-service/exported_data/
+
+# Trained models (large binary files)
+extraction-service/custom_transcript_ner_model/
+extraction-service/models/
+*.pkl
+*.bin
+*.pt
+*.pth
+
+# PDF files (user data)
+*.pdf

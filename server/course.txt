@@ -1,0 +1,646 @@
+Diploma Perakaunan = Diploma in Accounting
+
+Diploma Sistem Maklumat Perakaunan = Diploma in Accounting Information Systems
+
+Diploma Seni Lukis & Seni Reka (Seni Reka Grafik dan Media Digital) = Diploma in Art and Design (Graphic Design and Digital Media)
+
+Diploma Seni Lukis & Seni Reka (Seni Reka Tekstil) = Diploma in Art and Design (Textile Design)
+
+Diploma Seni Lukis & Seni Reka (Seni Reka Logam Halus) = Diploma in Art and Design (Fine Metal Design)
+
+Diploma Fotografi dan Pengimejan Kreatif = Diploma in Photography and Creative Imaging
+
+Diploma Seni Halus = Diploma in Fine Arts
+
+Diploma Teknologi Percetakan = Diploma in Printing Technology
+
+Diploma Reka Bentuk Seramik Industri Kreatif = Diploma in Creative Industry Ceramic Design
+
+Diploma Teknologi Seni Reka Fesyen = Diploma in Fashion Design Technology
+
+Diploma Teknologi Seni Reka Perindustrian = Diploma in Industrial Design Technology
+
+Diploma Pentadbiran Awam = Diploma in Public Administration
+
+Diploma Pentadbiran Korporat = Diploma in Corporate Administration
+
+Diploma Bahasa Inggeris Komunikasi Profesional = Diploma in English for Professional Communication
+
+Diploma Teknologi Polimer = Diploma in Polymer Technology
+
+Diploma Mikrobiologi = Diploma in Microbiology
+
+Diploma Teknologi Makanan = Diploma in Food Technology
+
+Diploma Industri Perkayuan = Diploma in Wood Industry
+
+Diploma Sains = Diploma in Science
+
+Diploma Teknologi Tekstil dan Pakaian = Diploma in Textile and Apparel Technology
+
+Diploma Teknologi Kebersihan Industri = Diploma in Industrial Hygiene Technology
+
+Diploma Teknologi Kimia Perindustrian = Diploma in Industrial Chemical Technology
+
+Diploma Keusahawanan Tani = Diploma in Agro-Entrepreneurship
+
+Diploma Pengurusan Industri Pertanian = Diploma in Agricultural Industry Management
+
+Diploma Teknologi Pengeluaran Herba = Diploma in Herbal Production Technology
+
+Diploma Teknologi Akuakultur = Diploma in Aquaculture Technology
+
+Diploma Pengajian Perniagaan = Diploma in Business Studies
+
+Diploma Analisis Pelaburan = Diploma in Investment Analysis
+
+Diploma Pengajian Perniagaan (Pengangkutan) = Diploma in Business Studies (Transportation)
+
+Diploma Pengajian Perbankan = Diploma in Banking Studies
+
+Diploma Pengurusan Teknologi Pejabat = Diploma in Office Technology Management
+
+Diploma Pengajian Insurans = Diploma in Insurance Studies
+
+Diploma Perancangan Bandar dan Wilayah = Diploma in Town and Regional Planning
+
+Diploma Ukur Bahan = Diploma in Quantity Surveying
+
+Diploma Ukur Bangunan = Diploma in Building Surveying
+
+Diploma Sains Geometrik = Diploma in Geomatic Science
+
+Diploma Teknologi Geospatial = Diploma in Geospatial Technology
+
+Diploma Pengurusan Hartanah = Diploma in Estate Management
+
+Diploma Teknologi Binaan = Diploma in Building Technology
+
+Diploma Rekabentuk Dalaman = Diploma in Interior Design
+
+Diploma Senibina Landskap = Diploma in Landscape Architecture
+
+Diploma Sains Komputer = Diploma in Computer Science
+
+Diploma Statistik = Diploma in Statistics
+
+Diploma Sains Aktuari = Diploma in Actuarial Science
+
+Diploma Sains Matematik = Diploma in Mathematical Science
+
+Diploma Pembantu Pembedahan Pergigian = Diploma in Dental Surgery Assistant
+
+Diploma Kejuruteraan Awam = Diploma in Civil Engineering
+
+Diploma Pendidikan Awal Kanak-Kanak = Diploma in Early Childhood Education
+
+Diploma Kejuruteraan Elektrik (Elektronik) = Diploma in Electrical Engineering (Electronics)
+
+Diploma Kejuruteraan Elektrik (Kuasa) = Diploma in Electrical Engineering (Power)
+
+Diploma Kejuruteraan Kimia = Diploma in Chemical Engineering
+
+Diploma Kejuruteraan Mekanikal = Diploma in Mechanical Engineering
+
+Diploma Penulisan Skrip = Diploma in Scriptwriting
+
+Diploma Teater = Diploma in Theatre
+
+Diploma Pengurusan Seni = Diploma in Arts Management
+
+Diploma Animasi = Diploma in Animation
+
+Diploma Tari Persembahan = Diploma in Dance Performance
+
+Diploma Teknologi Filem = Diploma in Film Technology
+
+Diploma Pengurusan Hotel = Diploma in Hotel Management
+
+Diploma Pengurusan Pelancongan = Diploma in Tourism Management
+
+Diploma Pengurusan Perkhidmatan Makanan = Diploma in Food Service Management
+
+Diploma Seni Kulinari = Diploma in Culinary Arts
+
+Diploma Seni Pastri = Diploma in Pastry Arts
+
+Diploma Kejururawatan = Diploma in Nursing
+
+Diploma Teknologi Makmal Perubatan = Diploma in Medical Laboratory Technology
+
+Diploma Pengimejan Perubatan = Diploma in Medical Imaging
+
+Diploma Kesihatan Persekitaran = Diploma in Environmental Health
+
+Diploma Fisioterapi = Diploma in Physiotherapy
+
+Diploma Pemulihan Cara Kerja = Diploma in Occupational Therapy
+
+Diploma Muamalat = Diploma in Muamalat
+
+Diploma Pengurusan Halal = Diploma in Halal Management
+
+Diploma Pendidikan Islam = Diploma in Islamic Education
+
+Diploma Komunikasi dan Media = Diploma in Communication and Media
+
+Diploma Teknologi Komunikasi Media Digital = Diploma in Digital Media Communication Technology
+
+Diploma Seni Muzik = Diploma in Music
+
+Diploma Produksi Audio Digital = Diploma in Digital Audio Production
+
+Diploma Farmasi = Diploma in Pharmacy
+
+Diploma Pengurusan Maklumat = Diploma in Information Management
+
+Diploma Informatik Perpustakaan = Diploma in Library Informatics
+
+Diploma Pengurusan Sukan dan Rekreasi = Diploma in Sports and Recreation Management
+
+Diploma Pengajian Sukan = Diploma in Sports Studies
+
+Sarjana Muda Perakaunan (Kepujian) = Bachelor of Accountancy (Honours) 
+
+
+Sarjana Muda Seni Reka Permainan Kreatif (Kepujian) = Bachelor of Creative Game Design (Honours) 
+
+
+Sarjana Muda Seni Reka Gerak Kreatif (Kepujian) = Bachelor of Creative Motion Design (Honours) 
+
+
+Sarjana Muda Seni Halus (Kepujian) = Bachelor of Fine Arts (Honours) 
+
+
+Sarjana Muda Teknologi Percetakan (Kepujian) = Bachelor of Printing Technology (Honours) 
+
+
+Sarjana Muda Pengajian Budaya Visual (Kepujian) = Bachelor of Visual Culture Studies (Honours) 
+
+
+Sarjana Muda Seni Reka Grafik (Kepujian) = Bachelor of Graphic Design (Honours) 
+
+
+Sarjana Muda Teknologi Seni Reka Tekstil (Kepujian) = Bachelor of Textile Design Technology (Honours) 
+
+
+Sarjana Muda Seni Reka Teknologi Barang Kemas (Kepujian) = Bachelor of Jewellery Design Technology (Honours) 
+
+
+Sarjana Muda Teknologi Seni Reka Perindustrian (Kepujian) = Bachelor of Industrial Design Technology (Honours) 
+
+
+Sarjana Muda Seramik Perindustrian (Kepujian) = Bachelor of Industrial Ceramics (Honours) 
+
+
+Sarjana Muda Teknologi Seni Reka Fesyen (Kepujian) = Bachelor of Fashion Design Technology (Honours) 
+
+
+Sarjana Muda Fotomedia Kreatif (Kepujian) = Bachelor of Creative Photomedia (Honours) 
+
+
+Sarjana Muda Sains Tekstil dan Teknologi Fesyen dan Sarjana Muda Seni Reka Tekstil (Kepujian) = Bachelor of Textile Science & Fashion Technology / Bachelor of Textile Design (Honours) 
+
+
+Sarjana Muda Pentadbiran Korporat (Kepujian) = Bachelor of Corporate Administration (Honours) 
+
+
+Sarjana Muda Pentadbiran Alam Sekitar (Kepujian) = Bachelor of Environmental Administration (Honours) 
+
+
+Sarjana Muda Sains Pentadbiran (Kepujian) = Bachelor of Administrative Science (Honours) 
+
+
+Sarjana Muda Pengajian Bahasa Gunaan (Kepujian) Bahasa Inggeris Komunikasi Profesional = Bachelor of Applied Language Studies (Honours) in Professional English Communication 
+
+
+Sarjana Muda Pengajian Bahasa Gunaan (Kepujian) Bahasa Melayu Komunikasi Profesional = Bachelor of Applied Language Studies (Honours) in Professional Malay Communication 
+
+
+Sarjana Muda Bahasa Gunaan (Kepujian) Bahasa Arab Komunikasi Profesional = Bachelor of Applied Language Studies (Honours) in Professional Arabic Communication 
+
+
+Sarjana Muda Pengajian Bahasa Gunaan (Kepujian) Bahasa Inggeris Komunikasi Antara Budaya = Bachelor of Applied Language Studies (Honours) in Cross-Cultural English Communication 
+
+
+Sarjana Muda Sains Biologi (Kepujian) = Bachelor of Science in Biology (Honours) 
+
+
+Sarjana Muda Sains Fizik (Kepujian) = Bachelor of Science in Physics (Honours) 
+
+
+Sarjana Muda Sains (Kepujian) Teknologi Higiene Industri dan Keselamatan = Bachelor of Science (Honours) in Industrial Hygiene & Safety Technology 
+
+
+Sarjana Muda Sains Kimia (Kepujian) = Bachelor of Science in Chemistry (Honours) 
+
+
+Sarjana Muda Sains (Kepujian) Teknologi Perabot = Bachelor of Science (Honours) in Furniture Technology 
+
+
+Sarjana Muda Sains Teknologi Persekitaran dengan Kepujian = Bachelor of Environmental Technology Science (Honours) 
+
+
+Sarjana Muda Sains (Kepujian) Pengurusan Biodiversiti = Bachelor of Science (Honours) in Biodiversity Management 
+
+
+Sarjana Muda Sains (Kepujian) Teknologi Marin Lestari = Bachelor of Science (Honours) in Sustainable Marine Technology 
+
+
+Sarjana Muda Sains (Kepujian) Mikrobiologi Gunaan = Bachelor of Applied Microbiology (Honours) 
+
+
+Sarjana Muda Sains (Kepujian) Eko-Teknologi = Bachelor of Science (Honours) in Eco-Technology 
+
+
+Sarjana Muda Teknologi Tekstil dan Pakaian dengan Kepujian = Bachelor of Textile & Apparel Technology (Honours) 
+
+
+Sarjana Muda Teknologi Polimer Kejuruteraan dengan Kepujian = Bachelor of Engineering Polymer Technology (Honours) 
+
+
+Sarjana Muda Sains Biomolekul (Kepujian) = Bachelor of Science in Biomolecular Science (Honours) 
+
+
+Sarjana Muda Sains Kimia Gunaan dengan Kepujian = Bachelor of Applied Chemistry (Honours) 
+
+
+Sarjana Muda Sains dan Teknologi Makanan dengan Kepujian = Bachelor of Food Science & Technology (Honours) 
+
+
+Sarjana Muda Teknologi Sains Bahan dengan Kepujian = Bachelor of Materials Science & Technology (Honours) 
+
+
+Sarjana Muda Sains Fizik Industri (Kepujian) = Bachelor of Industrial Physics (Honours) 
+
+
+Sarjana Muda Sains Kimia (Analisis Forensik) dengan Kepujian = Bachelor of Chemistry (Forensic Analysis) (Honours) 
+
+
+Sarjana Muda Teknologi Pintar Pengeluaran Tanaman dengan Kepujian = Bachelor of Smart Crop Production Technology (Honours) 
+
+
+Sarjana Muda Sains Teknologi Hortikultur (Kepujian) = Bachelor of Horticultural Science & Technology (Honours) 
+
+
+Sarjana Muda Teknologi Pengurusan Perladangan dengan Kepujian = Bachelor of Plantation Management Technology (Honours) 
+
+
+Sarjana Muda Sains Agronomi dengan Kepujian = Bachelor of Agronomy Science (Honours) 
+
+
+Sarjana Muda Sains Perniagaantani (Kepujian) = Bachelor of Agricultural Business Science (Honours) 
+
+
+Sarjana Muda Sains Bioteknologi Tumbuhan dengan Kepujian = Bachelor of Plant Biotechnology Science (Honours) 
+
+
+Sarjana Muda Pentadbiran Perniagaan (Kepujian) Pengurusan Pelaburan = Bachelor of Business Administration (Honours) in Investment Management 
+
+
+Sarjana Muda Pemasaran Digital (Kepujian) = Bachelor of Digital Marketing (Honours) 
+
+
+Sarjana Muda Pengurusan Teknologi Perniagaan (Kepujian) = Bachelor of Business Technology Management (Honours) 
+
+
+Sarjana Muda Perniagaan Keusahawanan (Kepujian) = Bachelor of Entrepreneurship Business (Honours) 
+
+
+Sarjana Muda Perniagaan Pengurusan Perkhidmatan (Kepujian) = Bachelor of Service Management Business (Honours) 
+
+
+Sarjana Muda Perniagaan Pentadbiran Kesihatan (Kepujian) = Bachelor of Health Administration Business (Honours) 
+
+
+Sarjana Muda Perniagaan Pengurusan Acara (Kepujian) = Bachelor of Event Management Business (Honours) 
+
+
+Sarjana Muda Perniagaan Pemasaran (Kepujian) = Bachelor of Marketing Business (Honours) 
+
+
+Sarjana Muda Perniagaan Insurans (Kepujian) = Bachelor of Insurance Business (Honours) 
+
+
+Sarjana Muda Perniagaan Kewangan (Kepujian) = Bachelor of Finance Business (Honours) 
+
+
+Sarjana Muda Perniagaan Pengurusan Sumber Manusia (Kepujian) = Bachelor of Human Resource Management Business (Honours) 
+
+
+Sarjana Muda Perniagaan Pengurusan Operasi (Kepujian) = Bachelor of Operations Management Business (Honours) 
+
+
+Sarjana Muda Perniagaan Peruncitan (Kepujian) = Bachelor of Retail Management Business (Honours) 
+
+
+Sarjana Muda Perniagaan Antarabangsa (Kepujian) = Bachelor of International Business (Honours) 
+
+
+Sarjana Muda Perniagaan Pengangkutan (Kepujian) = Bachelor of Transportation Business (Honours) 
+
+
+Sarjana Muda Perniagaan Perbankan Islam (Kepujian) = Bachelor of Islamic Banking Business (Honours) 
+
+
+Sarjana Muda Ekonomi Perniagaan (Kepujian) = Bachelor of Business Economics (Honours) 
+
+
+Sarjana Muda Sains Ukur dan Geomatik (Kepujian) = Bachelor of Surveying & Geomatics Science (Honours) 
+
+
+Sarjana Muda Perancangan Bandar dan Wilayah (Kepujian) = Bachelor of Urban & Regional Planning (Honours) 
+
+
+Sarjana Muda Ukur Bahan (Kepujian) = Bachelor of Quantity Surveying (Honours) 
+
+
+Sarjana Muda Senibina (Kepujian) = Bachelor of Architecture (Honours) 
+
+
+Sarjana Muda Pengurusan Pembinaan (Kepujian) = Bachelor of Construction Management (Honours) 
+
+
+Sarjana Muda Senibina Dalaman (Kepujian) = Bachelor of Interior Architecture (Honours) 
+
+
+Sarjana Muda Senibina Landskap (Kepujian) = Bachelor of Landscape Architecture (Honours) 
+
+
+Sarjana Muda Ukur Bangunan (Kepujian) = Bachelor of Building Surveying (Honours) 
+
+
+Sarjana Muda Pengurusan Taman dan Ameniti (Kepujian) = Bachelor of Parks & Amenities Management (Honours) 
+
+
+Sarjana Muda Pengurusan Harta Tanah dengan Kepujian = Bachelor of Real Estate Management (Honours) 
+
+
+Sarjana Muda Sains Komputer (Kepujian) = Bachelor of Computer Science (Honours) 
+
+
+Sarjana Muda Teknologi Maklumat (Kepujian) = Bachelor of Information Technology (Honours) 
+
+
+Sarjana Muda Sains (Kepujian) Matematik Pengurusan = Bachelor of Management Mathematics (Honours) 
+
+
+Sarjana Muda Sains (Kepujian) Matematik = Bachelor of Mathematics (Honours) 
+
+
+Sarjana Muda Sains Komputer (Kepujian) Pengkomputeran Netsentrik = Bachelor of Computer Science (Honours) in Cloud-centric Computing 
+
+
+Sarjana Muda Sains Komputer (Kepujian) Pengkomputeran Multimedia = Bachelor of Computer Science (Honours) in Multimedia Computing 
+
+
+Sarjana Muda Sains Komputer (Kepujian) Rangkaian Komputer = Bachelor of Computer Science (Honours) in Computer Networking 
+
+
+Sarjana Muda Sistem Maklumat (Kepujian) Kejuruteraan Sistem Pintar = Bachelor of Information Systems (Honours) in Smart Systems Engineering 
+
+
+Sarjana Muda Statistik Analitik Data (Kepujian) = Bachelor of Data Analytics & Statistics (Honours) 
+
+
+Sarjana Muda Sains Aktuari (Kepujian) = Bachelor of Actuarial Science (Honours) 
+
+
+Sarjana Muda Sistem Maklumat (Kepujian) Pengkomputeran Perniagaan = Bachelor of Information Systems (Honours) in Business Computing 
+
+
+Sarjana Muda Sistem Maklumat (Kepujian) Kejuruteraan Sistem Maklumat = Bachelor of Information Systems Engineering (Honours) 
+
+
+Sarjana Muda Sains Matematik Pemodelan dan Analitik (Kepujian) = Bachelor of Mathematical Modelling & Analytics Science (Honours) 
+
+
+Sarjana Muda Sains Komputer (Kepujian) Pengkomputeran Mudah Alih = Bachelor of Mobile Computing (Honours) 
+
+
+Sarjana Muda Pembedahan Pergigian = Bachelor of Dental Surgery 
+
+
+Sarjana Muda Teknologi Kejuruteraan Awam (Pengurusan Aset) dengan Kepujian = Bachelor of Civil Engineering Technology (Asset Management) (Honours) 
+
+
+Sarjana Muda Kejuruteraan Awam (Kepujian) = Bachelor of Civil Engineering (Honours) 
+
+
+Sarjana Muda Kejuruteraan Awam (Infrastruktur) (Kepujian) = Bachelor of Civil Engineering (Infrastructure) (Honours) 
+
+
+Sarjana Muda Teknologi Kejuruteraan Awam (Pembinaan) dengan Kepujian = Bachelor of Civil Engineering Technology (Construction) (Honours) 
+
+
+Sarjana Muda Teknologi Kejuruteraan Awam (Infrastruktur Rel) dengan Kepujian = Bachelor of Civil Engineering Technology (Rail Infrastructure) (Honours) 
+
+
+Sarjana Muda Pendidikan (Kepujian) Pengajaran Bahasa Inggeris sebagai Bahasa Kedua = Bachelor of Education (Honours) Teaching English as a Second Language 
+
+
+Sarjana Muda Pendidikan (Kepujian) Pendidikan Seni dan Senireka = Bachelor of Education (Honours) in Art & Design Education 
+
+
+Sarjana Muda Pendidikan (Kepujian) Pendidikan Jasmani dan Kesihatan = Bachelor of Education (Honours) in Physical & Health Education 
+
+
+Sarjana Muda Pendidikan Sains (Kepujian) Biologi = Bachelor of Science Education (Honours) Biology 
+
+
+Sarjana Muda Pendidikan Sains (Kepujian) Fizik = Bachelor of Science Education (Honours) Physics 
+
+
+Sarjana Muda Pendidikan Sains (Kepujian) Matematik = Bachelor of Science Education (Honours) Mathematics 
+
+
+Sarjana Muda Pendidikan Sains (Kepujian) Kimia = Bachelor of Science Education (Honours) Chemistry 
+
+
+Sarjana Muda Teknologi Kejuruteraan Elektronik (Elektronik Industri) dengan Kepujian = Bachelor of Electronic Engineering Technology (Industrial Electronics) (Honours) 
+
+
+Sarjana Muda Kejuruteraan Elektrik dan Elektronik (Kepujian) = Bachelor of Electrical & Electronic Engineering (Honours) 
+
+
+Sarjana Muda Kejuruteraan Elektronik (Kepujian) = Bachelor of Electronic Engineering (Honours) 
+
+
+Sarjana Muda Kejuruteraan Elektrik (Kepujian) = Bachelor of Electrical Engineering (Honours) 
+
+
+Sarjana Muda Teknologi Kejuruteraan Elektronik (Sistem Pintar Elektronik) dengan Kepujian = Bachelor of Electronic Engineering Technology (Smart Electronic Systems) (Honours) 
+
+
+Sarjana Muda Teknologi Kejuruteraan Elektrik dan Elektronik dengan Kepujian = Bachelor of Electrical & Electronic Engineering Technology (Honours) 
+
+
+Sarjana Muda Teknologi Kejuruteraan (Pendigitalan dan Automasi) dengan Kepujian = Bachelor of Engineering Technology (Digitalization & Automation) (Honours) 
+
+
+Sarjana Muda Kejuruteraan (Kepujian) Kimia = Bachelor of Chemical Engineering (Honours) 
+
+
+Sarjana Muda Kejuruteraan Kimia (Persekitaran) dengan Kepujian = Bachelor of Chemical Engineering (Environmental) (Honours) 
+
+
+Sarjana Muda Kejuruteraan (Kepujian) Minyak dan Gas = Bachelor of Engineering (Honours) in Oil & Gas 
+
+
+Sarjana Muda Kejuruteraan Mekanikal (Kepujian) = Bachelor of Mechanical Engineering (Honours) 
+
+
+Sarjana Muda Teknologi Kejuruteraan Mekatronik dengan Kepujian = Bachelor of Mechatronics Engineering Technology (Honours) 
+
+
+Sarjana Muda Teknologi Kejuruteraan Pembuatan dengan Kepujian = Bachelor of Manufacturing Engineering Technology (Honours) 
+
+
+Sarjana Muda Kejuruteraan Mekanikal (Pembuatan) dengan Kepujian = Bachelor of Mechanical Engineering (Manufacturing) (Honours) 
+
+
+Sarjana Muda Teknologi Kejuruteraan Mekanikal (Kepujian) = Bachelor of Mechanical Engineering Technology (Honours) 
+
+
+Sarjana Muda Penulisan (Kepujian) Penulisan Skrin = Bachelor of Writing (Honours) in Screenwriting 
+
+
+Sarjana Muda Penulisan (Kepujian) Penulisan Kreatif = Bachelor of Creative Writing (Honours) 
+
+
+Sarjana Muda Teater (Kepujian) Produksi Teater = Bachelor of Theatre (Honours) in Theatre Production 
+
+
+Sarjana Muda Teater (Kepujian) Sinografi = Bachelor of Theatre (Honours) in Scenography 
+
+
+Sarjana Muda Pengurusan Industri Kreatif (Kepujian) Pengurusan Seni = Bachelor of Creative Industry Management (Honours) in Arts Management 
+
+
+Sarjana Muda Pengurusan Industri Kreatif (Kepujian) Produksi Filem = Bachelor of Creative Industry Management (Honours) in Film Production 
+
+
+Sarjana Muda Animasi (Kepujian) Produksi Animasi 2D = Bachelor of Animation (Honours) in 2D Animation Production 
+
+
+Sarjana Muda Animasi (Kepujian) Produksi Animasi 3D = Bachelor of Animation (Honours) in 3D Animation Production 
+
+
+Sarjana Muda Pengarahan Filem (Kepujian) = Bachelor of Film Directing (Honours) 
+
+
+Sarjana Muda Sinematografi (Kepujian) = Bachelor of Cinematography (Honours) 
+
+
+Sarjana Muda Sains (Kepujian) Pengurusan Perkhidmatan Makanan dengan Keusahawanan = Bachelor of Science (Honours) in Food Service Management & Entrepreneurship 
+
+
+Sarjana Muda Sains Pengurusan Hospitaliti (Kepujian) = Bachelor of Hospitality Management Science (Honours) 
+
+
+Sarjana Muda Sains Pengurusan Pelancongan (Kepujian) = Bachelor of Tourism Management Science (Honours) 
+
+
+Sarjana Muda Sains Pengurusan Perkhidmatan Makanan (Kepujian) = Bachelor of Food Service Management Science (Honours) 
+
+
+Sarjana Muda Sains Pengurusan Seni Kulinari (Kepujian) = Bachelor of Culinary Arts Management Science (Honours) 
+
+
+Sarjana Muda Teknologi Makmal Perubatan (Kepujian) = Bachelor of Medical Laboratory Technology (Honours) 
+
+
+Sarjana Muda Kesihatan dan Keselamatan Persekitaran (Kepujian) = Bachelor of Environmental Health & Safety (Honours) 
+
+
+Sarjana Muda Fisioterapi (Kepujian) = Bachelor of Physiotherapy (Honours) 
+
+
+Sarjana Muda Dietetik (Kepujian) = Bachelor of Dietetics (Honours) 
+
+
+Sarjana Muda Kejururawatan (Kepujian) = Bachelor of Nursing (Honours) 
+
+
+Sarjana Muda Pengimejan Perubatan (Kepujian) = Bachelor of Medical Imaging (Honours) 
+
+
+Sarjana Muda Pemulihan Cara Kerja (Kepujian) = Bachelor of Occupational Therapy (Honours) 
+
+
+Sarjana Muda Optometri (Kepujian) = Bachelor of Optometry (Honours) 
+
+
+Sarjana Muda Muamalat (Kepujian) = Bachelor of Muamalat (Honours) 
+
+
+Sarjana Muda Pengurusan Industri Halal (Kepujian) = Bachelor of Halal Industry Management (Honours) 
+
+
+Sarjana Muda Undang-undang (Kepujian) = Bachelor of Laws (Honours) 
+
+
+Sarjana Muda Komunikasi Massa (Kepujian) Kewartawanan = Bachelor of Mass Communication (Honours) in Journalism 
+
+
+Sarjana Muda Komunikasi Massa (Kepujian) Perhubungan Awam = Bachelor of Mass Communication (Honours) in Public Relations 
+
+
+Sarjana Muda Komunikasi Massa (Kepujian) Penyiaran = Bachelor of Mass Communication (Honours) in Broadcasting 
+
+
+Sarjana Muda Komunikasi Massa (Kepujian) Periklanan = Bachelor of Mass Communication (Honours) in Advertising 
+
+
+Sarjana Muda Komunikasi Massa (Kepujian) Penerbitan = Bachelor of Mass Communication (Honours) in Publishing 
+
+
+Sarjana Muda Komunikasi (Kepujian) Komunikasi Instruksional dan Latihan = Bachelor of Communication (Honours) in Instructional & Training Communication 
+
+
+Sarjana Muda Komunikasi (Kepujian) Komunikasi Antaraper­sonal = Bachelor of Communication (Honours) in Interpersonal Communication 
+
+
+Sarjana Muda Komunikasi (Kepujian) Pengurusan Komunikasi dan Polisi = Bachelor of Communication (Honours) in Communication & Policy Management 
+
+
+Sarjana Muda Komunikasi Media Baharu (Kepujian) = Bachelor of New Media Communication (Honours) 
+
+
+Sarjana Muda Perubatan dan Sarjana Muda Pembedahan = Bachelor of Medicine & Bachelor of Surgery 
+
+
+Sarjana Muda Seni Muzik Komposisi (Kepujian) = Bachelor of Music Composition (Honours) 
+
+
+Sarjana Muda Seni Muzik Persembahan (Kepujian) = Bachelor of Music Performance (Honours) 
+
+
+Sarjana Muda Perniagaan Muzik (Kepujian) = Bachelor of Music Business (Honours) 
+
+
+Sarjana Muda Pendidikan Seni Muzik (Kepujian) = Bachelor of Music Education (Honours) 
+
+
+Sarjana Muda Farmasi (Kepujian) = Bachelor of Pharmacy (Honours) 
+
+
+Sarjana Muda Sains Maklumat (Kepujian) Pengurusan Perpustakaan = Bachelor of Information Science (Honours) in Library Management 
+
+
+Sarjana Muda Sains Maklumat (Kepujian) Pengurusan Rekod = Bachelor of Information Science (Honours) in Records Management 
+
+
+Sarjana Muda Sains Maklumat (Kepujian) Pengurusan Sistem Maklumat = Bachelor of Information Science (Honours) in Information Systems Management 
+
+
+Sarjana Muda Sains Maklumat (Kepujian) Pengurusan Kandungan Maklumat = Bachelor of Information Science (Honours) in Information Content Management 
+
+
+Sarjana Muda Pengurusan Sukan (Kepujian) = Bachelor of Sports Management (Honours) 
+
+
+Sarjana Muda Sains Sukan (Kepujian) = Bachelor of Sports Science (Honours) 
+
+
+Sarjana Muda Kesihatan dan Kecergasan (Kepujian) = Bachelor of Health & Fitness (Honours)
