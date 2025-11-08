@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Link, useParams } from "react-router-dom"
+import Header from "../components/Header"
 import { useAuth } from "../contexts/AuthContext"
 import { useScholarships } from "../contexts/ScholarshipContext"
 import {
@@ -16,11 +17,10 @@ import FeedbackBanner from "../components/FeedbackBanner"
 const ResultsPage = () => {
   const { userId } = useParams()
   const { user, loading: authLoading } = useAuth()
-  const { getScholarshipMatches, applyForScholarship } = useScholarships()
+  const { getScholarshipMatches } = useScholarships()
   const [matches, setMatches] = useState([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState("")
-  const [applying, setApplying] = useState({})
   const [studentCtx, setStudentCtx] = useState({ cgpa: 0, program: "" })
   const [studentName, setStudentName] = useState("")
   const [feedbackScholarship, setFeedbackScholarship] = useState(null);
@@ -143,23 +143,7 @@ const ResultsPage = () => {
     )
   }
 
-  const handleApply = async (scholarshipId) => {
-    setApplying((prev) => ({ ...prev, [scholarshipId]: true }))
-    setMessage("")
-
-    const result = await applyForScholarship(scholarshipId)
-
-    if (result.success) {
-      setMessage(result.message)
-      setMatches((prev) =>
-        prev.map((match) => (match.scholarship._id === scholarshipId ? { ...match, applied: true } : match)),
-      )
-    } else {
-      setMessage(result.message)
-    }
-
-    setApplying((prev) => ({ ...prev, [scholarshipId]: false }))
-  }
+  // Note: applying flow uses handleApplyNowClick for external provider websites; per-page logic kept simplified
 
   const handleApplyNowClick = async (scholarship) => {
     if (!scholarship.provider.website) {
@@ -263,41 +247,7 @@ const ResultsPage = () => {
 
   return (
     <div style={{ minHeight: "100vh", background: "#f8fafc" }}>
-      <header
-        style={{
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-          padding: "1rem 0",
-          boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
-        }}
-      >
-        <div
-          style={{
-            maxWidth: "1200px",
-            margin: "0 auto",
-            padding: "0 2rem",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <Link to="/" className="logo">
-            <span className="logo-icon">🎓</span>
-            DreamFund
-          </Link>
-          <nav>
-            <ul className="nav-links">
-              <div style={{ display: "flex", gap: "2rem" }}>
-                <Link to="/profile">
-                  Profile
-                </Link>
-                <Link to="/upload">
-                  Upload Documents
-                </Link>
-              </div>
-            </ul>
-          </nav>
-        </div>
-      </header>
+      <Header navItems={[{ to: "/profile", label: "Profile" }, { to: "/upload", label: "Upload Documents" }]} />
 
       <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem" }}>
         <div style={{ textAlign: "center", marginBottom: "3rem" }}>
@@ -536,21 +486,18 @@ const ResultsPage = () => {
                       ) : (
                         <button
                           onClick={() => handleApplyNowClick(scholarship)}
-                          disabled={applying[scholarship._id]}
                           style={{
                             width: "100%",
                             padding: "0.75rem",
-                            background: applying[scholarship._id]
-                              ? "#9ca3af"
-                              : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                             color: "white",
                             border: "none",
                             borderRadius: "8px",
                             fontWeight: "500",
-                            cursor: applying[scholarship._id] ? "not-allowed" : "pointer",
+                            cursor: "pointer",
                           }}
                         >
-                          {applying[scholarship._id] ? "Applying..." : "Apply Now"}
+                          Apply Now
                         </button>
                       )}
                     </div>

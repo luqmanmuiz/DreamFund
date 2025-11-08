@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Link, Navigate } from "react-router-dom"
+import Header from "../components/Header"
 import { useAuth } from "../contexts/AuthContext"
 
 const ProfilePage = () => {
@@ -81,22 +82,7 @@ const ProfilePage = () => {
 
   return (
     <div>
-      {/* Header */}
-      <header className="header">
-        <div className="header-content">
-          <Link to="/" className="logo">
-            <span className="logo-icon">🎓</span>
-            DreamFund
-          </Link>
-          <nav>
-            <ul className="nav-links">
-              <li>
-                <Link to="/">Home</Link>
-              </li>
-            </ul>
-          </nav>
-        </div>
-      </header>
+      <Header navItems={[{ to: "/", label: "Home" }]} />
 
       <div className="container" style={{ padding: "2rem 0" }}>
         <div className="form-container">

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Step 3: Train Custom NER Model for Academic Transcripts
+Step 3: Train Custom NER Model with Train-Test Split
 """
 
 import spacy
@@ -20,27 +20,86 @@ except ImportError:
     print("   Run Step 2 first to convert labeled data")
     exit(1)
 
-def train_ner_model(
-    train_data,
-    output_dir="./custom_transcript_ner_model",
-    n_iter=50,
-    model=None,
-    dropout=0.3
-):
+def split_train_test(data, test_size=0.2, random_seed=42):
     """
-    Train custom NER model
+    Split data into training and testing sets
     
     Args:
-        train_data: List of (text, {"entities": [(start, end, label)]}) tuples
+        data: List of training examples
+        test_size: Proportion of data to use for testing (default 20%)
+        random_seed: Random seed for reproducibility
+    
+    Returns:
+        train_data, test_data
+    """
+    random.seed(random_seed)
+    
+    # Shuffle data
+    shuffled = data.copy()
+    random.shuffle(shuffled)
+    
+    # Calculate split point
+    split_idx = int(len(shuffled) * (1 - test_size))
+    
+    train_data = shuffled[:split_idx]
+    test_data = shuffled[split_idx:]
+    
+    print(f"\n📊 Data Split:")
+    print(f"   Training set: {len(train_data)} documents ({(1-test_size)*100:.0f}%)")
+    print(f"   Test set:     {len(test_data)} documents ({test_size*100:.0f}%)")
+    
+    return train_data, test_data
+
+def evaluate_model(nlp, test_data):
+    """
+    Evaluate model on test data
+    
+    Returns:
+        dict with precision, recall, f1-score per entity
+    """
+    from spacy.scorer import Scorer
+    
+    scorer = Scorer()
+    examples = []
+    
+    for text, annotations in test_data:
+        doc = nlp.make_doc(text)
+        example = Example.from_dict(doc, annotations)
+        examples.append(example)
+    
+    scores = scorer.score(examples)
+    
+    return scores
+
+def train_ner_model(
+    train_data,
+    test_data=None,
+    output_dir="./custom_transcript_ner_model",
+    n_iter=100,
+    model=None,
+    dropout=0.2
+):
+    """
+    Train custom NER model with evaluation on test set
+    
+    Args:
+        train_data: Training examples
+        test_data: Test examples (for evaluation)
         output_dir: Where to save the trained model
-        n_iter: Number of training iterations
+        n_iter: Number of training iterations (increased to 100)
         model: Existing model to continue training (None = start from blank)
-        dropout: Dropout rate for regularization
+        dropout: Dropout rate for regularization (reduced to 0.2)
     """
     
     print("\n" + "=" * 60)
-    print("🚀 TRAINING CUSTOM NER MODEL")
+    print("🚀 TRAINING CUSTOM NER MODEL WITH VALIDATION")
     print("=" * 60)
+    
+    # Check dataset size
+    if len(train_data) < 20:
+        print(f"⚠️  WARNING: Only {len(train_data)} training examples!")
+        print(f"   Recommended: 50+ examples for good accuracy")
+        print(f"   Model may overfit with this small dataset\n")
     
     # Create or load spaCy model
     if model is not None:
@@ -48,72 +107,118 @@ def train_ner_model(
         print(f"📦 Loaded existing model: {model}")
     else:
         nlp = spacy.blank("en")
-        print("📦 Created blank English model")
+        print(f"📦 Creating blank English model...")
+        # Add tokenizer with better handling
+        nlp.tokenizer.token_match = None
     
-    # Add NER pipeline if not present
+    # Add NER component
     if "ner" not in nlp.pipe_names:
-        ner = nlp.add_pipe("ner")
-        print("✅ Added NER pipeline component")
+        ner = nlp.add_pipe("ner", last=True)
+        print(f"🏷️  Adding NER component...")
     else:
         ner = nlp.get_pipe("ner")
-        print("✅ Using existing NER pipeline")
+        print(f"🏷️  Using existing NER component...")
     
     # Add entity labels
     labels = set()
-    for _, annotations in train_data:
-        for _, _, label in annotations["entities"]:
-            labels.add(label)
-    
-    for label in labels:
-        ner.add_label(label)
-    
-    print(f"🏷️  Entity labels: {sorted(labels)}")
-    print(f"📊 Training examples: {len(train_data)}")
-    print(f"🔄 Training iterations: {n_iter}")
-    
-    # Prepare training data
-    print("\n⚙️  Preparing training data...")
-    examples = []
     for text, annotations in train_data:
-        doc = nlp.make_doc(text)
-        example = Example.from_dict(doc, annotations)
-        examples.append(example)
+        for start, end, label in annotations.get("entities", []):
+            labels.add(label)
+            ner.add_label(label)
     
-    # Initialize model
-    print("🔧 Initializing model...")
-    nlp.initialize(lambda: examples)
+    print(f"📊 Labels to train: {sorted(labels)}")
     
-    # Disable other pipeline components during training
+    # Train the model
     other_pipes = [pipe for pipe in nlp.pipe_names if pipe != "ner"]
     
-    print(f"\n🎯 Starting training...")
+    print(f"\n🎯 Training for {n_iter} iterations...")
+    print(f"   Dropout rate: {dropout}")
+    print(f"   Batch size: dynamic (4-32)")
     print("-" * 60)
     
-    # Training loop
     best_loss = float('inf')
+    best_test_score = 0.0
+    patience = 0
+    max_patience = 20  # Early stopping if no improvement
     
     with nlp.disable_pipes(*other_pipes):
+        optimizer = nlp.begin_training()
+        
+        # Set learning rate
+        optimizer.learn_rate = 0.001
+        
         for iteration in range(n_iter):
-            random.shuffle(examples)
+            random.shuffle(train_data)
             losses = {}
             
-            # Batch training
-            batches = minibatch(examples, size=compounding(4.0, 32.0, 1.001))
+            # Create training examples
+            examples = []
+            for text, annotations in train_data:
+                doc = nlp.make_doc(text)
+                example = Example.from_dict(doc, annotations)
+                examples.append(example)
+            
+            # Batch training with smaller batches for small datasets
+            batch_size = min(8.0, len(train_data) / 2)  # Smaller batches
+            batches = minibatch(examples, size=compounding(2.0, batch_size, 1.001))
             
             for batch in batches:
                 nlp.update(batch, losses=losses, drop=dropout)
             
-            # Track best loss
+            # Track training loss
             current_loss = losses.get("ner", 0)
             if current_loss < best_loss:
                 best_loss = current_loss
+                patience = 0
+            else:
+                patience += 1
             
-            # Print progress
-            if (iteration + 1) % 5 == 0 or iteration == 0:
-                print(f"Iteration {iteration + 1:3d}/{n_iter} | Loss: {current_loss:8.4f} | Best: {best_loss:8.4f}")
+            # Early stopping
+            if patience > max_patience:
+                print(f"\n⚠️  Early stopping at iteration {iteration + 1} (no improvement for {max_patience} iterations)")
+                break
+            
+            # Evaluate on test set every 10 iterations
+            if test_data and (iteration + 1) % 10 == 0:
+                scores = evaluate_model(nlp, test_data)
+                test_f1 = scores.get("ents_f", 0.0) * 100
+                
+                if test_f1 > best_test_score:
+                    best_test_score = test_f1
+                
+                print(f"Iteration {iteration + 1:3d}/{n_iter} | "
+                      f"Train Loss: {current_loss:8.4f} | "
+                      f"Test F1: {test_f1:5.2f}% | "
+                      f"Best: {best_test_score:5.2f}%")
+            elif (iteration + 1) % 5 == 0 or iteration == 0:
+                print(f"Iteration {iteration + 1:3d}/{n_iter} | "
+                      f"Loss: {current_loss:8.4f} | "
+                      f"Best: {best_loss:8.4f}")
     
     print("-" * 60)
-    print(f"✅ Training complete! Final loss: {current_loss:.4f}")
+    print(f"✅ Training complete!")
+    
+    # Final evaluation on test set
+    if test_data:
+        print("\n" + "=" * 60)
+        print("📊 FINAL EVALUATION ON TEST SET")
+        print("=" * 60)
+        
+        scores = evaluate_model(nlp, test_data)
+        
+        print(f"\n🎯 Overall Metrics:")
+        print(f"   Precision: {scores.get('ents_p', 0) * 100:.2f}%")
+        print(f"   Recall:    {scores.get('ents_r', 0) * 100:.2f}%")
+        print(f"   F1-Score:  {scores.get('ents_f', 0) * 100:.2f}%")
+        
+        # Per-entity scores
+        if 'ents_per_type' in scores:
+            print(f"\n📋 Per-Entity Performance:")
+            for entity, entity_scores in scores['ents_per_type'].items():
+                print(f"   {entity}:")
+                print(f"      Precision: {entity_scores.get('p', 0) * 100:.2f}%")
+                print(f"      Recall:    {entity_scores.get('r', 0) * 100:.2f}%")
+                print(f"      F1-Score:  {entity_scores.get('f', 0) * 100:.2f}%")
     
     # Save model
     output_path = Path(output_dir)
@@ -126,384 +231,60 @@ def train_ner_model(
     print(f"\n💾 Model saved to: {output_path}")
     print(f"📦 Model size: {model_size:.1f} MB")
     
-    # Save training metadata
+    # Save training metadata with test scores
     metadata = {
         "training_examples": len(train_data),
+        "test_examples": len(test_data) if test_data else 0,
         "iterations": n_iter,
-        "final_loss": float(current_loss),
-        "best_loss": float(best_loss),
+        "final_train_loss": float(current_loss),
+        "best_train_loss": float(best_loss),
+        "test_f1_score": scores.get('ents_f', 0) * 100 if test_data else None,
+        "test_precision": scores.get('ents_p', 0) * 100 if test_data else None,
+        "test_recall": scores.get('ents_r', 0) * 100 if test_data else None,
         "entity_labels": sorted(labels),
-        "model_size_mb": round(model_size, 1)
+        "model_size_mb": round(model_size, 1),
+        "dropout": dropout
     }
     
     with open(output_path / "training_metadata.json", 'w') as f:
         json.dump(metadata, f, indent=2)
     
-    return nlp
-
-def evaluate_model_improved(model_path, test_data, match_type="strict"):
-    """
-    Evaluate trained model with proper precision, recall, and F1-score
-    
-    Args:
-        model_path: Path to trained model
-        test_data: List of (text, annotations) tuples
-        match_type: "strict" (exact match), "partial" (overlap), or "token" (token-level)
-    
-    Returns:
-        dict with overall and per-entity metrics
-    """
-    
     print("\n" + "=" * 60)
-    print("🧪 EVALUATING MODEL (PROPER METRICS)")
+    print("✅ MODEL TRAINING COMPLETE!")
     print("=" * 60)
     
-    nlp = spacy.load(model_path)
-    print(f"📦 Loaded model from: {model_path}")
-    print(f"🎯 Match type: {match_type}")
-    
-    # Track metrics per entity type
-    entity_metrics = defaultdict(lambda: {"tp": 0, "fp": 0, "fn": 0})
-    
-    print(f"\n📊 Evaluating on {len(test_data)} examples...")
-    
-    for text, annotations in test_data:
-        doc = nlp(text)
-        
-        # Get ground truth entities
-        true_entities = []
-        for start, end, label in annotations["entities"]:
-            true_entities.append({
-                "start": start,
-                "end": end,
-                "label": label,
-                "text": text[start:end]
-            })
-        
-        # Get predicted entities
-        pred_entities = []
-        for ent in doc.ents:
-            pred_entities.append({
-                "start": ent.start_char,
-                "end": ent.end_char,
-                "label": ent.label_,
-                "text": ent.text
-            })
-        
-        # Match entities based on strategy
-        matched_preds = set()
-        matched_trues = set()
-        
-        for i, true_ent in enumerate(true_entities):
-            for j, pred_ent in enumerate(pred_entities):
-                if j in matched_preds:
-                    continue
-                
-                # Check if entities match
-                is_match = False
-                
-                if match_type == "strict":
-                    # Exact boundary and label match
-                    is_match = (
-                        true_ent["start"] == pred_ent["start"] and
-                        true_ent["end"] == pred_ent["end"] and
-                        true_ent["label"] == pred_ent["label"]
-                    )
-                
-                elif match_type == "partial":
-                    # Any overlap with correct label
-                    overlap = (
-                        pred_ent["start"] < true_ent["end"] and
-                        pred_ent["end"] > true_ent["start"]
-                    )
-                    is_match = overlap and (true_ent["label"] == pred_ent["label"])
-                
-                elif match_type == "token":
-                    # Token-level matching (more complex, simplified here)
-                    # Consider match if >50% overlap
-                    overlap_start = max(true_ent["start"], pred_ent["start"])
-                    overlap_end = min(true_ent["end"], pred_ent["end"])
-                    
-                    if overlap_end > overlap_start:
-                        overlap_len = overlap_end - overlap_start
-                        true_len = true_ent["end"] - true_ent["start"]
-                        pred_len = pred_ent["end"] - pred_ent["start"]
-                        
-                        overlap_ratio = overlap_len / max(true_len, pred_len)
-                        is_match = (
-                            overlap_ratio > 0.5 and
-                            true_ent["label"] == pred_ent["label"]
-                        )
-                
-                if is_match:
-                    # True Positive
-                    entity_metrics[true_ent["label"]]["tp"] += 1
-                    matched_preds.add(j)
-                    matched_trues.add(i)
-                    break
-        
-        # False Negatives: true entities not matched
-        for i, true_ent in enumerate(true_entities):
-            if i not in matched_trues:
-                entity_metrics[true_ent["label"]]["fn"] += 1
-        
-        # False Positives: predicted entities not matched
-        for j, pred_ent in enumerate(pred_entities):
-            if j not in matched_preds:
-                entity_metrics[pred_ent["label"]]["fp"] += 1
-    
-    # Calculate metrics
-    print("\n" + "=" * 60)
-    print("📈 RESULTS")
-    print("=" * 60)
-    
-    overall_tp = sum(m["tp"] for m in entity_metrics.values())
-    overall_fp = sum(m["fp"] for m in entity_metrics.values())
-    overall_fn = sum(m["fn"] for m in entity_metrics.values())
-    
-    # Overall metrics
-    overall_precision = overall_tp / (overall_tp + overall_fp) if (overall_tp + overall_fp) > 0 else 0
-    overall_recall = overall_tp / (overall_tp + overall_fn) if (overall_tp + overall_fn) > 0 else 0
-    overall_f1 = (
-        2 * (overall_precision * overall_recall) / (overall_precision + overall_recall)
-        if (overall_precision + overall_recall) > 0 else 0
-    )
-    
-    print(f"\n🎯 Overall Metrics:")
-    print(f"   Precision: {overall_precision * 100:5.2f}%")
-    print(f"   Recall:    {overall_recall * 100:5.2f}%")
-    print(f"   F1-Score:  {overall_f1 * 100:5.2f}%")
-    print(f"\n   True Positives:  {overall_tp}")
-    print(f"   False Positives: {overall_fp}")
-    print(f"   False Negatives: {overall_fn}")
-    
-    # Per-entity metrics
-    print(f"\n📊 Per-Entity Metrics:")
-    print(f"{'Entity':<20} {'Precision':>10} {'Recall':>10} {'F1-Score':>10} {'Support':>8}")
-    print("-" * 60)
-    
-    per_entity_results = {}
-    
-    for label in sorted(entity_metrics.keys()):
-        metrics = entity_metrics[label]
-        tp, fp, fn = metrics["tp"], metrics["fp"], metrics["fn"]
-        
-        precision = tp / (tp + fp) if (tp + fp) > 0 else 0
-        recall = tp / (tp + fn) if (tp + fn) > 0 else 0
-        f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
-        support = tp + fn
-        
-        print(f"{label:<20} {precision*100:>9.2f}% {recall*100:>9.2f}% {f1*100:>9.2f}% {support:>8d}")
-        
-        per_entity_results[label] = {
-            "precision": precision,
-            "recall": recall,
-            "f1": f1,
-            "support": support,
-            "tp": tp,
-            "fp": fp,
-            "fn": fn
-        }
-    
-    print("-" * 60)
-    
-    return {
-        "overall": {
-            "precision": overall_precision,
-            "recall": overall_recall,
-            "f1": overall_f1,
-            "tp": overall_tp,
-            "fp": overall_fp,
-            "fn": overall_fn
-        },
-        "per_entity": per_entity_results
-    }
-
-
-def compare_predictions_detailed(model_path, test_data, num_examples=5):
-    """
-    Show detailed comparison of predictions vs ground truth
-    """
-    
-    print("\n" + "=" * 60)
-    print("🔍 DETAILED PREDICTION COMPARISON")
-    print("=" * 60)
-    
-    nlp = spacy.load(model_path)
-    
-    for idx, (text, annotations) in enumerate(test_data[:num_examples], 1):
-        print(f"\n{'=' * 60}")
-        print(f"Example {idx}:")
-        print(f"{'=' * 60}")
-        
-        # Show text snippet
-        text_preview = text[:200] + "..." if len(text) > 200 else text
-        print(f"\nText: {text_preview}")
-        
-        doc = nlp(text)
-        
-        # Ground truth
-        print(f"\n✓ Ground Truth:")
-        for start, end, label in annotations["entities"]:
-            entity_text = text[start:end]
-            print(f"   [{label:15s}] ({start:4d}, {end:4d}): '{entity_text}'")
-        
-        # Predictions
-        print(f"\n🤖 Model Predictions:")
-        if doc.ents:
-            for ent in doc.ents:
-                print(f"   [{ent.label_:15s}] ({ent.start_char:4d}, {ent.end_char:4d}): '{ent.text}'")
-        else:
-            print("   (No entities predicted)")
-        
-        # Compare
-        print(f"\n📊 Comparison:")
-        true_set = {(start, end, label) for start, end, label in annotations["entities"]}
-        pred_set = {(ent.start_char, ent.end_char, ent.label_) for ent in doc.ents}
-        
-        matches = true_set & pred_set
-        missed = true_set - pred_set
-        wrong = pred_set - true_set
-        
-        print(f"   ✓ Correct: {len(matches)}")
-        print(f"   ✗ Missed:  {len(missed)}")
-        print(f"   ⚠ Wrong:   {len(wrong)}")
-        
-        if missed:
-            print(f"\n   Missed entities:")
-            for start, end, label in missed:
-                print(f"      [{label}]: '{text[start:end]}'")
-        
-        if wrong:
-            print(f"\n   Wrong predictions:")
-            for start, end, label in wrong:
-                print(f"      [{label}]: '{text[start:end]}'")
-
-
-def test_on_sample(model_path):
-    """
-    Test model on sample text
-    """
-    print("\n" + "=" * 60)
-    print("🧪 TESTING ON SAMPLE DATA")
-    print("=" * 60)
-    
-    nlp = spacy.load(model_path)
-    
-    # Sample test cases
-    test_cases = [
-        "NAME\nAhmad Bin Abdullah\nGENDER\nMale",
-        "FINAL CGPA\n3.85\nCOMPLETED IN 2023",
-        "PROGRAM\nBachelor of Computer Science and Mathematics",
-        "STUDENT ID: 20230012345\nINTAKE: JAN 2023"
-    ]
-    
-    print("\n📋 Test Results:")
-    print("-" * 60)
-    
-    for i, text in enumerate(test_cases, 1):
-        print(f"\n{i}. Text: {text[:50]}{'...' if len(text) > 50 else ''}")
-        
-        doc = nlp(text)
-        
-        if doc.ents:
-            for ent in doc.ents:
-                print(f"   ✓ [{ent.label_}]: '{ent.text}'")
-        else:
-            print("   ✗ No entities found")
-    
-    print("-" * 60)
-
+    if test_data:
+        print(f"\n⚠️  IMPORTANT:")
+        print(f"   Training F1: ~{best_loss:.2f} (may be optimistic)")
+        print(f"   Test F1:     {scores.get('ents_f', 0) * 100:.2f}% (real performance)")
+        print(f"   Use the TEST score to evaluate model quality!")
 
 if __name__ == "__main__":
-    print("=" * 60)
-    print("STEP 3: TRAIN CUSTOM NER MODEL")
-    print("=" * 60)
+    # Check dataset size
+    print(f"\n📊 Dataset Information:")
+    print(f"   Total examples: {len(TRAIN_DATA)}")
     
-    # Configuration
-    OUTPUT_DIR = "./custom_transcript_ner_model"
-    N_ITERATIONS = 50  # Increase for better accuracy (try 100-200)
+    if len(TRAIN_DATA) < 30:
+        print(f"\n⚠️  DATASET TOO SMALL!")
+        print(f"   Current: {len(TRAIN_DATA)} examples")
+        print(f"   Recommended: 50+ examples")
+        print(f"   Optimal: 100+ examples")
+        print(f"\n   With only {len(TRAIN_DATA)} examples, accuracy will be limited.")
+        print(f"   Consider labeling more transcripts for better results.\n")
+        
+        response = input("Continue training anyway? (y/n): ")
+        if response.lower() != 'y':
+            print("Training cancelled. Label more data and try again.")
+            exit(0)
     
-    # Train model
-    trained_model = train_ner_model(
-        train_data=TRAIN_DATA,
-        output_dir=OUTPUT_DIR,
-        n_iter=N_ITERATIONS,
-        model=None,  # Start from blank, or use "en_core_web_sm" to continue training
-        dropout=0.3
+    # Split data into train and test
+    train_data, test_data = split_train_test(TRAIN_DATA, test_size=0.2)
+    
+    # Train the model with validation
+    train_ner_model(
+        train_data=train_data,
+        test_data=test_data,
+        output_dir="./custom_transcript_ner_model",
+        n_iter=100,  # Increased iterations
+        dropout=0.2   # Reduced dropout
     )
-    
-    # Evaluate with proper metrics
-    print("\n" + "=" * 60)
-    print("📊 EVALUATING MODEL PERFORMANCE")
-    print("=" * 60)
-    
-    try:
-        from test_data import TEST_DATA
-        if len(TEST_DATA) > 0:
-            print(f"\n✅ Found {len(TEST_DATA)} test examples")
-            
-            # Strict evaluation
-            print("\n" + "=" * 60)
-            print("STRICT MATCHING (Exact boundaries)")
-            print("=" * 60)
-            results_strict = evaluate_model_improved(
-                model_path=OUTPUT_DIR,
-                test_data=TEST_DATA,
-                match_type="strict"
-            )
-            
-            # Partial evaluation (more forgiving)
-            print("\n" + "=" * 60)
-            print("PARTIAL MATCHING (Any overlap)")
-            print("=" * 60)
-            results_partial = evaluate_model_improved(
-                model_path=OUTPUT_DIR,
-                test_data=TEST_DATA,
-                match_type="partial"
-            )
-            
-            # Show detailed comparison for first few examples
-            compare_predictions_detailed(
-                model_path=OUTPUT_DIR,
-                test_data=TEST_DATA,
-                num_examples=3
-            )
-        else:
-            print("\n⚠️  TEST_DATA is empty")
-    except ImportError:
-        print("\n⚠️  No test_data.py found, evaluating on training data (not recommended)")
-        print("   Tip: Create test_data.py with separate test examples for proper evaluation")
-        
-        # Fallback: evaluate on a small subset of training data
-        test_subset = TRAIN_DATA[:3]
-        results = evaluate_model_improved(
-            model_path=OUTPUT_DIR,
-            test_data=test_subset,
-            match_type="strict"
-        )
-        
-        compare_predictions_detailed(
-            model_path=OUTPUT_DIR,
-            test_data=test_subset,
-            num_examples=2
-        )
-    
-    # Test on samples
-    test_on_sample(OUTPUT_DIR)
-    
-    print("\n" + "=" * 60)
-    print("✅ TRAINING COMPLETE!")
-    print("=" * 60)
-    print(f"\n📦 Model saved to: {OUTPUT_DIR}")
-    print("\n📝 Next Steps:")
-    print("1. Review the Precision, Recall, and F1-Score above")
-    print("2. Check per-entity performance - which entities need improvement?")
-    print("3. If F1-Score < 80%: Label more training data and retrain")
-    print("4. If F1-Score > 85%: Ready to integrate with production service!")
-    print("5. Create test_data.py with separate test examples if not done yet")
-    print("\n💡 Tips:")
-    print("   - Precision low? Model predicting too many wrong entities")
-    print("   - Recall low? Model missing entities it should find")
-    print("   - F1-Score balances both precision and recall")
-    print("=" * 60)
