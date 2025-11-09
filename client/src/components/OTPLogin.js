@@ -162,7 +162,7 @@ const OTPLogin = ({ onSuccess, onError }) => {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: "linear-gradient(180deg, #ffffff 0%, #f9fafb 100%)",
         padding: "3rem 1rem",
       }}
     >
@@ -173,7 +173,8 @@ const OTPLogin = ({ onSuccess, onError }) => {
           background: "white",
           borderRadius: "16px",
           padding: "3rem 2.5rem",
-          boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
+          border: "1px solid #e5e7eb",
+          boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
         }}
       >
         {/* Header */}
@@ -183,7 +184,7 @@ const OTPLogin = ({ onSuccess, onError }) => {
               width: "80px",
               height: "80px",
               margin: "0 auto 1.5rem",
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              background: "#dbeafe",
               borderRadius: "50%",
               display: "flex",
               alignItems: "center",
@@ -197,7 +198,8 @@ const OTPLogin = ({ onSuccess, onError }) => {
             style={{
               fontSize: "1.875rem",
               fontWeight: "700",
-              color: "#1a202c",
+              color: "#111827",
+              letterSpacing: "-0.01em",
               marginBottom: "0.5rem",
             }}
           >
@@ -251,7 +253,7 @@ const OTPLogin = ({ onSuccess, onError }) => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
-                onFocus={(e) => (e.target.style.borderColor = "#667eea")}
+                onFocus={(e) => (e.target.style.borderColor = "#2563eb")}
                 onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
               />
             </div>
@@ -262,19 +264,31 @@ const OTPLogin = ({ onSuccess, onError }) => {
               style={{
                 width: "100%",
                 padding: "0.875rem",
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                background: "#2563eb",
                 color: "white",
                 border: "none",
                 borderRadius: "8px",
                 fontSize: "1rem",
                 fontWeight: "600",
                 cursor: loading ? "not-allowed" : "pointer",
-                opacity: loading ? 0.7 : 1,
+                opacity: loading ? 0.6 : 1,
                 transition: "all 0.2s ease",
-                boxShadow: "0 4px 12px rgba(102, 126, 234, 0.4)",
+                boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
               }}
-              onMouseEnter={(e) => !loading && (e.target.style.transform = "translateY(-2px)")}
-              onMouseLeave={(e) => (e.target.style.transform = "translateY(0)")}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.target.style.background = "#1d4ed8";
+                  e.target.style.transform = "translateY(-2px)";
+                  e.target.style.boxShadow = "0 4px 15px rgba(37, 99, 235, 0.3)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) {
+                  e.target.style.background = "#2563eb";
+                  e.target.style.transform = "translateY(0)";
+                  e.target.style.boxShadow = "0 1px 2px rgba(0, 0, 0, 0.05)";
+                }
+              }}
             >
               {loading ? "Sending Code..." : "Send Login Code"}
             </button>
@@ -337,7 +351,7 @@ const OTPLogin = ({ onSuccess, onError }) => {
                   setOtpCode(value)
                 }}
                 disabled={loading}
-                onFocus={(e) => (e.target.style.borderColor = "#667eea")}
+                onFocus={(e) => (e.target.style.borderColor = "#2563eb")}
                 onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
               />
               {otpExpiry > 0 && (
@@ -349,7 +363,7 @@ const OTPLogin = ({ onSuccess, onError }) => {
                     color: "#6b7280",
                   }}
                 >
-                  Code expires in <span style={{ fontWeight: "600", color: "#667eea" }}>{formatTime(otpExpiry)}</span>
+                  Code expires in <span style={{ fontWeight: "600", color: "#2563eb" }}>{formatTime(otpExpiry)}</span>
                 </p>
               )}
             </div>
@@ -360,7 +374,7 @@ const OTPLogin = ({ onSuccess, onError }) => {
               style={{
                 width: "100%",
                 padding: "0.875rem",
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                background: "#2563eb",
                 color: "white",
                 border: "none",
                 borderRadius: "8px",
@@ -369,13 +383,23 @@ const OTPLogin = ({ onSuccess, onError }) => {
                 cursor: loading || otpCode.length !== 6 ? "not-allowed" : "pointer",
                 opacity: loading || otpCode.length !== 6 ? 0.5 : 1,
                 transition: "all 0.2s ease",
-                boxShadow: "0 4px 12px rgba(102, 126, 234, 0.4)",
+                boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
                 marginBottom: "1rem",
               }}
-              onMouseEnter={(e) =>
-                !(loading || otpCode.length !== 6) && (e.target.style.transform = "translateY(-2px)")
-              }
-              onMouseLeave={(e) => (e.target.style.transform = "translateY(0)")}
+              onMouseEnter={(e) => {
+                if (!(loading || otpCode.length !== 6)) {
+                  e.target.style.background = "#1d4ed8";
+                  e.target.style.transform = "translateY(-2px)";
+                  e.target.style.boxShadow = "0 4px 15px rgba(37, 99, 235, 0.3)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!(loading || otpCode.length !== 6)) {
+                  e.target.style.background = "#2563eb";
+                  e.target.style.transform = "translateY(0)";
+                  e.target.style.boxShadow = "0 1px 2px rgba(0, 0, 0, 0.05)";
+                }
+              }}
             >
               {loading ? "Verifying..." : "Verify Code"}
             </button>
@@ -394,14 +418,14 @@ const OTPLogin = ({ onSuccess, onError }) => {
                 style={{
                   background: "none",
                   border: "none",
-                  color: "#667eea",
+                  color: "#2563eb",
                   cursor: "pointer",
                   fontWeight: "500",
                   padding: "0.5rem",
                   transition: "color 0.2s ease",
                 }}
-                onMouseEnter={(e) => (e.target.style.color = "#764ba2")}
-                onMouseLeave={(e) => (e.target.style.color = "#667eea")}
+                onMouseEnter={(e) => (e.target.style.color = "#1d4ed8")}
+                onMouseLeave={(e) => (e.target.style.color = "#2563eb")}
               >
                 ← Back to email
               </button>
@@ -413,14 +437,14 @@ const OTPLogin = ({ onSuccess, onError }) => {
                 style={{
                   background: "none",
                   border: "none",
-                  color: resendCooldown > 0 || loading ? "#9ca3af" : "#667eea",
+                  color: resendCooldown > 0 || loading ? "#9ca3af" : "#2563eb",
                   cursor: resendCooldown > 0 || loading ? "not-allowed" : "pointer",
                   fontWeight: "500",
                   padding: "0.5rem",
                   transition: "color 0.2s ease",
                 }}
-                onMouseEnter={(e) => !(resendCooldown > 0 || loading) && (e.target.style.color = "#764ba2")}
-                onMouseLeave={(e) => !(resendCooldown > 0 || loading) && (e.target.style.color = "#667eea")}
+                onMouseEnter={(e) => !(resendCooldown > 0 || loading) && (e.target.style.color = "#1d4ed8")}
+                onMouseLeave={(e) => !(resendCooldown > 0 || loading) && (e.target.style.color = "#2563eb")}
               >
                 {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend Code"}
               </button>

@@ -1,5 +1,6 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
+const { extractCoursesWithOllama, validateCoursesWithOllama, isOllamaAvailable } = require("./ollamaExtractor");
 
 class ScholarshipScraper {
   constructor() {
@@ -15,6 +16,8 @@ class ScholarshipScraper {
       const scholarships = [];
       const startUrl = `${this.baseUrl}/scholarship`;
       const maxPages = Number(options.maxPages || 100);
+      const shouldCancelCallback = options.shouldCancel || (() => false);
+      const onProgressCallback = options.onProgress || (() => {});
 
       const seenUrls = new Set();
       const listingQueue = [startUrl];
@@ -164,11 +167,15 @@ class ScholarshipScraper {
       const allListingLinks = [];
 
       while (listingQueue.length && pagesCrawled < maxPages) {
+        // Check for cancellation during pagination
+        if (shouldCancelCallback()) {
+          break;
+        }
+        
         const url = listingQueue.shift();
         if (!url || seenUrls.has(url)) continue;
         seenUrls.add(url);
         pagesCrawled++;
-        console.log(`Fetching listing page (${pagesCrawled}/${maxPages}): ${url}`);
 
         const response = await axios.get(url, {
           headers: this.headers,
@@ -178,7 +185,6 @@ class ScholarshipScraper {
 
         const pageLinks = extractScholarshipLinksFrom$($);
         allListingLinks.push(...pageLinks);
-        console.log(` → Found ${pageLinks.length} scholarships on this page (total so far: ${allListingLinks.length})`);
 
         const discovered = extractAllPaginationUrlsFrom$($, url);
         let queuedAny = false;
@@ -188,15 +194,10 @@ class ScholarshipScraper {
             queuedAny = true;
           }
         }
-        if (queuedAny) {
-          console.log(` → Queued ${listingQueue.length} listing page(s) so far`);
-        } else {
+        if (!queuedAny) {
           const nextUrl = findNextPageUrlFrom$($, url);
           if (nextUrl && !seenUrls.has(nextUrl)) {
             listingQueue.push(nextUrl);
-            console.log(` → Queued next page: ${nextUrl}`);
-          } else {
-            console.log(' → No further pages detected.');
           }
         }
         // politeness delay between listing pages
@@ -209,64 +210,41 @@ class ScholarshipScraper {
         if (!uniqMap.has(item.url)) uniqMap.set(item.url, item);
       }
       const scholarshipLinks = Array.from(uniqMap.values());
-      console.log(`Found ${scholarshipLinks.length} unique scholarship links across ${pagesCrawled} page(s)`);
+      console.log(`Found ${scholarshipLinks.length} scholarships across ${pagesCrawled} pages`);
+
+      // Notify progress: found total scholarships
+      onProgressCallback({ 
+        phase: 'scraping',
+        current: 0, 
+        total: scholarshipLinks.length,
+        message: `Found ${scholarshipLinks.length} scholarships, scraping details...`
+      });
 
       // Process each scholarship (no artificial 20-item cap)
       let processed = 0;
       for (const link of scholarshipLinks) {
+        // Check for cancellation
+        if (shouldCancelCallback()) {
+          break;
+        }
+        
         try {
           processed += 1;
-          console.log(`\n🔄 Processing scholarship ${processed}/${scholarshipLinks.length}`);
+          
+          // Update progress
+          onProgressCallback({
+            phase: 'scraping',
+            current: processed,
+            total: scholarshipLinks.length,
+            message: link.title
+          });
+          
           const scholarshipData = await this.scrapeScholarshipDetails(
             link.url,
             link.title
           );
           if (scholarshipData) {
             scholarships.push(scholarshipData);
-            // Enhanced deadline logging
-            if (scholarshipData.deadline) {
-              console.log(`\n📅 DEADLINE ANALYSIS for "${link.title}":`);
-              console.log(`  Raw deadline text: "${scholarshipData.deadline}"`);
-              
-              let parsedDate;
-              if (scholarshipData.deadline instanceof Date) {
-                parsedDate = scholarshipData.deadline;
-              } else if (typeof scholarshipData.deadline === 'string' && /^\d{1,2}-\d{1,2}-\d{4}$/.test(scholarshipData.deadline)) {
-                const [dd, mm, yyyy] = scholarshipData.deadline.split("-");
-                parsedDate = new Date(`${yyyy}-${mm}-${dd}`);
-              } else {
-                parsedDate = new Date(scholarshipData.deadline);
-              }
-              
-              const currentDate = new Date();
-              console.log(`  Parsed date: ${parsedDate}`);
-              console.log(`  Current date: ${currentDate}`);
-              console.log(`  Is valid date: ${!isNaN(parsedDate.getTime())}`);
-              console.log(`  Is future date: ${parsedDate > currentDate}`);
-
-              if (!isNaN(parsedDate.getTime())) {
-                const daysDifference = Math.ceil(
-                  (parsedDate - currentDate) / (1000 * 60 * 60 * 24)
-                );
-                console.log(`  Raw deadline: ${scholarshipData.deadline}`);
-                console.log(`  Parsed date: ${parsedDate}`);
-                console.log(`  Days from now: ${daysDifference}`);
-
-                if (daysDifference > 365) {
-                  console.log(
-                    `  ⚠️  WARNING: Deadline is more than 1 year ahead!`
-                  );
-                } else if (daysDifference < 0) {
-                  console.log(`  ⚠️  WARNING: Deadline is in the past!`);
-                } else {
-                  console.log(`  ✅ Deadline looks reasonable`);
-                }
-              } else {
-                console.log(
-                  `  ❌ Invalid deadline format: ${scholarshipData.deadline}`
-                );
-              }
-            }
           }
           // Delay between detail requests
           await new Promise((resolve) => setTimeout(resolve, 1200));
@@ -275,15 +253,6 @@ class ScholarshipScraper {
           continue;
         }
       }
-
-      // Final summary
-      console.log(`\n📊 SCRAPING SUMMARY:`);
-      console.log(`Total scholarships processed: ${scholarships.length}`);
-      const withDeadlines = scholarships.filter((s) => s.deadline).length;
-      console.log(`Scholarships with deadlines: ${withDeadlines}`);
-      console.log(
-        `Scholarships without deadlines: ${scholarships.length - withDeadlines}`
-      );
 
       return scholarships;
     } catch (error) {
@@ -294,9 +263,6 @@ class ScholarshipScraper {
 
   async scrapeScholarshipDetails(url, title) {
     try {
-      console.log(`\n🔍 Processing: ${title}`);
-      console.log(`URL: ${url}`);
-
       const response = await axios.get(url, {
         headers: this.headers,
         timeout: 8000,
@@ -336,7 +302,6 @@ class ScholarshipScraper {
       // FIXED: Enhanced Deadline Extraction Logic
       let deadline = null;
       
-      console.log(`\n--- 🎯 DEADLINE EXTRACTION for: ${title} ---`);
       // Method 1: Look for the specific layout pattern in afterschool.my
       // The deadline appears to be in a format like "Study Level | Where to Study | Deadline | Amount"
       // IMPORTANT: Exclude JSON/app content like __NEXT_DATA__ and any script/style/noscript content
@@ -368,7 +333,7 @@ class ScholarshipScraper {
       }
       const pageText = contentRoot.text();
       const globalText = sanitizedBody.text();
-      console.log("Full page text sample:", pageText.substring(0, 500));
+      
       // Method 0 (targeted like Python): scan label/value blocks in MUI stacks
       const tryExtractDeadlineFromStacks = (root) => {
         try {
@@ -381,14 +346,14 @@ class ScholarshipScraper {
             // Case A: label then value (Python logic)
             if (labelText.includes('deadline') && /^\d{1,2}-\d{1,2}-\d{4}$/.test(h5Text)) {
               deadline = h5Text;
-              console.log(`✅ Found deadline in MUI Stack (label->value): "${deadline}"`);
+
               return false;
             }
 
             // Case B: value then label (as reported)
             if (/^\d{1,2}-\d{1,2}-\d{4}$/.test(h5Text) && labelText.includes('deadline')) {
               deadline = h5Text;
-              console.log(`✅ Found deadline in MUI Stack (value->label): "${deadline}"`);
+
               return false;
             }
           });
@@ -410,7 +375,7 @@ class ScholarshipScraper {
                   const t = (c.text() || '').trim();
                   if (/^\d{1,2}-\d{1,2}-\d{4}$/.test(t)) {
                     deadline = t;
-                    console.log(`✅ Found deadline near <p>Deadline</p>: "${deadline}"`);
+
                     break;
                   }
                 }
@@ -435,14 +400,14 @@ class ScholarshipScraper {
         if (!match) match = globalText.match(pattern);
         if (match) {
           deadline = match[1];
-          console.log(`✅ Found deadline using pattern: "${deadline}"`);
+
           break;
         }
       }
 
       // Method 2: Look in specific HTML elements
       if (!deadline) {
-        console.log("Trying HTML element search...");
+
         
         // Search through all elements that might contain the deadline
         sanitizedBody.find('*').each((i, element) => {
@@ -476,8 +441,7 @@ class ScholarshipScraper {
                   $el.prev().text().toLowerCase().includes('deadline') ||
                   $el.next().text().toLowerCase().includes('deadline')) {
                 deadline = foundDate;
-                console.log(`✅ Found deadline in HTML element: "${deadline}"`);
-                console.log(`   Element text: "${text}"`);
+
                 return false; // Break
               }
             }
@@ -487,7 +451,7 @@ class ScholarshipScraper {
 
       // Method 3: Look for MUI Typography elements that might contain dates
       if (!deadline) {
-        console.log("Trying MUI Typography search...");
+
         
         const muiElements = sanitizedBody
           .find('[class*="MuiTypography"], h1, h2, h3, h4, h5, h6, p, span, div')
@@ -507,7 +471,7 @@ class ScholarshipScraper {
             
             if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 2024 && year <= 2030) {
               deadline = text;
-              console.log(`✅ Found deadline in MUI element: "${deadline}"`);
+
               return false;
             }
           }
@@ -516,7 +480,7 @@ class ScholarshipScraper {
 
       // Method 4: Fallback - look for any date in the entire page
       if (!deadline) {
-        console.log("Using fallback date search...");
+
         const allDates = (globalText.match(/\b\d{1,2}-\d{1,2}-\d{4}\b/g) || []);
         if (allDates && allDates.length > 0) {
           // Take the first reasonable future date
@@ -527,7 +491,7 @@ class ScholarshipScraper {
             
             if (!isNaN(parsedDate.getTime()) && parsedDate > currentDate) {
               deadline = date;
-              console.log(`✅ Found deadline using fallback: "${deadline}"`);
+
               break;
             }
           }
@@ -535,7 +499,7 @@ class ScholarshipScraper {
       }
 
       if (!deadline) {
-        console.log("❌ No deadline found using any method");
+
       }
       // Extract Email (multiple strategies)
       let email = null;
@@ -704,9 +668,9 @@ class ScholarshipScraper {
       if (candidateValues.length > 0) {
         // Choose the highest mentioned value as the minimum requirement
         minGPAFromPage = Number(Math.max(...candidateValues).toFixed(2));
-        console.log(`📘 Detected min CGPA/GPA: ${minGPAFromPage} for ${title}`);
+
       } else {
-        console.log(`ℹ️ No explicit CGPA/GPA found for ${title}`);
+
       }
 
       // Extract provider name with better logic
@@ -818,17 +782,52 @@ class ScholarshipScraper {
         const letters = (s.match(/[A-Za-z]/g) || []).length;
         return 1 - (letters / Math.max(1, s.length));
       };
+      // Detect grade/qualification patterns (e.g., "STPM/A-Level - 3As", "UEC - 8As", "SPM: 5As*")
+      const looksLikeGrade = (s) => {
+        return /\b(STPM|A-Level|UEC|O-Level|SPM|IGCSE|IB)\b/i.test(s) && 
+               /\d+\s*A['s]*/i.test(s); // Contains patterns like "3As", "8A's", "5 As"
+      };
       if (Array.isArray(eligibleCourses) && eligibleCourses.length) {
         eligibleCourses = eligibleCourses
           .map(normalizeCourse)
           .filter((s) => s && s.length >= 2 && s.length <= 80)
           .filter((s) => !looksLikeCss(s))
+          .filter((s) => !looksLikeGrade(s)) // Filter out grade requirements
           .filter((s) => nonLetterRatio(s) < 0.5)
           .filter((s) => !stopwords.some(w => s.toLowerCase().includes(w)))
           .map((s) => s.replace(/^[-•·\s]+/, ''));
       }
 
-      // If still empty after targeted extraction, set to null (do not infer from unrelated blocks)
+      // HYBRID APPROACH: Use Ollama AI if scraper found insufficient courses
+      const ollamaEnabled = await isOllamaAvailable();
+      // Use globalText for AI (more complete) instead of pageText (may be truncated)
+      const textForAI = globalText && globalText.length > pageText.length ? globalText : pageText;
+      const shouldUseAI = ollamaEnabled && 
+                          (!eligibleCourses || eligibleCourses.length < 3) && 
+                          textForAI.length > 500;
+      
+      if (shouldUseAI) {
+
+        try {
+          const aiCourses = await extractCoursesWithOllama(textForAI, url);
+          if (aiCourses && aiCourses.length > 0) {
+            eligibleCourses = aiCourses;
+
+          }
+        } catch (aiError) {
+          console.error('Ollama extraction failed, using scraper result:', aiError.message);
+        }
+      } else if (eligibleCourses && eligibleCourses.length >= 3 && ollamaEnabled) {
+        // Optional: Validate scraped courses with Ollama
+
+        try {
+          eligibleCourses = await validateCoursesWithOllama(eligibleCourses);
+        } catch (validationError) {
+          console.error('Ollama validation failed, keeping scraped result:', validationError.message);
+        }
+      }
+
+      // If still empty after all extraction attempts, set to null
       if (!eligibleCourses || eligibleCourses.length === 0) {
         eligibleCourses = null;
       }
@@ -873,14 +872,7 @@ async function runScraper() {
   const scraper = new ScholarshipScraper();
   try {
     const scholarships = await scraper.scrapeScholarships();
-    console.log(`\n📋 FINAL RESULTS SUMMARY:`);
-    console.log(`Total scholarships: ${scholarships.length}`);
-    scholarships.forEach((scholarship, index) => {
-      console.log(`\n${index + 1}. ${scholarship.title}`);
-      console.log(`   Deadline: ${scholarship.deadline || "Not found"}`);
-      console.log(`   Study Level: ${scholarship.studyLevel || "Unknown"}`);
-      console.log(`   Provider: ${scholarship.provider.name}`);
-    });
+    console.log(`✅ Scraped ${scholarships.length} scholarships`);
   } catch (error) {
     console.error("❌ Scraper failed:", error);
   }

@@ -105,4 +105,36 @@ router.get("/users", adminAuth, async (req, res) => {
   }
 })
 
+// Get scholarship status distribution
+router.get("/scholarship-status", adminAuth, async (req, res) => {
+  try {
+    const statusDistribution = await Scholarship.aggregate([
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { count: -1 },
+      },
+    ])
+
+    // Also check for expired scholarships (deadline passed)
+    const now = new Date()
+    const expiredCount = await Scholarship.countDocuments({
+      deadline: { $lt: now },
+      status: "active",
+    })
+
+    res.json({
+      statusDistribution,
+      expiredCount,
+    })
+  } catch (error) {
+    console.error("Get scholarship status error:", error)
+    res.status(500).json({ message: "Server error" })
+  }
+})
+
 module.exports = router

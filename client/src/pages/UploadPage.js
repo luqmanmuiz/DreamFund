@@ -461,7 +461,7 @@ const UploadPage = () => {
                       style={{
                         width: "100%",
                         height: "100%",
-                        backgroundColor: "#667eea",
+                        backgroundColor: "#2563eb",
                         borderRadius: "2px",
                         animation:
                           "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
@@ -484,7 +484,7 @@ const UploadPage = () => {
               style={{
                 opacity: uploading ? 0.6 : 1,
                 pointerEvents: uploading ? "none" : "auto",
-                border: dragOver ? "2px dashed #667eea" : "2px dashed #d1d5db",
+                border: dragOver ? "2px dashed #2563eb" : "2px dashed #d1d5db",
                 borderRadius: "12px",
                 padding: "3rem 2rem",
                 textAlign: "center",
@@ -710,32 +710,35 @@ const UploadPage = () => {
                 onClick={uploadFiles}
                 disabled={uploading || files.length === 0}
                 style={{
-                  padding: "1rem 2.5rem",
+                  padding: "0.875rem 2rem",
                   fontSize: "1rem",
                   fontWeight: "600",
                   background:
-                    uploading || files.length === 0 ? "#d1d5db" : "#667eea",
+                    uploading || files.length === 0 ? "#9ca3af" : "#2563eb",
                   color: "white",
                   border: "none",
-                  borderRadius: "10px",
+                  borderRadius: "8px",
                   cursor:
                     uploading || files.length === 0 ? "not-allowed" : "pointer",
                   transition: "all 0.2s ease",
                   boxShadow:
                     uploading || files.length === 0
                       ? "none"
-                      : "0 4px 12px rgba(102, 126, 234, 0.3)",
+                      : "0 1px 2px rgba(0, 0, 0, 0.05)",
+                  opacity: uploading || files.length === 0 ? 0.6 : 1,
                 }}
                 onMouseEnter={(e) => {
                   if (!uploading && files.length > 0) {
-                    e.target.style.background = "#5568d3";
-                    e.target.style.transform = "translateY(-1px)";
+                    e.target.style.background = "#1d4ed8";
+                    e.target.style.transform = "translateY(-2px)";
+                    e.target.style.boxShadow = "0 4px 15px rgba(37, 99, 235, 0.3)";
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!uploading && files.length > 0) {
-                    e.target.style.background = "#667eea";
+                    e.target.style.background = "#2563eb";
                     e.target.style.transform = "translateY(0)";
+                    e.target.style.boxShadow = "0 1px 2px rgba(0, 0, 0, 0.05)";
                   }
                 }}
               >
@@ -1101,7 +1104,7 @@ const UploadPage = () => {
                   marginTop: "2.5rem",
                   padding: "2rem",
                   background: "#f0fdf4",
-                  borderRadius: "12px",
+                  borderRadius: "16px",
                   border: "1px solid #bbf7d0",
                   textAlign: "center",
                 }}
@@ -1111,10 +1114,11 @@ const UploadPage = () => {
                 </div>
                 <h3
                   style={{
-                    fontSize: "1.25rem",
-                    fontWeight: "600",
+                    fontSize: "1.5rem",
+                    fontWeight: "700",
                     color: "#166534",
                     marginBottom: "0.75rem",
+                    letterSpacing: "-0.01em",
                   }}
                 >
                   Documents processed successfully!
@@ -1123,8 +1127,8 @@ const UploadPage = () => {
                   style={{
                     color: "#15803d",
                     marginBottom: "1.5rem",
-                    fontSize: "0.95rem",
-                    lineHeight: "1.6",
+                    fontSize: "1.125rem",
+                    lineHeight: "1.75",
                   }}
                 >
                   Your information has been extracted and analyzed. Ready to
@@ -1134,15 +1138,15 @@ const UploadPage = () => {
                   to={user ? `/results/${user.id}` : "/results"}
                   style={{
                     padding: "0.875rem 2rem",
-                    background: "#667eea",
+                    background: "#2563eb",
                     color: "white",
                     textDecoration: "none",
-                    borderRadius: "10px",
+                    borderRadius: "8px",
                     display: "inline-block",
                     fontSize: "1rem",
                     fontWeight: "600",
                     transition: "all 0.2s ease",
-                    boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)",
+                    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
                   }}
                   onClick={() => {
                     try {
@@ -1158,12 +1162,14 @@ const UploadPage = () => {
                     } catch (_) {}
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.background = "#5568d3";
-                    e.target.style.transform = "translateY(-1px)";
+                    e.target.style.background = "#1d4ed8";
+                    e.target.style.transform = "translateY(-2px)";
+                    e.target.style.boxShadow = "0 4px 15px rgba(37, 99, 235, 0.3)";
                   }}
                   onMouseLeave={(e) => {
-                    e.target.style.background = "#667eea";
+                    e.target.style.background = "#2563eb";
                     e.target.style.transform = "translateY(0)";
+                    e.target.style.boxShadow = "0 1px 2px rgba(0, 0, 0, 0.05)";
                   }}
                 >
                   🔍 View Scholarship Matches

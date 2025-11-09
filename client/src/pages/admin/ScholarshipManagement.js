@@ -38,23 +38,70 @@ const ScholarshipManagement = () => {
   const [loading, setLoading] = useState(false)
   const [scrapeLoading, setScrapeLoading] = useState(false)
   const [scrapeMessage, setScrapeMessage] = useState("")
+  const [scrapeProgress, setScrapeProgress] = useState({ current: 0, total: 0, currentScholarship: '' })
+  const [eventSource, setEventSource] = useState(null)
 
   useEffect(() => {
     fetchScholarships()
   }, [fetchScholarships])
 
-  // Scraping function
+  // Cleanup event source on unmount
+  useEffect(() => {
+    return () => {
+      if (eventSource) {
+        eventSource.close()
+      }
+    }
+  }, [eventSource])
+
+  // Cancel scraping function
+  const handleCancelScraping = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/scholarships/cancel-scraping", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        setScrapeMessage("⚠️ Cancelling scraping... Please wait.")
+        // Close the EventSource connection
+        if (eventSource) {
+          eventSource.close()
+          setEventSource(null)
+        }
+        // Reset states after a short delay
+        setTimeout(() => {
+          setScrapeLoading(false)
+          setScrapeProgress({ current: 0, total: 0, currentScholarship: '' })
+          setScrapeMessage("❌ Scraping cancelled by user")
+          setTimeout(() => setScrapeMessage(""), 3000)
+        }, 1000)
+      } else {
+        setScrapeMessage(`Cancel failed: ${result.message}`)
+      }
+    } catch (error) {
+      console.error("Cancel error:", error)
+      setScrapeMessage(`Cancel error: ${error.message}`)
+    }
+  }
+
+  // Scraping function with SSE progress tracking
   const handleScrapeScholarships = async () => {
     setScrapeLoading(true)
     setScrapeMessage("Starting to scrape scholarships...")
+    setScrapeProgress({ current: 0, total: 0, currentScholarship: '' })
 
     try {
-      // Temporary direct URL - use this if proxy doesn't work
+      // Start the scraping process
       const response = await fetch("http://localhost:5000/api/scholarships/scrape-scholarships", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`, // If you use auth tokens
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       })
 
@@ -65,21 +112,77 @@ const ScholarshipManagement = () => {
       const result = await response.json()
 
       if (result.success) {
-        // Show detailed scraping results
-        const scholarshipsList = result.scholarships ? result.scholarships.map((s) => s.title).join(", ") : "None"
-        setScrapeMessage(`Successfully scraped ${result.count} scholarships: ${scholarshipsList}. ${result.note || ""}`)
-        // Refresh the scholarships list
-        await fetchScholarships()
+        setScrapeMessage("Scraping started. Monitoring progress...")
+        
+        // Connect to SSE endpoint for progress updates
+        // Note: SSE endpoint is public (read-only state) so no auth needed
+        const sseUrl = `http://localhost:5000/api/scholarships/scraping-progress`
+        console.log("🔌 Connecting to SSE:", sseUrl)
+        
+        const es = new EventSource(sseUrl)
+
+        es.onopen = () => {
+          console.log("✅ SSE connection opened")
+        }
+
+        es.onmessage = (event) => {
+          console.log("📨 SSE message received:", event.data)
+          const progress = JSON.parse(event.data)
+          console.log("📊 Progress update:", progress)
+          setScrapeProgress(progress)
+          
+          if (progress.isRunning) {
+            setScrapeMessage(`Scraping ${progress.current}/${progress.total} scholarships...`)
+          } else if (progress.current > 0) {
+            // Scraping complete
+            console.log("✅ Scraping completed")
+            setScrapeMessage(`✅ Scraping completed! Processed ${progress.current}/${progress.total} scholarships`)
+            setScrapeLoading(false)
+            es.close()
+            setEventSource(null)
+            
+            // Refresh scholarships list
+            setTimeout(() => {
+              fetchScholarships()
+            }, 1000)
+            
+            // Clear message after 5 seconds
+            setTimeout(() => setScrapeMessage(""), 5000)
+          }
+        }
+
+        es.onerror = (error) => {
+          console.error("❌ SSE error:", error)
+          console.error("SSE readyState:", es.readyState)
+          console.error("SSE URL:", sseUrl)
+          
+          // EventSource readyState: 0=CONNECTING, 1=OPEN, 2=CLOSED
+          if (es.readyState === 2) {
+            console.error("SSE connection closed. This could be due to:")
+            console.error("1. Invalid/expired token")
+            console.error("2. Server not responding")
+            console.error("3. CORS issues")
+          }
+          
+          es.close()
+          setEventSource(null)
+          setScrapeLoading(false)
+          setScrapeMessage("⚠️ Connection error. Scraping may still be running. Please refresh the page.")
+          setTimeout(() => {
+            setScrapeMessage("")
+            fetchScholarships() // Try to refresh to see if scraping completed
+          }, 5000)
+        }
+
+        setEventSource(es)
       } else {
         setScrapeMessage(`Scraping failed: ${result.message}`)
+        setScrapeLoading(false)
       }
     } catch (error) {
       console.error("Scraping error:", error)
       setScrapeMessage(`Scraping failed: ${error.message}`)
-    } finally {
       setScrapeLoading(false)
-      // Clear message after 5 seconds
-      setTimeout(() => setScrapeMessage(""), 5000)
     }
   }
 
@@ -339,35 +442,154 @@ const ScholarshipManagement = () => {
 
   const headerActions = (
     <>
-      <button
-        onClick={handleScrapeScholarships}
-        disabled={scrapeLoading}
-        style={{
-          padding: "0.75rem 1rem",
-          background: scrapeLoading ? "#9ca3af" : "#f59e0b",
-          color: "white",
-          border: "none",
-          borderRadius: "6px",
-          cursor: scrapeLoading ? "not-allowed" : "pointer",
-          fontWeight: "500",
-        }}
-      >
-        {scrapeLoading ? "Scraping..." : "Scrape Scholarships"}
-      </button>
-      <button
-        onClick={() => setShowForm(true)}
-        style={{
-          padding: "0.75rem 1rem",
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-          color: "white",
-          border: "none",
-          borderRadius: "6px",
-          cursor: "pointer",
-          fontWeight: "600",
-        }}
-      >
-        Add New Scholarship
-      </button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            onClick={handleScrapeScholarships}
+            disabled={scrapeLoading}
+            style={{
+              padding: "0.75rem 1rem",
+              background: scrapeLoading ? "#9ca3af" : "#f59e0b",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              cursor: scrapeLoading ? "not-allowed" : "pointer",
+              fontWeight: "500",
+            }}
+          >
+            {scrapeLoading ? "Scraping..." : "Scrape Scholarships"}
+          </button>
+          {scrapeLoading && (
+            <button
+              onClick={handleCancelScraping}
+              style={{
+                padding: "0.75rem 1rem",
+                background: "#ef4444",
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontWeight: "500",
+              }}
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            onClick={() => setShowForm(true)}
+            style={{
+              padding: "0.75rem 1.5rem",
+              background: "#2563eb",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontWeight: "600",
+              transition: "all 0.2s",
+              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "#1d4ed8")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "#2563eb")}
+          >
+            Add New Scholarship
+          </button>
+        </div>
+        
+        {/* Progress indicator - show when scraping is active */}
+        {scrapeLoading && (
+          <div style={{
+            background: 'white',
+            padding: '0.75rem 1rem',
+            borderRadius: '6px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            minWidth: '350px',
+            border: '2px solid #f59e0b'
+          }}>
+            {scrapeProgress.total > 0 ? (
+              <>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  marginBottom: '0.5rem',
+                  fontSize: '1rem',
+                  color: '#4b5563'
+                }}>
+                  <span style={{ fontWeight: '600' }}>
+                    {scrapeProgress.current}/{scrapeProgress.total}
+                  </span>
+                  <span style={{ fontWeight: '600', color: '#f59e0b' }}>
+                    {scrapeProgress.total > 0 ? Math.round((scrapeProgress.current / scrapeProgress.total) * 100) : 0}%
+                  </span>
+                </div>
+                <div style={{
+                  width: '100%',
+                  height: '8px',
+                  background: '#e5e7eb',
+                  borderRadius: '4px',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    width: `${scrapeProgress.total > 0 ? (scrapeProgress.current / scrapeProgress.total) * 100 : 0}%`,
+                    height: '100%',
+                    background: '#f59e0b',
+                    transition: 'width 0.3s ease'
+                  }} />
+                </div>
+                {scrapeProgress.currentScholarship && (
+                  <div style={{
+                    marginTop: '0.5rem',
+                    fontSize: '0.9rem',
+                    color: '#6b7280',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>
+                    📝 {scrapeProgress.currentScholarship}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.5rem',
+                color: '#6b7280',
+                fontSize: '0.875rem'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  <div style={{
+                    width: '16px',
+                    height: '16px',
+                    border: '3px solid #f59e0b',
+                    borderTopColor: 'transparent',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
+                  }} />
+                  <span>
+                    {scrapeProgress.currentScholarship || 'Initializing scraper...'}
+                  </span>
+                </div>
+                <div style={{
+                  fontSize: '0.7rem',
+                  color: '#9ca3af',
+                  fontStyle: 'italic'
+                }}>
+                  This may take a few minutes. Please be patient...
+                </div>
+                <style>{`
+                  @keyframes spin {
+                    to { transform: rotate(360deg); }
+                  }
+                `}</style>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </>
   )
 
@@ -397,13 +619,14 @@ const ScholarshipManagement = () => {
               onClick={() => setFilterStatus(status)}
               style={{
                 padding: "0.5rem 1rem",
-                borderRadius: "6px",
-                border: "1px solid #d1d5db",
-                background: filterStatus === status ? "#667eea" : "white",
+                borderRadius: "8px",
+                border: "1px solid #e5e7eb",
+                background: filterStatus === status ? "#2563eb" : "white",
                 color: filterStatus === status ? "white" : "#374151",
-                fontWeight: "500",
+                fontWeight: "600",
                 fontSize: "0.9rem",
                 cursor: "pointer",
+                transition: "all 0.2s",
               }}
             >
               {status.charAt(0).toUpperCase() + status.slice(1).replace("-", " ")} (
@@ -436,8 +659,16 @@ const ScholarshipManagement = () => {
           style={{
             padding: "0.75rem",
             marginBottom: "1rem",
-            backgroundColor: scrapeMessage.includes("Successfully") ? "#d1fae5" : "#fee2e2",
-            color: scrapeMessage.includes("Successfully") ? "#065f46" : "#991b1b",
+            backgroundColor: scrapeMessage.includes("Successfully") || scrapeMessage.includes("✅") 
+              ? "#d1fae5" 
+              : scrapeMessage.includes("Scraping") && !scrapeMessage.includes("failed")
+              ? "#fef3c7"
+              : "#fee2e2",
+            color: scrapeMessage.includes("Successfully") || scrapeMessage.includes("✅")
+              ? "#065f46"
+              : scrapeMessage.includes("Scraping") && !scrapeMessage.includes("failed")
+              ? "#92400e"
+              : "#991b1b",
             borderRadius: "6px",
             fontSize: "0.9rem",
           }}

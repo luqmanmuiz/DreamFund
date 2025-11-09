@@ -67,11 +67,11 @@ const AdminLayout = ({ children, title, headerActions }) => {
           style={{
             padding: "1.5rem",
             borderBottom: "1px solid rgba(255,255,255,0.1)",
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            background: "#2563eb",
             minWidth: "250px",
           }}
         >
-          <h2 style={{ color: "white", margin: 0, fontSize: "1.5rem", fontWeight: "600" }}>DreamFund Admin</h2>
+          <h2 style={{ color: "white", margin: 0, fontSize: "1.5rem", fontWeight: "700", letterSpacing: "-0.01em" }}>DreamFund Admin</h2>
         </div>
 
         <nav style={{ padding: "1rem 0", minWidth: "250px" }}>
@@ -85,11 +85,11 @@ const AdminLayout = ({ children, title, headerActions }) => {
                     style={{
                       display: "block",
                       padding: "0.75rem 1.5rem",
-                      color: isActive ? "#667eea" : "#6b7280",
+                      color: isActive ? "#2563eb" : "#6b7280",
                       textDecoration: "none",
-                      backgroundColor: isActive ? "#f0f4ff" : "transparent",
-                      borderRight: isActive ? "3px solid #667eea" : "none",
-                      fontWeight: "500",
+                      backgroundColor: isActive ? "#eff6ff" : "transparent",
+                      borderRight: isActive ? "3px solid #2563eb" : "none",
+                      fontWeight: "600",
                     }}
                   >
                     {item.label}

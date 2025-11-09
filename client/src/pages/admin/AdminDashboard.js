@@ -5,6 +5,7 @@ import { Link } from "react-router-dom"
 import { useAuth } from "../../contexts/AuthContext"
 import axios from "axios"
 import AdminLayout from "../../components/AdminLayout"
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts"
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth()
@@ -16,17 +17,47 @@ const AdminDashboard = () => {
   })
   const [recentUsers, setRecentUsers] = useState([])
   const [recentApplications, setRecentApplications] = useState([])
+  const [scholarshipStatus, setScholarshipStatus] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const response = await axios.get("/api/reports/stats")
-        setStats(response.data.stats)
-        setRecentUsers(response.data.recentUsers)
-        setRecentApplications(response.data.recentApplications)
+        const statsResponse = await axios.get("/api/reports/stats")
+        setStats(statsResponse.data.stats)
+        setRecentUsers(statsResponse.data.recentUsers)
+        setRecentApplications(statsResponse.data.recentApplications)
+        
+        // Try to fetch scholarship status data
+        try {
+          const statusResponse = await axios.get("/api/reports/scholarship-status")
+          console.log("Raw status response:", statusResponse.data)
+          
+          // Process scholarship status data for the chart
+          const statusData = statusResponse.data.statusDistribution.map((item) => ({
+            name: item._id === "active" ? "Active" : item._id === "inactive" ? "Inactive" : "Draft",
+            value: item.count,
+            status: item._id,
+          }))
+          
+          // Add expired scholarships if any
+          if (statusResponse.data.expiredCount > 0) {
+            statusData.push({
+              name: "Expired",
+              value: statusResponse.data.expiredCount,
+              status: "expired",
+            })
+          }
+          
+          console.log("Processed scholarship status data:", statusData)
+          setScholarshipStatus(statusData)
+        } catch (statusError) {
+          console.error("Failed to fetch scholarship status:", statusError)
+          console.error("Status error details:", statusError.response?.data || statusError.message)
+        }
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error)
+        console.error("Error details:", error.response?.data || error.message)
       } finally {
         setLoading(false)
       }
@@ -65,50 +96,147 @@ const AdminDashboard = () => {
           style={{
             background: "white",
             padding: "1.5rem",
-            borderRadius: "8px",
+            borderRadius: "12px",
             border: "1px solid #e5e7eb",
             textAlign: "center",
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
           }}
         >
-          <div style={{ fontSize: "2rem", fontWeight: "700", color: "#667eea" }}>{stats.totalUsers}</div>
-          <div style={{ color: "#6b7280", fontSize: "0.9rem" }}>Total Users</div>
+          <div style={{ fontSize: "2rem", fontWeight: "700", color: "#2563eb" }}>{stats.totalUsers}</div>
+          <div style={{ color: "#6b7280", fontSize: "0.9rem", fontWeight: "500" }}>Total Users</div>
         </div>
         <div
           style={{
             background: "white",
             padding: "1.5rem",
-            borderRadius: "8px",
+            borderRadius: "12px",
             border: "1px solid #e5e7eb",
             textAlign: "center",
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
           }}
         >
-          <div style={{ fontSize: "2rem", fontWeight: "700", color: "#667eea" }}>{stats.totalScholarships}</div>
-          <div style={{ color: "#6b7280", fontSize: "0.9rem" }}>Total Scholarships</div>
+          <div style={{ fontSize: "2rem", fontWeight: "700", color: "#2563eb" }}>{stats.totalScholarships}</div>
+          <div style={{ color: "#6b7280", fontSize: "0.9rem", fontWeight: "500" }}>Total Scholarships</div>
         </div>
         <div
           style={{
             background: "white",
             padding: "1.5rem",
-            borderRadius: "8px",
+            borderRadius: "12px",
             border: "1px solid #e5e7eb",
             textAlign: "center",
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
           }}
         >
-          <div style={{ fontSize: "2rem", fontWeight: "700", color: "#667eea" }}>{stats.activeScholarships}</div>
-          <div style={{ color: "#6b7280", fontSize: "0.9rem" }}>Active Scholarships</div>
+          <div style={{ fontSize: "2rem", fontWeight: "700", color: "#2563eb" }}>{stats.activeScholarships}</div>
+          <div style={{ color: "#6b7280", fontSize: "0.9rem", fontWeight: "500" }}>Active Scholarships</div>
         </div>
         <div
           style={{
             background: "white",
             padding: "1.5rem",
-            borderRadius: "8px",
+            borderRadius: "12px",
             border: "1px solid #e5e7eb",
             textAlign: "center",
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
           }}
         >
-          <div style={{ fontSize: "2rem", fontWeight: "700", color: "#667eea" }}>{stats.totalApplications}</div>
-          <div style={{ color: "#6b7280", fontSize: "0.9rem" }}>Total Applications</div>
+          <div style={{ fontSize: "2rem", fontWeight: "700", color: "#2563eb" }}>{stats.totalApplications}</div>
+          <div style={{ color: "#6b7280", fontSize: "0.9rem", fontWeight: "500" }}>Total Applications</div>
         </div>
+      </div>
+
+      {/* Scholarship Status Distribution Chart */}
+      <div
+        style={{
+          background: "white",
+          borderRadius: "12px",
+          border: "1px solid #e5e7eb",
+          marginBottom: "2rem",
+          boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
+          overflow: "hidden",
+        }}
+      >
+        <h3
+          style={{
+            padding: "1rem 1.5rem",
+            margin: 0,
+            borderBottom: "1px solid #e5e7eb",
+            fontSize: "1.1rem",
+            fontWeight: "600",
+            color: "#111827",
+          }}
+        >
+          Scholarship Status Distribution
+        </h3>
+        {scholarshipStatus.length > 0 ? (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              padding: "3rem 2rem",
+            }}
+          >
+            <ResponsiveContainer width="100%" height={400}>
+              <PieChart>
+                <Pie
+                  data={scholarshipStatus}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={100}
+                  outerRadius={150}
+                  paddingAngle={3}
+                  dataKey="value"
+                  label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
+                  labelLine={{ stroke: "#6b7280", strokeWidth: 1 }}
+                >
+                  {scholarshipStatus.map((entry, index) => {
+                    const colors = {
+                      active: "#2563eb",
+                      inactive: "#6b7280",
+                      draft: "#f59e0b",
+                      expired: "#ef4444",
+                    }
+                    return <Cell key={`cell-${index}`} fill={colors[entry.status] || "#2563eb"} />
+                  })}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    background: "white",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "8px",
+                    padding: "0.5rem 1rem",
+                    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                  }}
+                  itemStyle={{ color: "#111827", fontWeight: "600" }}
+                />
+                <Legend
+                  verticalAlign="bottom"
+                  height={36}
+                  iconType="circle"
+                  formatter={(value, entry) => (
+                    <span style={{ color: "#6b7280", fontSize: "0.9rem" }}>
+                      {value}: {entry.payload.value}
+                    </span>
+                  )}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div
+            style={{
+              padding: "3rem 2rem",
+              textAlign: "center",
+              color: "#6b7280",
+            }}
+          >
+            <p style={{ margin: 0, fontSize: "0.95rem" }}>
+              No scholarship data available yet. Add scholarships to see the distribution chart.
+            </p>
+          </div>
+        )}
       </div>
 
       <div
@@ -122,9 +250,10 @@ const AdminDashboard = () => {
         <div
           style={{
             background: "white",
-            borderRadius: "8px",
+            borderRadius: "12px",
             border: "1px solid #e5e7eb",
             overflow: "hidden",
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
           }}
         >
           <h3
@@ -221,7 +350,7 @@ const AdminDashboard = () => {
               color: "inherit",
             }}
           >
-            <h4 style={{ margin: "0 0 0.5rem 0", color: "#667eea" }}>Manage Scholarships</h4>
+            <h4 style={{ margin: "0 0 0.5rem 0", color: "#2563eb", fontWeight: "700" }}>Manage Scholarships</h4>
             <p style={{ margin: 0, color: "#6b7280", fontSize: "0.9rem" }}>
               Add, edit, or remove scholarship opportunities
             </p>
@@ -238,7 +367,7 @@ const AdminDashboard = () => {
               color: "inherit",
             }}
           >
-            <h4 style={{ margin: "0 0 0.5rem 0", color: "#667eea" }}>Manage Users</h4>
+            <h4 style={{ margin: "0 0 0.5rem 0", color: "#2563eb", fontWeight: "700" }}>Manage Users</h4>
             <p style={{ margin: 0, color: "#6b7280", fontSize: "0.9rem" }}>
               View and manage user accounts and profiles
             </p>
@@ -255,7 +384,7 @@ const AdminDashboard = () => {
               color: "inherit",
             }}
           >
-            <h4 style={{ margin: "0 0 0.5rem 0", color: "#667eea" }}>View Reports</h4>
+            <h4 style={{ margin: "0 0 0.5rem 0", color: "#2563eb", fontWeight: "700" }}>View Reports</h4>
             <p style={{ margin: 0, color: "#6b7280", fontSize: "0.9rem" }}>
               Analyze platform usage and performance metrics
             </p>

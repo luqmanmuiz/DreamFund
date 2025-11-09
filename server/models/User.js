@@ -38,7 +38,6 @@ const userSchema = new mongoose.Schema(
     scholarshipMatches: [
       {
         scholarship: { type: mongoose.Schema.Types.ObjectId, ref: "Scholarship" },
-        matchScore: { type: Number, default: 0 },
         status: { type: String, enum: ["pending", "applied", "accepted", "rejected"], default: "pending" },
         appliedDate: { type: Date },
       },

@@ -58,7 +58,7 @@ const ReportsPage = () => {
             textAlign: "center",
           }}
         >
-          <div style={{ fontSize: "2rem", fontWeight: "700", color: "#667eea" }}>{stats.totalUsers}</div>
+          <div style={{ fontSize: "2rem", fontWeight: "700", color: "#2563eb" }}>{stats.totalUsers}</div>
           <div style={{ color: "#6b7280", fontSize: "0.9rem" }}>Total Users</div>
         </div>
         <div
@@ -70,7 +70,7 @@ const ReportsPage = () => {
             textAlign: "center",
           }}
         >
-          <div style={{ fontSize: "2rem", fontWeight: "700", color: "#667eea" }}>{stats.totalScholarships}</div>
+          <div style={{ fontSize: "2rem", fontWeight: "700", color: "#2563eb" }}>{stats.totalScholarships}</div>
           <div style={{ color: "#6b7280", fontSize: "0.9rem" }}>Total Scholarships</div>
         </div>
         <div
@@ -82,7 +82,7 @@ const ReportsPage = () => {
             textAlign: "center",
           }}
         >
-          <div style={{ fontSize: "2rem", fontWeight: "700", color: "#667eea" }}>{stats.activeScholarships}</div>
+          <div style={{ fontSize: "2rem", fontWeight: "700", color: "#2563eb" }}>{stats.activeScholarships}</div>
           <div style={{ color: "#6b7280", fontSize: "0.9rem" }}>Active Scholarships</div>
         </div>
         <div
@@ -94,7 +94,7 @@ const ReportsPage = () => {
             textAlign: "center",
           }}
         >
-          <div style={{ fontSize: "2rem", fontWeight: "700", color: "#667eea" }}>{stats.totalApplications}</div>
+          <div style={{ fontSize: "2rem", fontWeight: "700", color: "#2563eb" }}>{stats.totalApplications}</div>
           <div style={{ color: "#6b7280", fontSize: "0.9rem" }}>Total Applications</div>
         </div>
       </div>
@@ -134,7 +134,7 @@ const ReportsPage = () => {
                 <span style={{ fontWeight: "500" }}>
                   {data._id.month}/{data._id.year}
                 </span>
-                <span style={{ color: "#667eea", fontWeight: "600" }}>{data.count} users</span>
+                <span style={{ color: "#2563eb", fontWeight: "600" }}>{data.count} users</span>
               </div>
             ))}
           </div>
@@ -178,7 +178,7 @@ const ReportsPage = () => {
                 >
                   <span style={{ fontWeight: "500" }}>{data._id}</span>
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ color: "#667eea", fontWeight: "600" }}>{data.count} students</div>
+                    <div style={{ color: "#2563eb", fontWeight: "600" }}>{data.count} students</div>
                     <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>{percentage}%</div>
                   </div>
                 </div>
@@ -235,13 +235,16 @@ const ReportsPage = () => {
           <button
             style={{
               padding: "0.75rem 1rem",
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              background: "#2563eb",
               color: "white",
               border: "none",
               borderRadius: "6px",
               cursor: "pointer",
               fontWeight: "600",
+              transition: "all 0.2s",
             }}
+            onMouseEnter={(e) => e.target.style.background = "#1d4ed8"}
+            onMouseLeave={(e) => e.target.style.background = "#2563eb"}
           >
             Generate Full Report (PDF)
           </button>

@@ -7,6 +7,78 @@ const adminAuth = require("../middleware/adminAuth");
 
 const router = express.Router();
 
+// Global scraping state tracker
+let scrapingState = {
+  isRunning: false,
+  shouldCancel: false,
+  current: 0,
+  total: 0,
+  currentScholarship: '',
+  errors: []
+};
+
+// Reset scraping state
+const resetScrapingState = () => {
+  scrapingState = {
+    isRunning: false,
+    shouldCancel: false,
+    current: 0,
+    total: 0,
+    currentScholarship: '',
+    errors: []
+  };
+};
+
+// @route   GET /api/scholarships/scraping-progress
+// @desc    Server-Sent Events endpoint for real-time scraping progress
+// @access  Public (read-only state, no sensitive data)
+router.get("/scraping-progress", (req, res) => {
+  // Set headers for SSE
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+  res.flushHeaders();
+
+  // Send initial state
+  res.write(`data: ${JSON.stringify(scrapingState)}\n\n`);
+
+  // Send updates every 500ms
+  const intervalId = setInterval(() => {
+    const stateSnapshot = JSON.stringify(scrapingState);
+    res.write(`data: ${stateSnapshot}\n\n`);
+    
+    // Close connection when scraping is complete
+    if (!scrapingState.isRunning && scrapingState.current > 0) {
+      clearInterval(intervalId);
+      res.end();
+    }
+  }, 500);
+
+  // Cleanup on client disconnect
+  req.on('close', () => {
+    clearInterval(intervalId);
+    res.end();
+  });
+});
+
+// @route   POST /api/scholarships/cancel-scraping
+// @desc    Cancel ongoing scraping operation
+// @access  Private (Admin only)
+router.post("/cancel-scraping", auth, adminAuth, (req, res) => {
+  if (scrapingState.isRunning) {
+    scrapingState.shouldCancel = true;
+    scrapingState.currentScholarship = 'Cancellation requested, stopping soon...';
+    res.json({ 
+      success: true, 
+      message: "Cancellation requested. Scraping will stop after current scholarship." 
+    });
+  } else {
+    res.json({ success: false, message: "No scraping in progress" });
+  }
+});
+
 // @route   GET /api/scholarships/test-scrape
 // @desc    Test scraping with detailed output (no auth required for testing)
 // @access  Public (remove this in production)
@@ -18,7 +90,6 @@ router.get("/test-scrape", async (req, res) => {
     const scholarshipScraper = require("../services/scholarshipScraper");
 
     // Run scraping (this will show all the detailed deadline debugging)
-    console.log("🚀 Starting scraping with full debug output...");
     const scrapedScholarships = await scholarshipScraper.scrapeScholarships();
 
     console.log(`\n📋 SCRAPING COMPLETED - SUMMARY:`);
@@ -145,8 +216,6 @@ router.get("/scrape-scholarships", async (req, res) => {
   try {
     const clearDatabase = String(req.query.clearDatabase || "false").toLowerCase() === "true";
 
-    console.log("🔄 Starting enhanced scholarship scraping (GET)...");
-
     if (clearDatabase) {
       console.log("🗑️ Clearing existing scholarships...");
       const deleteResult = await Scholarship.deleteMany({});
@@ -155,7 +224,6 @@ router.get("/scrape-scholarships", async (req, res) => {
 
     const scholarshipScraper = require("../services/scholarshipScraper");
 
-    console.log("🚀 Starting scraping process (GET)...");
     const scrapedScholarships = await scholarshipScraper.scrapeScholarships();
 
     console.log(`📊 Scraped ${scrapedScholarships.length} scholarships (GET)`);
@@ -309,11 +377,21 @@ router.get("/:id", async (req, res) => {
 // @route   POST /api/scholarships
 // @desc    Create a new scholarship
 // @access  Private (Admin only)
-router.post("/scrape-scholarships", async (req, res) => {
+router.post("/scrape-scholarships", auth, adminAuth, async (req, res) => {
   try {
+    // Check if scraping is already running
+    if (scrapingState.isRunning) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Scraping is already in progress" 
+      });
+    }
+
     const { clearDatabase = false } = req.body;
 
-    console.log("🔄 Starting enhanced scholarship scraping...");
+    // Initialize scraping state
+    resetScrapingState();
+    scrapingState.isRunning = true;
 
     if (clearDatabase) {
       console.log("🗑️ Clearing existing scholarships...");
@@ -325,152 +403,169 @@ router.post("/scrape-scholarships", async (req, res) => {
 
     const scholarshipScraper = require("../services/scholarshipScraper");
 
-    console.log("🚀 Starting scraping process...");
-    const scrapedScholarships = await scholarshipScraper.scrapeScholarships();
-
-    console.log(`📊 Scraped ${scrapedScholarships.length} scholarships`);
-
-    // Helper: normalize deadline to a real UTC Date
-    const coerceDeadline = (value, extracted) => {
-      // Prefer already-constructed Date
-      if (value instanceof Date && !isNaN(value.getTime())) return value;
-      // Try dd-mm-yyyy from raw extracted
-      const raw = typeof extracted === "string" ? extracted : typeof value === "string" ? value : null;
-      if (raw && /^\d{1,2}-\d{1,2}-\d{4}$/.test(raw)) {
-        const [dd, mm, yyyy] = raw.split("-");
-        const date = new Date(Date.UTC(parseInt(yyyy, 10), parseInt(mm, 10) - 1, parseInt(dd, 10)));
-        if (!isNaN(date.getTime())) return date;
-      }
-      // As-is try
-      if (typeof value === "string") {
-        const tryDate = new Date(value);
-        if (!isNaN(tryDate.getTime())) return tryDate;
-      }
-      return null;
-    };
-
-    let savedCount = 0;
-    let updatedCount = 0;
-
-    // Canonicalize helper to reduce duplicate variants (strip query/hash, lowercase host)
-    const canonicalizeUrl = (inputUrl) => {
+    // Update state to show we're fetching scholarships
+    scrapingState.currentScholarship = 'Fetching scholarships from website...';
+    
+    // Start scraping in background
+    (async () => {
       try {
-        if (!inputUrl) return null;
-        const u = new URL(inputUrl);
-        u.hash = "";
-        u.search = "";
-        u.hostname = u.hostname.toLowerCase();
-        // Remove trailing slash
-        let href = u.toString();
-        if (href.endsWith("/")) href = href.slice(0, -1);
-        return href;
-      } catch {
-        return inputUrl;
-      }
-    };
+        const scrapedScholarships = await scholarshipScraper.scrapeScholarships({
+          shouldCancel: () => scrapingState.shouldCancel,
+          onProgress: (progress) => {
+            // Update state during scraping phase
+            if (progress.phase === 'scraping') {
+              scrapingState.current = progress.current;
+              scrapingState.total = progress.total;
+              scrapingState.currentScholarship = progress.message;
+            }
+          }
+        });
+        
+        // Check if cancelled during scraping
+        if (scrapingState.shouldCancel) {
+          scrapingState.isRunning = false;
+          scrapingState.shouldCancel = false;
+          scrapingState.currentScholarship = '';
+          scrapingState.current = 0;
+          scrapingState.total = 0;
+          return;
+        }
+        
+        // Now move to database saving phase
+        scrapingState.total = scrapedScholarships.length;
+        scrapingState.current = 0;
+        scrapingState.currentScholarship = `Scraping complete. Saving ${scrapedScholarships.length} scholarships to database...`;
 
-    for (const scholarshipData of scrapedScholarships) {
-      try {
-        // Normalize deadline safely
-        const normalized = { ...scholarshipData };
-        normalized.deadline = coerceDeadline(
-          scholarshipData.deadline,
-          scholarshipData.extractedDeadline
-        );
-        normalized.sourceUrl = canonicalizeUrl(scholarshipData.sourceUrl);
-        // Ensure extractedDeadline field is persisted for debugging/view
-        normalized.extractedDeadline = scholarshipData.extractedDeadline || null;
-        // Carry study level fields if provided by scraper
-        if (scholarshipData.studyLevel) normalized.studyLevel = scholarshipData.studyLevel;
-        if (scholarshipData.studyLevels) normalized.studyLevels = scholarshipData.studyLevels;
+        // Helper: normalize deadline to a real UTC Date
+        const coerceDeadline = (value, extracted) => {
+          if (value instanceof Date && !isNaN(value.getTime())) return value;
+          const raw = typeof extracted === "string" ? extracted : typeof value === "string" ? value : null;
+          if (raw && /^\d{1,2}-\d{1,2}-\d{4}$/.test(raw)) {
+            const [dd, mm, yyyy] = raw.split("-");
+            const date = new Date(Date.UTC(parseInt(yyyy, 10), parseInt(mm, 10) - 1, parseInt(dd, 10)));
+            if (!isNaN(date.getTime())) return date;
+          }
+          if (typeof value === "string") {
+            const tryDate = new Date(value);
+            if (!isNaN(tryDate.getTime())) return tryDate;
+          }
+          return null;
+        };
 
-        // Business rules for status:
-        // - If study level is not diploma or degree, set inactive
-        // - If deadline exists and is in the past, set inactive
-        // - If no deadline, keep as active (unknown), unless filtered by study level above
-        const hasDiplomaOrDegree = Array.isArray(normalized.studyLevels)
-          ? normalized.studyLevels.some((lvl) => ["diploma", "degree"].includes(String(lvl).toLowerCase()))
-          : ["diploma", "degree"].includes(String(normalized.studyLevel || "").toLowerCase());
+        let savedCount = 0;
+        let updatedCount = 0;
 
-        // Determine status with deadline awareness
-        // Compare by date (UTC midnight) to avoid timezone confusion
-        const now = new Date();
-        const todayMidnightUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-        if (!hasDiplomaOrDegree) {
-          normalized.status = "inactive";
-        } else if (
-          normalized.deadline instanceof Date &&
-          !isNaN(normalized.deadline.getTime())
-        ) {
-          const deadlineMidnightUtc = new Date(Date.UTC(
-            normalized.deadline.getUTCFullYear(),
-            normalized.deadline.getUTCMonth(),
-            normalized.deadline.getUTCDate()
-          ));
-          normalized.status = deadlineMidnightUtc.getTime() >= todayMidnightUtc.getTime() ? "active" : "inactive";
-        } else {
-          // No deadline: keep active if study level is relevant
-          normalized.status = "active";
+        // Canonicalize helper
+        const canonicalizeUrl = (inputUrl) => {
+          try {
+            if (!inputUrl) return null;
+            const u = new URL(inputUrl);
+            u.hash = "";
+            u.search = "";
+            u.hostname = u.hostname.toLowerCase();
+            let href = u.toString();
+            if (href.endsWith("/")) href = href.slice(0, -1);
+            return href;
+          } catch {
+            return inputUrl;
+          }
+        };
+
+        for (let i = 0; i < scrapedScholarships.length; i++) {
+          // Check for cancellation
+          if (scrapingState.shouldCancel) {
+            scrapingState.isRunning = false;
+            return;
+          }
+
+          const scholarshipData = scrapedScholarships[i];
+          scrapingState.current = i + 1;
+          scrapingState.currentScholarship = scholarshipData.title;
+
+          try {
+            // Normalize deadline safely
+            const normalized = { ...scholarshipData };
+            normalized.deadline = coerceDeadline(
+              scholarshipData.deadline,
+              scholarshipData.extractedDeadline
+            );
+            normalized.sourceUrl = canonicalizeUrl(scholarshipData.sourceUrl);
+            normalized.extractedDeadline = scholarshipData.extractedDeadline || null;
+            if (scholarshipData.studyLevel) normalized.studyLevel = scholarshipData.studyLevel;
+            if (scholarshipData.studyLevels) normalized.studyLevels = scholarshipData.studyLevels;
+
+            // Business rules for status
+            const hasDiplomaOrDegree = Array.isArray(normalized.studyLevels)
+              ? normalized.studyLevels.some((lvl) => ["diploma", "degree"].includes(String(lvl).toLowerCase()))
+              : ["diploma", "degree"].includes(String(normalized.studyLevel || "").toLowerCase());
+
+            const now = new Date();
+            const todayMidnightUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+            if (!hasDiplomaOrDegree) {
+              normalized.status = "inactive";
+            } else if (
+              normalized.deadline instanceof Date &&
+              !isNaN(normalized.deadline.getTime())
+            ) {
+              const deadlineMidnightUtc = new Date(Date.UTC(
+                normalized.deadline.getUTCFullYear(),
+                normalized.deadline.getUTCMonth(),
+                normalized.deadline.getUTCDate()
+              ));
+              normalized.status = deadlineMidnightUtc.getTime() >= todayMidnightUtc.getTime() ? "active" : "inactive";
+            } else {
+              normalized.status = "active";
+            }
+
+            if (!normalized.sourceUrl) {
+              console.warn(`⚠️ Skipping due to missing sourceUrl: ${scholarshipData.title}`);
+              scrapingState.errors.push(`Missing sourceUrl: ${scholarshipData.title}`);
+              continue;
+            }
+
+            // Upsert by sourceUrl
+            const result = await Scholarship.findOneAndUpdate(
+              { sourceUrl: normalized.sourceUrl },
+              { $set: normalized },
+              { upsert: true, new: true, setDefaultsOnInsert: true }
+            );
+
+            if (result.wasNew) {
+              savedCount++;
+            } else {
+              updatedCount++;
+            }
+          } catch (error) {
+            if (error && error.code === 11000) {
+              console.warn(`⚠️ Duplicate ignored for sourceUrl: ${scholarshipData.sourceUrl}`);
+              continue;
+            }
+            const errorMsg = `Error saving ${scholarshipData.title}: ${error.message}`;
+            console.error(`❌ ${errorMsg}`);
+            scrapingState.errors.push(errorMsg);
+          }
         }
 
-        if (!normalized.sourceUrl) {
-          console.warn(`⚠️ Skipping due to missing sourceUrl: ${scholarshipData.title}`);
-          continue;
-        }
-
-        // Upsert by sourceUrl
-        const result = await Scholarship.findOneAndUpdate(
-          { sourceUrl: normalized.sourceUrl },
-          { $set: normalized },
-          { upsert: true, new: true, setDefaultsOnInsert: true }
-        );
-
-        if (result.wasNew) {
-          savedCount++;
-          console.log(`💾 Saved: ${normalized.title}`);
-        } else {
-          updatedCount++;
-          console.log(`🔄 Updated: ${normalized.title}`);
-        }
+        console.log(`✅ Scraping complete: ${savedCount} saved, ${updatedCount} updated`);
+        scrapingState.isRunning = false;
       } catch (error) {
-        // Handle duplicate key errors gracefully
-        if (error && error.code === 11000) {
-          console.warn(`⚠️ Duplicate ignored for sourceUrl: ${scholarshipData.sourceUrl}`);
-          continue;
-        }
-        console.error(
-          `❌ Error saving ${scholarshipData.title}:`,
-          error.message
-        );
+        console.error("❌ Scraping error:", error);
+        scrapingState.errors.push(`Critical error: ${error.message}`);
+        scrapingState.isRunning = false;
       }
-    }
+    })();
 
-    console.log(
-      `🎉 Scraping completed! Saved: ${savedCount}, Updated: ${updatedCount}`
-    );
-
+    // Immediately return success response
     res.json({
       success: true,
-      message: `Successfully processed ${scrapedScholarships.length} scholarships`,
-      saved: savedCount,
-      updated: updatedCount,
-      total: scrapedScholarships.length,
-      clearDatabase: clearDatabase,
-      scholarships: scrapedScholarships.map((s) => ({
-        title: s.title,
-        amount: s.amount,
-        provider: s.provider.name,
-        deadline: s.extractedDeadline || "Not specified",
-        email: s.contactEmail || "Not provided",
-        eligibleCourses: s.eligibleCourses || [],
-      })),
+      message: "Scraping started. Use /scraping-progress to monitor progress.",
     });
   } catch (error) {
-    console.error("❌ Scraping error:", error);
+    console.error("❌ Error starting scraping:", error);
+    resetScrapingState();
     res.status(500).json({
       success: false,
-      message: "Scraping failed",
-      error: error.message,
+      message: error.message,
     });
   }
 });
@@ -583,31 +678,14 @@ router.get("/matches/:userId", auth, async (req, res) => {
 
       // Only include scholarships that pass all filters
       if (deadlineOk && cgpaOk && programOk) {
-        // Calculate match score
-        let matchScore = 50;
-        
-        // Bonus for meeting CGPA requirements
-        if (minGpa && !isNaN(minGpa)) {
-          const delta = Math.max(0, Math.min(1, (studentCgpa - minGpa) / 1.0));
-          matchScore += Math.round(delta * 30);
-        }
-        
-        // Bonus for program match
-        if (hasCourseConstraint && programOk) {
-          matchScore += 20;
-        }
-        
-        // Bonus for having deadline (shows it's a real, time-limited opportunity)
-        if (scholarship.deadline) {
-          matchScore += 10;
-        }
-
-        matches.push({ scholarship, matchScore });
+        matches.push({ scholarship });
+        console.log(`✅ Match found: ${scholarship.title}`);
+      } else {
+        console.log(`❌ Filtered out: ${scholarship.title} (Deadline: ${deadlineOk}, CGPA: ${cgpaOk}, Program: ${programOk})`);
       }
     }
 
     console.log(`📊 Filtering results: ${matches.length} matches, ${filteredCount} filtered out`);
-    matches.sort((a, b) => b.matchScore - a.matchScore);
     res.json(matches);
   } catch (error) {
     console.error("Get matches error:", error);
@@ -706,27 +784,8 @@ router.post("/public-matches", async (req, res) => {
 
       // Only include scholarships that pass all filters
       if (deadlineOk && cgpaOk && programOk) {
-        // Calculate match score
-        let matchScore = 50;
-        
-        // Bonus for meeting CGPA requirements
-        if (minGpa && !isNaN(minGpa)) {
-          const delta = Math.max(0, Math.min(1, (studentCgpa - minGpa) / 1.0));
-          matchScore += Math.round(delta * 30);
-        }
-        
-        // Bonus for program match
-        if (hasCourseConstraint && programOk) {
-          matchScore += 20;
-        }
-        
-        // Bonus for having deadline (shows it's a real, time-limited opportunity)
-        if (scholarship.deadline) {
-          matchScore += 10;
-        }
-
-        matches.push({ scholarship, matchScore });
-        console.log(`✅ Public: Match found: ${scholarship.title} (Score: ${matchScore})`);
+        matches.push({ scholarship });
+        console.log(`✅ Public: Match found: ${scholarship.title}`);
       } else {
         console.log(`❌ Public: Filtered out: ${scholarship.title} (Deadline: ${deadlineOk}, CGPA: ${cgpaOk}, Program: ${programOk})`);
         filteredCount++;
@@ -734,7 +793,6 @@ router.post("/public-matches", async (req, res) => {
     }
 
     console.log(`📊 Public filtering results: ${matches.length} matches, ${filteredCount} filtered out`);
-    matches.sort((a, b) => b.matchScore - a.matchScore);
     res.json(matches);
   } catch (error) {
     console.error("Public matches error:", error);
@@ -781,7 +839,6 @@ router.post("/:id/apply", auth, async (req, res) => {
     } else {
       user.scholarshipMatches.push({
         scholarship: scholarship._id,
-        matchScore: 100,
         appliedDate: new Date(),
         status: "applied",
       });

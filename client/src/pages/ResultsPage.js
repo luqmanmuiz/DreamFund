@@ -126,15 +126,15 @@ const ResultsPage = () => {
           justifyContent: "center",
           alignItems: "center",
           minHeight: "100vh",
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          background: "linear-gradient(180deg, #ffffff 0%, #f9fafb 100%)",
         }}
       >
         <div
           style={{
             width: "50px",
             height: "50px",
-            border: "3px solid rgba(255,255,255,0.3)",
-            borderTop: "3px solid white",
+            border: "3px solid #e5e7eb",
+            borderTop: "3px solid #2563eb",
             borderRadius: "50%",
             animation: "spin 1s linear infinite",
           }}
@@ -182,12 +182,6 @@ const ResultsPage = () => {
     })
   }
 
-  const getMatchColor = (score) => {
-    if (score >= 80) return "#10b981" // Green
-    if (score >= 60) return "#f59e0b" // Yellow
-    return "#ef4444" // Red
-  }
-
   const normalize = (s) => (typeof s === "string" ? s.trim().toLowerCase() : "")
   const programMatches = (eligibleCourses, program) => {
     const courses = Array.isArray(eligibleCourses) ? eligibleCourses : []
@@ -228,15 +222,15 @@ const ResultsPage = () => {
           justifyContent: "center",
           alignItems: "center",
           minHeight: "100vh",
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          background: "linear-gradient(180deg, #ffffff 0%, #f9fafb 100%)",
         }}
       >
         <div
           style={{
             width: "50px",
             height: "50px",
-            border: "3px solid rgba(255,255,255,0.3)",
-            borderTop: "3px solid white",
+            border: "3px solid #e5e7eb",
+            borderTop: "3px solid #2563eb",
             borderRadius: "50%",
             animation: "spin 1s linear infinite",
           }}
@@ -246,27 +240,51 @@ const ResultsPage = () => {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f8fafc" }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #ffffff 0%, #f9fafb 100%)" }}>
       <Header navItems={[{ to: "/profile", label: "Profile" }, { to: "/upload", label: "Upload Documents" }]} />
 
-      <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem" }}>
-        <div style={{ textAlign: "center", marginBottom: "3rem" }}>
+      <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "3rem 2rem" }}>
+        <div style={{ textAlign: "center", marginBottom: "4rem" }}>
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              padding: "0.5rem 1rem",
+              background: "#dbeafe",
+              borderRadius: "9999px",
+              marginBottom: "1.5rem",
+            }}
+          >
+            <span style={{ fontSize: "1rem" }}>🎓</span>
+            <span
+              style={{
+                fontSize: "0.875rem",
+                color: "#1e40af",
+                fontWeight: "500",
+              }}
+            >
+              Scholarship Matches
+            </span>
+          </div>
           <h1
             style={{
               fontSize: "2.5rem",
-              fontWeight: "bold",
-              color: "#1f2937",
+              fontWeight: "700",
+              color: "#111827",
               marginBottom: "1rem",
+              letterSpacing: "-0.01em",
             }}
           >
             {studentName ? `Congratulations, ${studentName}!` : "Your Scholarship Matches"}
           </h1>
           <p
             style={{
-              fontSize: "1.1rem",
+              fontSize: "1.125rem",
               color: "#6b7280",
-              maxWidth: "600px",
+              maxWidth: "42rem",
               margin: "0 auto",
+              lineHeight: "1.75",
             }}
           >
             {matches.length > 0
@@ -278,12 +296,13 @@ const ResultsPage = () => {
         {message && (
           <div
             style={{
-              padding: "1rem",
+              padding: "1rem 1.5rem",
               marginBottom: "2rem",
-              borderRadius: "8px",
-              backgroundColor: message.includes("success") || message.includes("submitted") ? "#d1fae5" : "#fee2e2",
-              color: message.includes("success") || message.includes("submitted") ? "#065f46" : "#991b1b",
-              border: `1px solid ${message.includes("success") || message.includes("submitted") ? "#a7f3d0" : "#fecaca"}`,
+              borderRadius: "12px",
+              backgroundColor: message.includes("success") || message.includes("submitted") ? "#f0fdf4" : "#fef2f2",
+              color: message.includes("success") || message.includes("submitted") ? "#166534" : "#991b1b",
+              border: `1px solid ${message.includes("success") || message.includes("submitted") ? "#bbf7d0" : "#fecaca"}`,
+              fontWeight: "500",
             }}
           >
             {message}
@@ -295,26 +314,29 @@ const ResultsPage = () => {
             style={{
               backgroundColor: "white",
               padding: "3rem",
-              borderRadius: "12px",
+              borderRadius: "16px",
               textAlign: "center",
-              boxShadow: "0 4px 6px rgba(0,0,0,0.05)",
+              border: "1px solid #e5e7eb",
+              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
             }}
           >
-            <h2 style={{ fontSize: "1.5rem", color: "#1f2937", marginBottom: "1rem" }}>No Matches Found</h2>
-            <p style={{ color: "#6b7280", marginBottom: "2rem" }}>
+            <h2 style={{ fontSize: "1.5rem", color: "#111827", fontWeight: "700", marginBottom: "1rem" }}>No Matches Found</h2>
+            <p style={{ color: "#6b7280", marginBottom: "2rem", lineHeight: "1.7" }}>
               We couldn't find any scholarships that match your current profile. Try completing your profile or
               uploading more documents to improve your matches.
             </p>
-            <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
+            <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
               <Link
                 to="/profile"
                 style={{
-                  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  background: "#2563eb",
                   color: "white",
-                  padding: "0.75rem 1.5rem",
+                  padding: "0.875rem 2rem",
                   borderRadius: "8px",
                   textDecoration: "none",
-                  fontWeight: "500",
+                  fontWeight: "600",
+                  transition: "all 0.2s",
+                  boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
                 }}
               >
                 Complete Profile
@@ -322,12 +344,14 @@ const ResultsPage = () => {
               <Link
                 to="/upload"
                 style={{
-                  backgroundColor: "#f3f4f6",
+                  backgroundColor: "white",
                   color: "#374151",
-                  padding: "0.75rem 1.5rem",
+                  padding: "0.875rem 2rem",
                   borderRadius: "8px",
                   textDecoration: "none",
-                  fontWeight: "500",
+                  fontWeight: "600",
+                  border: "1px solid #e5e7eb",
+                  transition: "all 0.2s",
                 }}
               >
                 Upload Documents
@@ -378,26 +402,15 @@ const ResultsPage = () => {
                     >
                       ${scholarship.amount.toLocaleString()}
                     </div>
-                    <div
-                      style={{
-                        backgroundColor: getMatchColor(match.matchScore),
-                        color: "white",
-                        padding: "0.25rem 0.75rem",
-                        borderRadius: "20px",
-                        fontSize: "0.875rem",
-                        fontWeight: "500",
-                      }}
-                    >
-                      {match.matchScore}% Match
-                    </div>
                   </div>
 
                   <h3
                     style={{
                       fontSize: "1.25rem",
-                      fontWeight: "600",
-                      color: "#1f2937",
-                      marginBottom: "0.5rem",
+                      fontWeight: "700",
+                      color: "#111827",
+                      marginBottom: "0.75rem",
+                      lineHeight: "1.4",
                     }}
                   >
                     {scholarship.title}
@@ -406,25 +419,26 @@ const ResultsPage = () => {
                   <div
                     style={{
                       fontSize: "0.875rem",
-                      color: hasDeadline ? (isExpired ? "#ef4444" : "#6b7280") : "#059669",
-                      marginBottom: "1rem",
+                      color: hasDeadline ? (isExpired ? "#ef4444" : "#6b7280") : "#10b981",
+                      marginBottom: "1.25rem",
+                      fontWeight: "500",
                     }}
                   >
                     {hasDeadline ? (
                       <>
-                        Deadline: {formatDate(scholarship.deadline)}
-                        {isExpired && <span style={{ color: "#ef4444" }}> (Expired)</span>}
+                        📅 Deadline: {formatDate(scholarship.deadline)}
+                        {isExpired && <span style={{ color: "#ef4444", fontWeight: "600" }}> (Expired)</span>}
                       </>
                     ) : (
-                      "Always Open"
+                      "🔄 Always Open"
                     )}
                   </div>
 
-                  <div style={{ marginBottom: "1rem" }}>
-                    <h4 style={{ fontSize: "0.875rem", fontWeight: "600", marginBottom: "0.5rem", color: "#374151" }}>
+                  <div style={{ marginBottom: "1.25rem" }}>
+                    <h4 style={{ fontSize: "0.875rem", fontWeight: "700", marginBottom: "0.75rem", color: "#111827" }}>
                       Requirements:
                     </h4>
-                    <ul style={{ fontSize: "0.8rem", color: "#6b7280", paddingLeft: "1rem", margin: 0 }}>
+                    <ul style={{ fontSize: "0.875rem", color: "#6b7280", paddingLeft: "1.25rem", margin: 0, lineHeight: "1.7" }}>
                       {scholarship.requirements.minGPA > 0 && <li>Minimum GPA: {scholarship.requirements.minGPA}</li>}
                       {scholarship.requirements.maxAge < 100 && <li>Maximum Age: {scholarship.requirements.maxAge}</li>}
                       {scholarship.requirements.majors.length > 0 && (
@@ -440,10 +454,10 @@ const ResultsPage = () => {
                     style={{ flexGrow: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}
                   >
                     <div style={{ marginBottom: "1.5rem" }}>
-                      <h4 style={{ fontSize: "0.875rem", fontWeight: "600", marginBottom: "0.5rem", color: "#374151" }}>
+                      <h4 style={{ fontSize: "0.875rem", fontWeight: "700", marginBottom: "0.75rem", color: "#111827" }}>
                         Why you match:
                       </h4>
-                      <ul style={{ fontSize: "0.8rem", color: "#374151", paddingLeft: "1rem", margin: 0 }}>
+                      <ul style={{ fontSize: "0.875rem", color: "#6b7280", paddingLeft: "1.25rem", margin: 0, lineHeight: "1.7" }}>
                         {getEligibilityReasons(scholarship).map((reason, idx) => (
                           <li key={idx}>{reason}</li>
                         ))}
@@ -455,13 +469,14 @@ const ResultsPage = () => {
                         <button
                           style={{
                             width: "100%",
-                            padding: "0.75rem",
+                            padding: "0.875rem",
                             backgroundColor: "#10b981",
                             color: "white",
                             border: "none",
                             borderRadius: "8px",
-                            fontWeight: "500",
+                            fontWeight: "600",
                             cursor: "not-allowed",
+                            fontSize: "1rem",
                           }}
                           disabled
                         >
@@ -471,13 +486,14 @@ const ResultsPage = () => {
                         <button
                           style={{
                             width: "100%",
-                            padding: "0.75rem",
+                            padding: "0.875rem",
                             backgroundColor: "#9ca3af",
                             color: "white",
                             border: "none",
                             borderRadius: "8px",
-                            fontWeight: "500",
+                            fontWeight: "600",
                             cursor: "not-allowed",
+                            fontSize: "1rem",
                           }}
                           disabled
                         >
@@ -488,13 +504,26 @@ const ResultsPage = () => {
                           onClick={() => handleApplyNowClick(scholarship)}
                           style={{
                             width: "100%",
-                            padding: "0.75rem",
-                            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                            padding: "0.875rem",
+                            background: "#2563eb",
                             color: "white",
                             border: "none",
                             borderRadius: "8px",
-                            fontWeight: "500",
+                            fontWeight: "600",
                             cursor: "pointer",
+                            fontSize: "1rem",
+                            transition: "all 0.2s",
+                            boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "#1d4ed8";
+                            e.currentTarget.style.transform = "translateY(-2px)";
+                            e.currentTarget.style.boxShadow = "0 4px 15px rgba(37, 99, 235, 0.3)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "#2563eb";
+                            e.currentTarget.style.transform = "translateY(0)";
+                            e.currentTarget.style.boxShadow = "0 1px 2px rgba(0, 0, 0, 0.05)";
                           }}
                         >
                           Apply Now

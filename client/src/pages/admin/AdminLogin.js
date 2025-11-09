@@ -60,42 +60,61 @@ const AdminLogin = () => {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: "linear-gradient(180deg, #ffffff 0%, #f9fafb 100%)",
       }}
     >
       <div
         style={{
           background: "white",
-          padding: "2rem",
-          borderRadius: "12px",
-          boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+          padding: "2.5rem",
+          borderRadius: "16px",
+          border: "1px solid #e5e7eb",
+          boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
           width: "100%",
           maxWidth: "400px",
         }}
       >
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+          <div
+            style={{
+              width: "80px",
+              height: "80px",
+              margin: "0 auto 1.5rem",
+              background: "#dbeafe",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "2.5rem",
+            }}
+          >
+            🔐
+          </div>
           <h1
             style={{
-              color: "#1f2937",
+              color: "#111827",
               marginBottom: "0.5rem",
-              fontSize: "1.8rem",
+              fontSize: "1.875rem",
               fontWeight: "700",
+              letterSpacing: "-0.01em",
             }}
           >
             Admin Login
           </h1>
-          <p style={{ color: "#6b7280", margin: 0 }}>Access the DreamFund administration panel</p>
+          <p style={{ color: "#6b7280", margin: 0, lineHeight: "1.7" }}>Access the DreamFund administration panel</p>
         </div>
 
         {message && (
           <div
             style={{
-              padding: "0.75rem",
-              marginBottom: "1rem",
-              backgroundColor: "#fee2e2",
+              padding: "1rem 1.5rem",
+              marginBottom: "1.5rem",
+              backgroundColor: "#fef2f2",
               color: "#991b1b",
-              borderRadius: "6px",
+              borderRadius: "12px",
               fontSize: "0.9rem",
+              fontWeight: "500",
+              border: "1px solid #fecaca",
             }}
           >
             {message}
@@ -166,16 +185,20 @@ const AdminLogin = () => {
             disabled={loading}
             style={{
               width: "100%",
-              padding: "0.75rem",
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              padding: "0.875rem",
+              background: "#2563eb",
               color: "white",
               border: "none",
-              borderRadius: "6px",
+              borderRadius: "8px",
               fontSize: "1rem",
               fontWeight: "600",
               cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading ? 0.7 : 1,
+              opacity: loading ? 0.6 : 1,
+              transition: "all 0.2s",
+              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
             }}
+            onMouseEnter={(e) => !loading && (e.currentTarget.style.background = "#1d4ed8")}
+            onMouseLeave={(e) => !loading && (e.currentTarget.style.background = "#2563eb")}
           >
             {loading ? "Signing In..." : "Sign In"}
           </button>
@@ -184,14 +207,15 @@ const AdminLogin = () => {
         <div
           style={{
             marginTop: "1.5rem",
-            padding: "1rem",
-            background: "#f0f9ff",
-            borderRadius: "6px",
+            padding: "1rem 1.5rem",
+            background: "#eff6ff",
+            borderRadius: "12px",
             fontSize: "0.9rem",
-            color: "#0c4a6e",
+            color: "#1e40af",
+            border: "1px solid #bfdbfe",
           }}
         >
-          <strong>Default Admin Credentials:</strong>
+          <strong style={{ fontWeight: "600" }}>Default Admin Credentials:</strong>
           <br />
           Email: admin@dreamfund.com
           <br />
