@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { FaGraduationCap } from 'react-icons/fa';
 import { getSessionId } from "../utils/sessionUtils";
 
 const FeedbackBanner = ({ scholarshipId, scholarshipTitle, onClose }) => {
@@ -159,9 +160,13 @@ const FeedbackBanner = ({ scholarshipId, scholarshipTitle, onClose }) => {
             fontWeight: "600",
             color: "#1f2937",
             marginBottom: "0.5rem",
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
           }}
         >
-          Help us improve DreamFund! 🎓
+          Help us improve DreamFund!
+          <FaGraduationCap className="w-5 h-5 text-blue-600" />
         </h3>
         <p style={{ fontSize: "0.9rem", color: "#6b7280", margin: 0 }}>
           Did you complete your application?

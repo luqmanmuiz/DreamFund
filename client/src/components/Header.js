@@ -3,6 +3,7 @@
 import React from "react"
 import { Link } from "react-router-dom"
 import { useAuth } from "../contexts/AuthContext"
+import { FaGraduationCap } from "react-icons/fa"
 
 // Shared Header component
 // Props:
@@ -20,7 +21,6 @@ const Header = ({ navItems }) => {
         { type: "action", action: () => logout(), label: "Logout", className: "btn-logout" },
       ]
     : [
-        { to: "/login", label: "Student Login" },
         { type: "action", action: () => (window.location.href = "/admin/login"), label: "Admin Login" },
         { to: "/upload", label: "Get Started", isPrimary: true },
       ]
@@ -95,7 +95,7 @@ const Header = ({ navItems }) => {
     <header style={headerStyles}>
       <div style={containerStyles}>
         <Link to="/" style={logoStyles} className="logo">
-          <span style={{ fontSize: "1.5rem" }}>🎓</span>
+          <FaGraduationCap className="w-8 h-8 text-blue-600" />
           <span style={{ color: "#2563eb", marginLeft: 4 }}>DreamFund</span>
         </Link>
 

@@ -7,10 +7,6 @@ const scholarshipSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    amount: {
-      type: Number,
-      required: true,
-    },
     deadline: {
       type: Date,
       required: false,

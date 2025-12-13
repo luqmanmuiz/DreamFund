@@ -1,20 +1,38 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import axios from "axios";
 import { useAuth } from "../contexts/AuthContext";
+import { FaGraduationCap } from 'react-icons/fa';
+import {
+  HiOutlineDocumentText,
+  HiCheckCircle,
+  HiXCircle,
+  HiOutlineInformationCircle,
+  HiOutlineCloudArrowUp,
+  HiOutlineClock,
+  HiMagnifyingGlass,
+  HiOutlineRocketLaunch,
+  HiOutlineCursorArrowRays,
+  HiOutlineUser,
+  HiOutlineChartBarSquare,
+  HiExclamationTriangle,
+  HiSparkles
+} from 'react-icons/hi2';
 
 const UploadPage = () => {
   const [files, setFiles] = useState([]);
-  const { user, updateProfileWithExtractedData } = useAuth();
+  const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [message, setMessage] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [extractedData, setExtractedData] = useState([]);
+  const [shareId, setShareId] = useState(null);
   const fileInputRef = useRef(null);
+  const navigate = useNavigate();
 
   const handleFileSelect = (selectedFiles) => {
     if (!selectedFiles) return;
@@ -73,7 +91,7 @@ const UploadPage = () => {
 
   const removeFile = (index) => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
-    setExtractedData((prev) => prev.filter((_, i) => i !== index));
+    setExtractedData((prev) => prev.filter((_, i) => i !== index)); 
   };
 
   const uploadFiles = async () => {
@@ -85,6 +103,7 @@ const UploadPage = () => {
     setUploading(true);
     setMessage("");
     setExtractedData([]);
+    setShareId(null);
 
     try {
       // Step 1: Upload files to the backend server (port 5000)
@@ -93,7 +112,6 @@ const UploadPage = () => {
         const formData = new FormData();
         formData.append("document", file);
 
-        // Upload to the Express.js backend server on port 5000
         const response = await axios.post(
           "http://localhost:5000/api/upload",
           formData,
@@ -118,7 +136,6 @@ const UploadPage = () => {
 
       const extractionPromises = uploadResults.map(async (result) => {
         try {
-          // Call the Node.js backend which will communicate with Python service
           const extractResponse = await axios.post(
             "http://localhost:5000/api/extract",
             {
@@ -152,7 +169,6 @@ const UploadPage = () => {
             extractError
           );
 
-          // Check if it's a service unavailable error
           if (extractError.response?.status === 503) {
             return {
               fileName: result.file.name,
@@ -185,7 +201,6 @@ const UploadPage = () => {
 
       const extractionResults = await Promise.all(extractionPromises);
 
-      // Filter out any undefined results and ensure all results have required properties
       const validResults = extractionResults.filter((result) => {
         return (
           result !== undefined &&
@@ -200,7 +215,6 @@ const UploadPage = () => {
       console.log("Valid extraction results:", validResults);
       setExtractedData(validResults);
 
-      // Check if any extractions failed due to service unavailability
       const serviceUnavailable = validResults.some(
         (result) =>
           result.error && result.error.includes("Python extraction service")
@@ -210,61 +224,48 @@ const UploadPage = () => {
         setMessage(
           "Files uploaded but extraction service is unavailable. Please start the Python extraction service on port 5001 and try again."
         );
-      } else {
-        // Save extracted data to user profile if user is logged in
-        if (user && validResults.length > 0) {
-          const latestResult = validResults[validResults.length - 1]; // Use the latest extraction
-          if (
-            latestResult.name !== "Not found" ||
-            latestResult.cgpa !== "Not found" ||
-            latestResult.program !== "Not found"
-          ) {
-            try {
-              const result = await updateProfileWithExtractedData({
-                name:
-                  latestResult.name !== "Not found"
-                    ? latestResult.name
-                    : undefined,
-                cgpa:
-                  latestResult.cgpa !== "Not found"
-                    ? latestResult.cgpa
-                    : undefined,
-                program:
-                  latestResult.program !== "Not found"
-                    ? latestResult.program
-                    : undefined,
-              });
+      } else if (validResults.length > 0) {
+        // Step 3: Create Guest Profile - ALWAYS attempt this
+        const latestResult = validResults[validResults.length - 1];
+        
+        console.log("Creating guest profile with data:", latestResult);
+        
+        try {
+          const guestResponse = await axios.post("http://localhost:5000/api/guests/create", {
+            name: (latestResult.name !== "Not found" && latestResult.name !== "Extraction failed" && latestResult.name !== "Service unavailable") ? latestResult.name : "Student",
+            cgpa: (latestResult.cgpa !== "Not found" && latestResult.cgpa !== "Extraction failed" && latestResult.cgpa !== "Service unavailable") ? latestResult.cgpa : 0,
+            program: (latestResult.program !== "Not found" && latestResult.program !== "Extraction failed" && latestResult.program !== "Service unavailable") ? latestResult.program : "General Studies"
+          });
 
-              if (result.success) {
-                setMessage(
-                  "Files uploaded, data extracted, and profile updated successfully!"
-                );
-              } else {
-                setMessage(
-                  "Files uploaded and data extracted successfully! (Profile update failed)"
-                );
-              }
-            } catch (error) {
-              console.error("Profile update error:", error);
-              setMessage(
-                "Files uploaded and data extracted successfully! (Profile update failed)"
-              );
-            }
+          console.log("Guest profile response:", guestResponse.data);
+
+          if (guestResponse.data.success && guestResponse.data.shareId) {
+            setShareId(guestResponse.data.shareId);
+            console.log("Share ID set:", guestResponse.data.shareId);
+            setMessage("Analysis complete! Your unique results link is ready. 🎉");
           } else {
-            setMessage("Files uploaded and data extracted successfully!");
+            console.error("Guest response missing shareId:", guestResponse.data);
+            setMessage("Analysis complete, but failed to generate share link.");
           }
-        } else {
-          setMessage("Files uploaded and data extracted successfully!");
+        } catch (guestError) {
+          console.error("Guest profile creation error:", guestError);
+          console.error("Error response:", guestError.response?.data);
+          
+          if (guestError.response && guestError.response.status === 404) {
+             setMessage("Error: Guest API endpoint not found. Please ensure server/routes/guests.js is created and registered in server/index.js.");
+          } else {
+             setMessage("Analysis complete, but failed to save results.");
+          }
         }
       }
     } catch (error) {
       console.error("Upload error:", error);
       if (error.code === "ERR_NETWORK" || error.code === "ECONNREFUSED") {
         setMessage(
-          "Cannot connect to the server. Please make sure the backend server is running on port 5000."
+          "Cannot connect to the server. Please make sure the backend server is running on port 5000. ❌"
         );
       } else {
-        setMessage(error.response?.data?.message || "Upload failed");
+        setMessage(error.response?.data?.message || "Upload failed. ❌");
       }
     } finally {
       setUploading(false);
@@ -276,6 +277,7 @@ const UploadPage = () => {
     setFiles([]);
     setExtractedData([]);
     setMessage("");
+    setShareId(null);
   };
 
   const formatFileSize = (bytes) => {
@@ -289,14 +291,20 @@ const UploadPage = () => {
   };
 
   const getConfidenceColor = (confidence) => {
-    if (confidence >= 0.8) return "#10b981"; // green
-    if (confidence >= 0.6) return "#f59e0b"; // yellow
-    return "#ef4444"; // red
+    if (confidence >= 0.85) return "#059669";
+    if (confidence >= 0.65) return "#f59e0b";
+    return "#ef4444";
+  };
+  
+  const getConfidenceBg = (confidence) => {
+    if (confidence >= 0.85) return "#d1fae5";
+    if (confidence >= 0.65) return "#fef3c7";
+    return "#fee2e2";
   };
 
   const getConfidenceTier = (confidence) => {
     if (confidence >= 0.85) return "high";
-    if (confidence >= 0.7) return "medium";
+    if (confidence >= 0.65) return "medium";
     return "low";
   };
 
@@ -304,7 +312,7 @@ const UploadPage = () => {
     const tier = getConfidenceTier(confidence);
     if (tier === "high") return "High Confidence";
     if (tier === "medium") return "Medium Confidence";
-    return "Low Confidence - Verify";
+    return "Low Confidence";
   };
 
   const getConfidenceIcon = (confidence) => {
@@ -315,166 +323,65 @@ const UploadPage = () => {
   };
 
   const getMethodLabel = (method) => {
-    if (method === "custom_ner") return "ML Model";
-    if (method === "custom_ner_cleaned") return "ML Model (cleaned)";
+    if (method === "custom_ner") return "ML Model (Raw)";
+    if (method === "custom_ner_cleaned") return "ML Model (Cleaned)";
     if (method === "rules") return "Pattern Matching";
     if (method === "spacy_fallback") return "Fallback NER";
     return "Unknown";
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#ffffff",
-      }}
-    >
-      {/* Shared Header - only Home link for upload page (guest session) */}
+    <div className="page-wrapper">
       <Header navItems={[{ to: "/", label: "Home" }]} />
 
-      <div
-        style={{
-          maxWidth: "1000px",
-          margin: "0 auto",
-          padding: "3rem 2rem",
-        }}
-      >
-        {/* Hero Section */}
-        <div
-          style={{
-            textAlign: "center",
-            marginBottom: "4rem",
-          }}
-        >
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              padding: "0.5rem 1rem",
-              background: "#f3f4f6",
-              borderRadius: "50px",
-              marginBottom: "1.5rem",
-            }}
-          >
-            <span style={{ fontSize: "1rem" }}>📄</span>
-            <span
-              style={{
-                fontSize: "0.875rem",
-                color: "#6b7280",
-                fontWeight: "500",
-              }}
-            >
-              Document Upload & Analysis
-            </span>
+      <div className="main-content-area">
+        <div className="hero-section">
+          <div className="hero-badge">
+            <HiOutlineDocumentText className="w-8 h-8 text-blue-600" />
+            <span className="hero-badge-text">Document Upload & Analysis</span>
           </div>
 
-          <h1
-            style={{
-              fontSize: "2.5rem",
-              fontWeight: "700",
-              color: "#111827",
-              marginBottom: "1rem",
-              lineHeight: "1.2",
-            }}
-          >
+          <h1 className="hero-title">
             Upload Your Academic Documents
           </h1>
 
-          <p
-            style={{
-              fontSize: "1.125rem",
-              color: "#6b7280",
-              maxWidth: "600px",
-              margin: "0 auto",
-              lineHeight: "1.7",
-            }}
-          >
-            Upload transcripts, essays, or recommendation letters. Our AI
+          <p className="hero-description">
+            Upload transcripts, essays, or recommendation letters. Our **AI**
             extracts key information to match you with perfect scholarships.
           </p>
         </div>
 
-        {/* Main Card */}
-        <div
-          style={{
-            background: "white",
-            borderRadius: "16px",
-            border: "1px solid #e5e7eb",
-            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
-          }}
-        >
-          {/* Message Alert */}
+        <div className="main-card">
           {message && (
-            <div
-              style={{
-                padding: "1rem 1.5rem",
-                borderBottom: "1px solid #e5e7eb",
-                background: message.includes("success")
+            <div className="message-alert" style={{
+                background: message.includes("success") || message.includes("complete") || message.includes("ready")
                   ? "#f0fdf4"
                   : message.includes("Error") || message.includes("failed")
                   ? "#fef2f2"
                   : "#eff6ff",
-                borderRadius: "16px 16px 0 0",
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.75rem",
-                }}
-              >
-                <span style={{ fontSize: "1.25rem" }}>
-                  {message.includes("success")
-                    ? "✅"
-                    : message.includes("Error") || message.includes("failed")
-                    ? "❌"
-                    : "ℹ️"}
-                </span>
-                <span
-                  style={{
-                    color: message.includes("success")
-                      ? "#166534"
-                      : message.includes("Error") || message.includes("failed")
-                      ? "#991b1b"
-                      : "#1e40af",
-                    fontWeight: "500",
-                    fontSize: "0.95rem",
-                  }}
-                >
-                  {message}
-                </span>
+              <div className="message-content">
+                {message.includes("success") || message.includes("complete") || message.includes("ready") ? (
+                  <HiCheckCircle className="w-5 h-5 text-green-600 inline" />
+                ) : message.includes("Error") || message.includes("failed") ? (
+                  <HiXCircle className="w-5 h-5 text-red-600 inline" />
+                ) : (
+                  <HiOutlineInformationCircle className="w-5 h-5 text-blue-600 inline" />
+                )}
+                <span style={{ marginLeft: '0.5rem' }}>{message}</span>
               </div>
               {(uploading || extracting) && (
-                <div style={{ marginTop: "0.75rem" }}>
-                  <div
-                    style={{
-                      width: "100%",
-                      height: "4px",
-                      backgroundColor: "#e5e7eb",
-                      borderRadius: "2px",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        backgroundColor: "#2563eb",
-                        borderRadius: "2px",
-                        animation:
-                          "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-                      }}
-                    ></div>
+                <div className="progress-bar-container">
+                  <div className="progress-bar-track">
+                    <div className="progress-bar-fill" />
                   </div>
                 </div>
               )}
             </div>
           )}
 
-          <div style={{ padding: "2.5rem" }}>
-            {/* Upload Area */}
+          <div className="card-padding">
             <div
               className={`upload-area ${dragOver ? "dragover" : ""}`}
               onDrop={handleDrop}
@@ -485,55 +392,29 @@ const UploadPage = () => {
                 opacity: uploading ? 0.6 : 1,
                 pointerEvents: uploading ? "none" : "auto",
                 border: dragOver ? "2px dashed #2563eb" : "2px dashed #d1d5db",
-                borderRadius: "12px",
-                padding: "3rem 2rem",
-                textAlign: "center",
-                cursor: "pointer",
                 background: dragOver ? "#f5f3ff" : "#fafafa",
-                transition: "all 0.2s ease",
               }}
             >
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: "64px",
-                  height: "64px",
-                  borderRadius: "12px",
-                  background: uploading ? "#fef3c7" : "#ede9fe",
-                  marginBottom: "1.5rem",
-                }}
-              >
-                <span style={{ fontSize: "2rem" }}>
-                  {uploading ? "⏳" : "📁"}
-                </span>
+              <div className="upload-icon-wrapper" style={{
+                background: uploading ? "#fef3c7" : "#ede9fe",
+              }}>
+                {uploading ? (
+                  <HiOutlineClock className="w-12 h-12 text-amber-600 animate-pulse" />
+                ) : (
+                  <HiOutlineCloudArrowUp className="w-12 h-12 text-purple-600" />
+                )}
               </div>
 
-              <h3
-                style={{
-                  fontSize: "1.25rem",
-                  fontWeight: "600",
-                  color: "#111827",
-                  marginBottom: "0.5rem",
-                }}
-              >
+              <h3 className="upload-title">
                 {uploading
                   ? "Processing your documents..."
                   : "Drop files here or click to browse"}
               </h3>
 
-              <p
-                style={{
-                  color: "#6b7280",
-                  fontSize: "0.95rem",
-                  margin: 0,
-                  lineHeight: "1.6",
-                }}
-              >
+              <p className="upload-specs-text">
                 Supported: PDF, DOC, DOCX, JPG, PNG, GIF
                 <br />
-                <span style={{ fontSize: "0.85rem", opacity: 0.8 }}>
+                <span className="upload-max-size">
                   Maximum 10MB per file
                 </span>
               </p>
@@ -549,152 +430,46 @@ const UploadPage = () => {
               />
             </div>
 
-            {/* Selected Files */}
             {files.length > 0 && (
-              <div style={{ marginTop: "2rem" }}>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "1rem",
-                  }}
-                >
-                  <h3
-                    style={{
-                      fontSize: "1.125rem",
-                      fontWeight: "600",
-                      color: "#111827",
-                      margin: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.5rem",
-                    }}
-                  >
+              <div className="selected-files-section">
+                <div className="selected-files-header">
+                  <h3 className="selected-files-title">
                     Selected Files
-                    <span
-                      style={{
-                        background: "#f3f4f6",
-                        color: "#4b5563",
-                        padding: "0.25rem 0.625rem",
-                        borderRadius: "12px",
-                        fontSize: "0.875rem",
-                        fontWeight: "500",
-                      }}
-                    >
+                    <span className="file-count-badge">
                       {files.length}
                     </span>
                   </h3>
                   {!uploading && (
                     <button
                       onClick={clearAll}
-                      style={{
-                        padding: "0.5rem 1rem",
-                        fontSize: "0.875rem",
-                        background: "white",
-                        color: "#dc2626",
-                        border: "1px solid #fecaca",
-                        borderRadius: "8px",
-                        cursor: "pointer",
-                        fontWeight: "500",
-                        transition: "all 0.2s ease",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.background = "#fef2f2";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.background = "white";
-                      }}
+                      className="btn-clear-all"
                     >
                       Clear All
                     </button>
                   )}
                 </div>
 
-                <div style={{ display: "grid", gap: "0.75rem" }}>
+                <div className="file-list">
                   {files.map((file, index) => (
                     <div
                       key={index}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        padding: "1rem",
-                        background: "#fafafa",
-                        borderRadius: "10px",
-                        border: "1px solid #e5e7eb",
-                        transition: "all 0.2s ease",
-                      }}
+                      className="file-item"
                     >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "1rem",
-                          flex: 1,
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: "40px",
-                            height: "40px",
-                            borderRadius: "8px",
-                            background: "#ede9fe",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: "1.25rem",
-                            flexShrink: 0,
-                          }}
-                        >
-                          📄
+                      <div className="file-info-group">
+                        <div className="file-icon-square">
+                          <HiOutlineDocumentText className="w-5 h-5 text-blue-600" />
                         </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div
-                            style={{
-                              fontWeight: "500",
-                              color: "#111827",
-                              fontSize: "0.95rem",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {file.name}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: "0.85rem",
-                              color: "#6b7280",
-                              marginTop: "0.125rem",
-                            }}
-                          >
+                        <div className="file-details">
+                          <div className="file-name">{file.name}</div>
+                          <div className="file-size">
                             {formatFileSize(file.size)}
                           </div>
                         </div>
                       </div>
                       <button
                         onClick={() => removeFile(index)}
-                        style={{
-                          padding: "0.5rem 1rem",
-                          fontSize: "0.875rem",
-                          background: "white",
-                          color: "#dc2626",
-                          border: "1px solid #fecaca",
-                          borderRadius: "6px",
-                          cursor: uploading ? "not-allowed" : "pointer",
-                          fontWeight: "500",
-                          opacity: uploading ? 0.5 : 1,
-                          transition: "all 0.2s ease",
-                          flexShrink: 0,
-                        }}
+                        className="btn-remove-file"
                         disabled={uploading}
-                        onMouseEnter={(e) =>
-                          !uploading && (e.target.style.background = "#fef2f2")
-                        }
-                        onMouseLeave={(e) =>
-                          !uploading && (e.target.style.background = "white")
-                        }
                       >
                         Remove
                       </button>
@@ -704,75 +479,37 @@ const UploadPage = () => {
               </div>
             )}
 
-            {/* Upload Button */}
-            <div style={{ marginTop: "2rem", textAlign: "center" }}>
+            <div className="upload-button-container">
               <button
                 onClick={uploadFiles}
                 disabled={uploading || files.length === 0}
-                style={{
-                  padding: "0.875rem 2rem",
-                  fontSize: "1rem",
-                  fontWeight: "600",
-                  background:
-                    uploading || files.length === 0 ? "#9ca3af" : "#2563eb",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  cursor:
-                    uploading || files.length === 0 ? "not-allowed" : "pointer",
-                  transition: "all 0.2s ease",
-                  boxShadow:
-                    uploading || files.length === 0
-                      ? "none"
-                      : "0 1px 2px rgba(0, 0, 0, 0.05)",
-                  opacity: uploading || files.length === 0 ? 0.6 : 1,
-                }}
-                onMouseEnter={(e) => {
-                  if (!uploading && files.length > 0) {
-                    e.target.style.background = "#1d4ed8";
-                    e.target.style.transform = "translateY(-2px)";
-                    e.target.style.boxShadow = "0 4px 15px rgba(37, 99, 235, 0.3)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!uploading && files.length > 0) {
-                    e.target.style.background = "#2563eb";
-                    e.target.style.transform = "translateY(0)";
-                    e.target.style.boxShadow = "0 1px 2px rgba(0, 0, 0, 0.05)";
-                  }
-                }}
+                className="btn-upload-extract"
               >
-                {uploading
-                  ? extracting
-                    ? "🔍 Extracting Data..."
-                    : "📤 Uploading..."
-                  : `🚀 Upload & Extract ${files.length} File${
-                      files.length !== 1 ? "s" : ""
-                    }`}
+                {uploading ? (
+                  extracting ? (
+                    <>
+                      <HiMagnifyingGlass className="w-5 h-5 inline" />
+                      <span style={{ marginLeft: '0.5rem' }}>Extracting Data...</span>
+                    </>
+                  ) : (
+                    <span>Uploading...</span>
+                  )
+                ) : (
+                  <>
+                    <HiOutlineRocketLaunch className="w-5 h-5 inline" />
+                    <span style={{ marginLeft: '0.5rem' }}>
+                      Upload & Extract {files.length} File{files.length !== 1 ? 's' : ''}
+                    </span>
+                  </>
+                )}
               </button>
             </div>
 
-            {/* Extracted Data Section */}
             {extractedData.length > 0 && (
-              <div
-                style={{
-                  marginTop: "3rem",
-                  paddingTop: "2rem",
-                  borderTop: "1px solid #e5e7eb",
-                }}
-              >
-                <h3
-                  style={{
-                    fontSize: "1.25rem",
-                    fontWeight: "600",
-                    color: "#111827",
-                    marginBottom: "1.5rem",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                  }}
-                >
-                  🎯 Extracted Information
+              <div className="extracted-data-section">
+                <h3 className="extracted-data-title">
+                  <HiOutlineCursorArrowRays className="w-6 h-6 inline text-blue-600" />
+                  <span style={{ marginLeft: '0.5rem' }}>Extracted Information</span>
                 </h3>
 
                 {extractedData
@@ -782,403 +519,790 @@ const UploadPage = () => {
                   .map((data, index) => (
                     <div
                       key={`${data.fileName}-${index}`}
-                      style={{
-                        marginBottom: "1.5rem",
-                        padding: "1.5rem",
-                        background: "#fafafa",
-                        borderRadius: "12px",
-                        border: "1px solid #e5e7eb",
-                      }}
+                      className="extraction-card"
                     >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "0.75rem",
-                          marginBottom: "1.5rem",
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: "36px",
-                            height: "36px",
-                            borderRadius: "8px",
-                            background: "#ede9fe",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: "1.1rem",
-                          }}
-                        >
-                          📄
+                      <div className="extraction-card-header">
+                        <div className="file-icon-square">
+                          <HiOutlineDocumentText className="w-5 h-5 text-blue-600" />
                         </div>
-                        <h4
-                          style={{
-                            margin: 0,
-                            color: "#111827",
-                            fontSize: "1.05rem",
-                            fontWeight: "600",
-                          }}
-                        >
+                        <h4 className="extraction-file-name">
                           {data.fileName}
                         </h4>
                       </div>
 
                       {data.error && (
-                        <div
-                          style={{
-                            color: "#991b1b",
-                            fontSize: "0.9rem",
-                            marginBottom: "1.25rem",
-                            padding: "0.875rem",
-                            background: "#fef2f2",
-                            borderRadius: "8px",
-                            border: "1px solid #fecaca",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "0.625rem",
-                          }}
-                        >
-                          <span style={{ fontSize: "1.1rem" }}>⚠️</span>
-                          <span>{data.error}</span>
+                        <div className="extraction-error-alert">
+                          <HiExclamationTriangle className="w-5 h-5 text-amber-600 inline" />
+                          <span className="error-text" style={{ marginLeft: '0.5rem' }}>{data.error}</span>
                         </div>
                       )}
 
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns:
-                            "repeat(auto-fit, minmax(200px, 1fr))",
-                          gap: "1rem",
-                        }}
-                      >
+                      <div className="extracted-data-grid">
                         {[
                           {
                             label: "Name",
                             value: data.name,
                             confidence: data.confidence?.name,
                             method: data.extractionMethods?.name,
-                            icon: "👤",
+                            icon: <HiOutlineUser className="w-5 h-5 text-gray-600" />,
                           },
                           {
                             label: "CGPA",
                             value: data.cgpa,
                             confidence: data.confidence?.cgpa,
                             method: data.extractionMethods?.cgpa,
-                            icon: "📊",
+                            icon: <HiOutlineChartBarSquare className="w-5 h-5 text-gray-600" />,
                           },
                           {
                             label: "Program",
                             value: data.program,
                             confidence: data.confidence?.program,
                             method: data.extractionMethods?.program,
-                            icon: "🎓",
+                            icon: <FaGraduationCap className="w-5 h-5 text-gray-600" />,
                           },
                         ].map((item, idx) => (
                           <div
                             key={idx}
+                            className="data-field-card"
                             style={{
-                              padding: "1rem",
-                              background: "white",
-                              borderRadius: "10px",
-                              border: `1px solid ${
-                                item.confidence >= 0.85
-                                  ? "#d1fae5"
-                                  : item.confidence >= 0.7
-                                  ? "#fef3c7"
-                                  : "#fee2e2"
-                              }`,
+                                border: `1px solid ${getConfidenceBg(item.confidence)}`,
+                                background: getConfidenceBg(item.confidence) === "#fee2e2" ? "#fef7f7" : getConfidenceBg(item.confidence),
                             }}
                           >
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "0.5rem",
-                                marginBottom: "0.625rem",
-                              }}
-                            >
-                              <span style={{ fontSize: "1rem" }}>
+                            <div className="data-field-header">
+                              <span className="data-field-icon">
                                 {item.icon}
                               </span>
-                              <label
-                                style={{
-                                  fontSize: "0.85rem",
-                                  fontWeight: "600",
-                                  color: "#6b7280",
-                                }}
-                              >
+                              <label className="data-field-label">
                                 {item.label}
                               </label>
                             </div>
 
-                            <div style={{ marginBottom: "0.5rem" }}>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "0.625rem",
-                                  flexWrap: "wrap",
-                                }}
-                              >
-                                <span
-                                  style={{
-                                    fontWeight: "600",
-                                    color: "#111827",
-                                    fontSize: "0.95rem",
-                                  }}
-                                >
-                                  {item.value || "Not found"}
+                            <div className="data-field-value-group">
+                                <span className="data-field-value">
+                                {item.value || "Not found"}
                                 </span>
                                 {item.confidence > 0 && (
-                                  <span
-                                    style={{
-                                      fontSize: "0.7rem",
-                                      padding: "0.25rem 0.625rem",
-                                      borderRadius: "12px",
-                                      backgroundColor: getConfidenceColor(
-                                        item.confidence
-                                      ),
-                                      color: "white",
-                                      fontWeight: "600",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: "0.25rem",
-                                    }}
-                                  >
-                                    {getConfidenceIcon(item.confidence)}{" "}
-                                    {Math.round(item.confidence * 100)}%
-                                  </span>
+                                    <span className="confidence-badge" style={{
+                                        backgroundColor: getConfidenceColor(item.confidence),
+                                    }}>
+                                        {getConfidenceIcon(item.confidence)}{" "}
+                                        {Math.round(item.confidence * 100)}%
+                                    </span>
                                 )}
-                              </div>
                             </div>
-
+                            
                             {item.confidence > 0 && (
-                              <div
-                                style={{
-                                  fontSize: "0.7rem",
-                                  color: "#6b7280",
-                                  marginTop: "0.5rem",
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  gap: "0.25rem",
-                                }}
-                              >
+                                <div className="confidence-details">
                                 <div>
-                                  <strong>Confidence:</strong>{" "}
-                                  {getConfidenceLabel(item.confidence)}
+                                    <strong>Confidence:</strong>{" "}
+                                    {getConfidenceLabel(item.confidence)}
                                 </div>
                                 {item.method && (
-                                  <div>
+                                    <div>
                                     <strong>Method:</strong>{" "}
                                     {getMethodLabel(item.method)}
-                                  </div>
+                                    </div>
                                 )}
-                                {item.confidence < 0.7 && (
-                                  <div
-                                    style={{
-                                      color: "#dc2626",
-                                      fontWeight: "600",
-                                      marginTop: "0.25rem",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: "0.25rem",
-                                    }}
-                                  >
-                                    ⚠️ Please verify manually
-                                  </div>
+                                {item.confidence < 0.65 && (
+                                    <div className="verification-required-text">
+                                    <HiExclamationTriangle className="w-4 h-4 inline text-amber-600" />
+                                    <span style={{ marginLeft: '0.25rem' }}>Please verify manually</span>
+                                    </div>
                                 )}
-                              </div>
+                                </div>
                             )}
                           </div>
                         ))}
                       </div>
 
                       {data.confidence?.overall > 0 && (
-                        <div
-                          style={{
-                            marginTop: "1.25rem",
-                            padding: "0.875rem",
-                            borderRadius: "8px",
-                            background:
-                              data.qualityTier === "high"
-                                ? "#d1fae5"
-                                : data.qualityTier === "medium"
-                                ? "#fef3c7"
-                                : "#fee2e2",
-                            border: `1px solid ${
-                              data.qualityTier === "high"
-                                ? "#10b981"
-                                : data.qualityTier === "medium"
-                                ? "#f59e0b"
-                                : "#ef4444"
-                            }`,
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              flexWrap: "wrap",
-                              gap: "0.5rem",
-                            }}
-                          >
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "0.5rem",
-                              }}
-                            >
-                              <span style={{ fontSize: "1.1rem" }}>
-                                {data.qualityTier === "high"
-                                  ? "✅"
-                                  : data.qualityTier === "medium"
-                                  ? "⚠️"
-                                  : "❌"}
-                              </span>
-                              <span
-                                style={{
-                                  fontWeight: "600",
-                                  color: "#111827",
-                                  fontSize: "0.9rem",
-                                }}
-                              >
+                        <div className="overall-quality-banner" style={{
+                            background: getConfidenceBg(data.confidence.overall),
+                            border: `1px solid ${getConfidenceColor(data.confidence.overall)}`,
+                          }}>
+                          <div className="quality-content">
+                            <div className="quality-indicator">
+                              {data.qualityTier === "high" ? (
+                                <HiCheckCircle className="w-5 h-5 text-green-600 inline" />
+                              ) : data.qualityTier === "medium" ? (
+                                <HiExclamationTriangle className="w-5 h-5 text-amber-600 inline" />
+                              ) : (
+                                <HiXCircle className="w-5 h-5 text-red-600 inline" />
+                              )}
+                              <span className="quality-text" style={{ marginLeft: '0.5rem' }}>
                                 Overall Quality:{" "}
                                 {getConfidenceLabel(data.confidence.overall)}
                               </span>
                             </div>
-                            <span
-                              style={{
-                                fontSize: "0.85rem",
-                                fontWeight: "600",
-                                color: "#111827",
-                              }}
-                            >
+                            <span className="quality-percentage">
                               {Math.round(data.confidence.overall * 100)}%
                             </span>
+                          </div>
+                          <div className="progress-bar-overall">
+                            <div className="progress-bar-fill-overall" style={{
+                                width: `${Math.round(data.confidence.overall * 100)}%`,
+                                backgroundColor: getConfidenceColor(data.confidence.overall),
+                            }} />
                           </div>
                         </div>
                       )}
                     </div>
                   ))}
 
-                <div style={{ textAlign: "center", marginTop: "1.5rem" }}>
+                <div className="upload-more-container">
                   <button
-                    style={{
-                      padding: "0.875rem 1.75rem",
-                      background: "white",
-                      color: "#6b7280",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "8px",
-                      cursor: "pointer",
-                      fontSize: "0.95rem",
-                      fontWeight: "500",
-                      transition: "all 0.2s ease",
-                    }}
+                    className="btn-upload-more"
                     onClick={() => {
                       setFiles([]);
                       setExtractedData([]);
                       setMessage("");
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.background = "#f9fafb";
-                      e.target.style.borderColor = "#9ca3af";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.background = "white";
-                      e.target.style.borderColor = "#d1d5db";
+                      setShareId(null);
                     }}
                   >
-                    📤 Upload More Files
+                    <HiOutlineCloudArrowUp className="w-5 h-5 inline" />
+                    <span style={{ marginLeft: '0.5rem' }}>Upload More Files</span>
                   </button>
                 </div>
-              </div>
-            )}
-
-            {/* Success CTA */}
-            {extractedData.length > 0 && message.includes("success") && (
-              <div
-                style={{
-                  marginTop: "2.5rem",
-                  padding: "2rem",
-                  background: "#f0fdf4",
-                  borderRadius: "16px",
-                  border: "1px solid #bbf7d0",
-                  textAlign: "center",
-                }}
-              >
-                <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>
-                  🎉
-                </div>
-                <h3
-                  style={{
-                    fontSize: "1.5rem",
-                    fontWeight: "700",
-                    color: "#166534",
-                    marginBottom: "0.75rem",
-                    letterSpacing: "-0.01em",
-                  }}
-                >
-                  Documents processed successfully!
-                </h3>
-                <p
-                  style={{
-                    color: "#15803d",
-                    marginBottom: "1.5rem",
-                    fontSize: "1.125rem",
-                    lineHeight: "1.75",
-                  }}
-                >
-                  Your information has been extracted and analyzed. Ready to
-                  find your perfect scholarship matches?
-                </p>
-                <Link
-                  to={user ? `/results/${user.id}` : "/results"}
-                  style={{
-                    padding: "0.875rem 2rem",
-                    background: "#2563eb",
-                    color: "white",
-                    textDecoration: "none",
-                    borderRadius: "8px",
-                    display: "inline-block",
-                    fontSize: "1rem",
-                    fontWeight: "600",
-                    transition: "all 0.2s ease",
-                    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                  }}
-                  onClick={() => {
-                    try {
-                      if (
-                        Array.isArray(extractedData) &&
-                        extractedData.length
-                      ) {
-                        localStorage.setItem(
-                          "extractedData",
-                          JSON.stringify(extractedData)
-                        );
-                      }
-                    } catch (_) {}
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = "#1d4ed8";
-                    e.target.style.transform = "translateY(-2px)";
-                    e.target.style.boxShadow = "0 4px 15px rgba(37, 99, 235, 0.3)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = "#2563eb";
-                    e.target.style.transform = "translateY(0)";
-                    e.target.style.boxShadow = "0 1px 2px rgba(0, 0, 0, 0.05)";
-                  }}
-                >
-                  🔍 View Scholarship Matches
-                </Link>
+                
+                {/* Move the success CTA inside the extracted data section */}
+                {shareId && (
+                  <div className="success-cta-card">
+                    <div className="success-icon">
+                      <HiSparkles className="w-12 h-12 text-green-600" />
+                    </div>
+                    <h3 className="success-title">
+                      Documents processed successfully!
+                    </h3>
+                    <p className="success-description">
+                      Your unique results link is ready. You can access your matches anytime with this link.
+                    </p>
+                    <div className="share-link-box" style={{
+                      background: "white",
+                      padding: "0.75rem",
+                      borderRadius: "8px",
+                      border: "1px solid #bbf7d0",
+                      margin: "1rem 0",
+                      fontFamily: "monospace",
+                      color: "#166534"
+                    }}>
+                      dreamfund.com/results/{shareId}
+                    </div>
+                    <button
+                      onClick={() => navigate(`/results/${shareId}`)}
+                      className="btn-view-matches"
+                    >
+                      <HiMagnifyingGlass className="w-5 h-5 inline" />
+                      <span style={{ marginLeft: '0.5rem' }}>View Scholarship Matches</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
       </div>
+      
+      <style jsx>{`
+        .page-wrapper {
+          min-height: 100vh;
+          background: #f8fafc;
+          font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        .main-content-area {
+          max-width: 1000px;
+          margin: 0 auto;
+          padding: 3rem 2rem 5rem 2rem;
+        }
+
+        .hero-section {
+          text-align: center;
+          margin-bottom: 4rem;
+        }
+
+        .hero-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.5rem 1rem;
+          background: #eef2ff;
+          border-radius: 50px;
+          margin-bottom: 1.5rem;
+        }
+
+        .hero-badge-icon {
+          font-size: 1rem;
+        }
+
+        .hero-badge-text {
+          font-size: 0.875rem;
+          color: #4f46e5;
+          font-weight: 600;
+          letter-spacing: 0.01em;
+        }
+
+        .hero-title {
+          font-size: 2.75rem;
+          font-weight: 800;
+          color: #111827;
+          margin-bottom: 1rem;
+          line-height: 1.1;
+          letter-spacing: -0.02em;
+        }
+
+        .hero-description {
+          font-size: 1.125rem;
+          color: #6b7280;
+          max-width: 600px;
+          margin: 0 auto;
+          line-height: 1.6;
+        }
+        
+        .main-card {
+          background: white;
+          border-radius: 16px;
+          border: 1px solid #e5e7eb;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        }
+
+        .card-padding {
+            padding: 2.5rem;
+        }
+        
+        .message-alert {
+          padding: 1rem 1.5rem;
+          border-bottom: 1px solid #e5e7eb;
+          border-radius: 16px 16px 0 0;
+        }
+        
+        .message-content {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+        
+        .message-icon {
+          font-size: 1.25rem;
+        }
+        
+        .message-text {
+          font-weight: 600;
+          font-size: 0.95rem;
+        }
+
+        .progress-bar-container {
+            margin-top: 0.75rem;
+        }
+        
+        .progress-bar-track {
+          width: 100%;
+          height: 4px;
+          background-color: #e5e7eb;
+          border-radius: 2px;
+          overflow: hidden;
+        }
+        
+        .progress-bar-fill {
+          width: 100%;
+          height: 100%;
+          background-color: #2563eb;
+          border-radius: 2px;
+          animation: pulse-progress 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        @keyframes pulse-progress {
+          0% { transform: translateX(-100%); }
+          50% { transform: translateX(0); }
+          100% { transform: translateX(100%); }
+        }
+
+        .upload-area {
+          border-radius: 12px;
+          padding: 3rem 2rem;
+          text-align: center;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .upload-area.dragover {
+            transform: scale(1.02);
+            box-shadow: 0 0 0 4px #bfdbfe;
+        }
+
+        .upload-icon-wrapper {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 64px;
+          height: 64px;
+          border-radius: 12px;
+          margin-bottom: 1.5rem;
+          transition: background 0.2s;
+        }
+
+        .upload-icon {
+          font-size: 2rem;
+        }
+
+        .upload-title {
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: #111827;
+          margin-bottom: 0.5rem;
+        }
+
+        .upload-specs-text {
+          color: #6b7280;
+          font-size: 0.95rem;
+          margin: 0;
+          line-height: 1.6;
+        }
+
+        .upload-max-size {
+          font-size: 0.85rem;
+          opacity: 0.8;
+          display: block;
+          margin-top: 0.25rem;
+        }
+        
+        .selected-files-section {
+            margin-top: 2rem;
+        }
+
+        .selected-files-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .selected-files-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: #111827;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .file-count-badge {
+            background: #f3f4f6;
+            color: #4b5563;
+            padding: 0.25rem 0.625rem;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .btn-clear-all {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            background: white;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .btn-clear-all:hover {
+            background: #fef2f2;
+            border-color: #fca5a5;
+        }
+
+        .file-list {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: #fafafa;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s ease;
+        }
+
+        .file-info-group {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-icon-square {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: #ede9fe;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+        
+        .file-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: #111827;
+            font-size: 0.95rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-size {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin-top: 0.125rem;
+        }
+
+        .btn-remove-file {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            background: white;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .btn-remove-file:not([disabled]):hover {
+            background: #fef2f2;
+        }
+
+        .upload-button-container {
+            margin-top: 2.5rem;
+            text-align: center;
+        }
+
+        .btn-upload-extract {
+            padding: 1rem 2.5rem;
+            font-size: 1rem;
+            font-weight: 700;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+            opacity: 1;
+        }
+
+        .btn-upload-extract:not([disabled]):hover {
+            background: #1d4ed8;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+        }
+
+        .btn-upload-extract[disabled] {
+            cursor: not-allowed;
+            background: #9ca3af;
+            box-shadow: none;
+            transform: translateY(0);
+        }
+        
+        .extracted-data-section {
+          margin-top: 3.5rem;
+          padding-top: 2rem;
+          border-top: 1px solid #e5e7eb;
+        }
+
+        .extracted-data-title {
+            font-size: 1.375rem;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .extraction-card {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: #f9fafb;
+            border-radius: 16px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .extraction-card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .extraction-file-name {
+            margin: 0;
+            color: #111827;
+            font-size: 1.15rem;
+            font-weight: 700;
+        }
+
+        .extraction-error-alert {
+            color: #991b1b;
+            font-size: 0.95rem;
+            margin-bottom: 1.25rem;
+            padding: 0.875rem;
+            background: #fef2f2;
+            border-radius: 8px;
+            border: 1px solid #fecaca;
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            font-weight: 500;
+        }
+        
+        .error-icon {
+            font-size: 1.1rem;
+        }
+
+        .extracted-data-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 1.5rem;
+        }
+        
+        .data-field-card {
+            padding: 1.25rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+            transition: border-color 0.2s;
+        }
+
+        .data-field-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .data-field-icon {
+            font-size: 1rem;
+        }
+
+        .data-field-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .data-field-value-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .data-field-value {
+            font-weight: 700;
+            color: #111827;
+            font-size: 1rem;
+        }
+
+        .confidence-badge {
+            font-size: 0.7rem;
+            padding: 0.25rem 0.625rem;
+            border-radius: 12px;
+            color: white;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .confidence-details {
+            font-size: 0.7rem;
+            color: #6b7280;
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            padding-top: 0.75rem;
+            border-top: 1px dashed #e5e7eb;
+        }
+
+        .confidence-details strong {
+            color: #4b5563;
+            font-weight: 600;
+        }
+
+        .verification-required-text {
+            color: #dc2626;
+            font-weight: 700;
+            margin-top: 0.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .overall-quality-banner {
+            margin-top: 2rem;
+            padding: 1rem;
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quality-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .quality-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .quality-icon {
+            font-size: 1.1rem;
+        }
+        
+        .quality-text {
+            font-weight: 700;
+            color: #111827;
+            font-size: 1rem;
+        }
+
+        .quality-percentage {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #111827;
+        }
+        
+        .progress-bar-overall {
+            height: 6px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 3px;
+            margin-top: 0.75rem;
+            overflow: hidden;
+            position: relative;
+            z-index: 1;
+        }
+
+        .progress-bar-fill-overall {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease-out;
+        }
+
+        .upload-more-container {
+          text-align: center;
+          margin-top: 2rem;
+        }
+        
+        .btn-upload-more {
+          padding: 0.875rem 1.75rem;
+          background: white;
+          color: #6b7280;
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 0.95rem;
+          font-weight: 600;
+          transition: all 0.2s ease;
+        }
+
+        .btn-upload-more:hover {
+          background: #f9fafb;
+          border-color: #9ca3af;
+        }
+
+        .success-cta-card {
+            margin-top: 2.5rem;
+            padding: 2.5rem;
+            background: #f0fdf4;
+            border-radius: 16px;
+            border: 1px solid #bbf7d0;
+            text-align: center;
+        }
+
+        .success-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .success-title {
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: #166534;
+            margin-bottom: 0.75rem;
+            letter-spacing: -0.01em;
+        }
+
+        .success-description {
+            color: #15803d;
+            margin-bottom: 1.75rem;
+            font-size: 1.125rem;
+            line-height: 1.75;
+        }
+        
+        .btn-view-matches {
+            padding: 1rem 2.5rem;
+            background: #2563eb;
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            display: inline-block;
+            font-size: 1rem;
+            font-weight: 700;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-view-matches:hover {
+            background: #1d4ed8;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+        }
+
+        @media (max-width: 768px) {
+          .main-content-area {
+            padding: 2rem 1rem 4rem 1rem;
+          }
+          
+          .hero-title {
+              font-size: 2rem;
+          }
+          
+          .card-padding {
+              padding: 1.5rem;
+          }
+
+          .extracted-data-grid {
+              grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
     </div>
   );
 };

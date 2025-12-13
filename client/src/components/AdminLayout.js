@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { useAuth } from "../contexts/AuthContext"
+import { HiOutlineBars3 } from "react-icons/hi2"
+import { FaGraduationCap } from "react-icons/fa"
 
 const AdminLayout = ({ children, title, headerActions }) => {
   const { user, logout } = useAuth()
@@ -178,11 +180,7 @@ const AdminLayout = ({ children, title, headerActions }) => {
                 height: "36px",
               }}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-              </svg>
+              <HiOutlineBars3 className="w-6 h-6 text-gray-600" />
             </button>
             <div>
               <h1 style={{ margin: 0, fontSize: "2rem", fontWeight: "700", color: "#1f2937" }}>{title}</h1>

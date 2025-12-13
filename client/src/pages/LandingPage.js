@@ -4,17 +4,20 @@ import React from "react";
 import { Link } from "react-router-dom";
 import Header from "../components/Header";
 import { useAuth } from "../contexts/AuthContext";
- 
+import { HiOutlineBolt, HiOutlineBookOpen, HiOutlineCursorArrowRays } from 'react-icons/hi2';
+import { FaGraduationCap } from "react-icons/fa";
+// NOTE: You would typically import a global font like Inter or Poppins here
+// via a link tag in index.html or through a library import.
+// For example: import 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap';
 
 const LandingPage = () => {
   const { user } = useAuth();
-  
 
   // Landing page does not manage authentication here; header handles login/logout links
 
   return (
     <div className="page-wrapper">
-      {/* Shared Header */}
+      {/* Shared Header (Assumed to exist in ../components/Header) */}
       <Header />
 
       {/* Hero Section with Background Image */}
@@ -22,7 +25,7 @@ const LandingPage = () => {
         <div className="hero-overlay"></div>
 
         <div className="hero-content">
-          {/* Trust Badge */}
+          {/* Trust Badge - Moved above H1 and pulse-dot color changed for cohesion */}
           <div className="trust-badge">
             <span className="pulse-dot"></span>
             Trusted by thousands of students
@@ -31,6 +34,7 @@ const LandingPage = () => {
           {/* Main Title */}
           <h1 className="hero-title">
             Find Your Perfect
+            {/* Added a gradient-like effect via CSS to this span */}
             <span className="hero-highlight">Scholarship</span>
           </h1>
 
@@ -41,7 +45,7 @@ const LandingPage = () => {
             aid simple and effective.
           </p>
 
-          {/* CTA Buttons */}
+          {/* CTA Buttons - Logic remains the same, styling enhanced */}
           <div className="hero-buttons">
             {user ? (
               user.role === "admin" ? (
@@ -60,12 +64,11 @@ const LandingPage = () => {
               )
             ) : (
               <>
+                {/* Primary CTA: Increased padding and stronger hover effect */}
                 <Link to="/upload" className="btn btn-primary-hero">
                   Get Started
                 </Link>
-                <Link to="/login" className="btn btn-secondary-hero">
-                  Learn More
-                </Link>
+                {/* Secondary CTA removed */}
               </>
             )}
           </div>
@@ -83,9 +86,10 @@ const LandingPage = () => {
           </div>
 
           <div className="features-grid">
+            {/* Feature Card 1: Smart Matching */}
             <div className="feature-card">
               <div className="feature-icon-wrapper">
-                <span className="feature-icon">🎯</span>
+                <HiOutlineCursorArrowRays className="w-12 h-12 text-blue-600" />
               </div>
               <h3>Smart Matching</h3>
               <p>
@@ -94,9 +98,10 @@ const LandingPage = () => {
               </p>
             </div>
 
+            {/* Feature Card 2: Comprehensive Database */}
             <div className="feature-card">
               <div className="feature-icon-wrapper">
-                <span className="feature-icon">📚</span>
+                <HiOutlineBookOpen className="w-12 h-12 text-blue-600" />
               </div>
               <h3>Comprehensive Database</h3>
               <p>
@@ -105,9 +110,10 @@ const LandingPage = () => {
               </p>
             </div>
 
+            {/* Feature Card 3: Easy Application */}
             <div className="feature-card">
               <div className="feature-icon-wrapper">
-                <span className="feature-icon">⚡</span>
+                <HiOutlineBolt className="w-12 h-12 text-green-600" />
               </div>
               <h3>Easy Application</h3>
               <p>
@@ -125,7 +131,7 @@ const LandingPage = () => {
           <div className="footer-content">
             <div className="footer-brand">
               <div className="footer-logo">
-                <span className="logo-icon">🎓</span>
+                <FaGraduationCap className="w-6 h-6 text-gray-600" />
                 <span className="logo-text">DreamFund</span>
               </div>
               <p>
@@ -141,12 +147,16 @@ const LandingPage = () => {
       </footer>
 
       <style jsx>{`
+        /* Global Font Integration */
         .page-wrapper {
           min-height: 100vh;
           background: white;
+          /* Use a modern, readable font */
+          font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
+            "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         }
 
-        /* Modern Clean Header */
+        /* --- Header Styles (Unchanged) --- */
         .header {
           position: sticky;
           top: 0;
@@ -250,7 +260,7 @@ const LandingPage = () => {
           background: #1d4ed8;
         }
 
-        /* Hero Section with Background Image */
+        /* --- Hero Section: Enhanced Styling --- */
         .hero {
           position: relative;
           min-height: 600px;
@@ -268,11 +278,12 @@ const LandingPage = () => {
         .hero-overlay {
           position: absolute;
           inset: 0;
+          /* Stronger, deeper overlay gradient */
           background: linear-gradient(
             135deg,
-            rgba(37, 99, 235, 0.65) 0%,
-            rgba(59, 130, 246, 0.6) 50%,
-            rgba(96, 165, 250, 0.55) 100%
+            rgba(37, 99, 235, 0.75) 0%,
+            rgba(59, 130, 246, 0.7) 50%,
+            rgba(96, 165, 250, 0.65) 100%
           );
           z-index: 1;
         }
@@ -300,11 +311,13 @@ const LandingPage = () => {
           border-radius: 9999px;
         }
 
+        /* Pulse dot now uses brand primary color */
         .pulse-dot {
           width: 6px;
           height: 6px;
-          background: #fbbf24;
+          background: #2563eb; /* Changed from yellow to primary blue */
           border-radius: 50%;
+          box-shadow: 0 0 5px 2px rgba(37, 99, 235, 0.8);
           animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
 
@@ -314,43 +327,50 @@ const LandingPage = () => {
             opacity: 1;
           }
           50% {
-            opacity: 0.5;
+            opacity: 0.6; /* Slight adjustment to pulse opacity */
           }
         }
 
         .hero-title {
           font-size: 3.5rem;
-          font-weight: 800;
+          font-weight: 700; /* Slightly reduced weight */
           line-height: 1.1;
-          letter-spacing: -0.02em;
+          letter-spacing: -0.03em; /* Tighter spacing */
           color: white;
           margin-bottom: 1.5rem;
-          text-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+          text-shadow: 0 6px 15px rgba(0, 0, 0, 0.5); /* Stronger text shadow */
         }
 
         .hero-highlight {
           display: block;
           margin-top: 0.5rem;
-          color: #fde047;
-          text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+          /* Basic white color, set against the blue overlay */
+          color: #ffffff;
+          /* Reset gradient properties */
+          background-image: none;
+          -webkit-background-clip: unset;
+          -webkit-text-fill-color: unset;
+          /* Use a standard text shadow to ensure legibility against the background image */
+          text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+          font-weight: 800;
         }
 
         .hero-description {
           font-size: 1.25rem;
           line-height: 1.75;
           color: rgba(255, 255, 255, 0.95);
-          margin-bottom: 2.5rem;
+          margin-bottom: 3rem; /* Increased margin */
           max-width: 42rem;
           margin-left: auto;
           margin-right: auto;
-          font-weight: 500;
-          text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+          font-weight: 400; /* Slightly lighter weight for description */
+          text-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
         }
 
         .hero-buttons {
           display: flex;
           flex-direction: column;
-          gap: 1rem;
+          gap: 1.25rem; /* Increased gap */
           align-items: center;
           justify-content: center;
         }
@@ -362,47 +382,53 @@ const LandingPage = () => {
         }
 
         .btn {
-          padding: 0.875rem 2rem;
+          padding: 1rem 2.5rem; /* Increased padding */
           font-size: 1rem;
           font-weight: 600;
-          border-radius: 8px;
+          border-radius: 10px; /* Slightly rounder corners */
           text-decoration: none;
           cursor: pointer;
-          transition: all 0.3s ease;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smoother transition */
           display: inline-block;
-          letter-spacing: 0.01em;
+          letter-spacing: 0.02em;
         }
 
         .btn-primary-hero {
           color: white;
           background: #2563eb;
           border: none;
-          box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+          /* Stronger initial shadow */
+          box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
         }
 
         .btn-primary-hero:hover {
           background: #1d4ed8;
-          transform: translateY(-3px) scale(1.02);
-          box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4);
+          /* More pronounced lift and shadow on hover */
+          transform: translateY(-5px) scale(1.02);
+          box-shadow: 0 15px 35px rgba(37, 99, 235, 0.6);
         }
 
         .btn-secondary-hero {
           color: white;
-          background: rgba(255, 255, 255, 0.2);
+          background: rgba(255, 255, 255, 0.15); /* Slightly less opaque */
           backdrop-filter: blur(10px);
-          border: 2px solid rgba(255, 255, 255, 0.4);
+          border: 1px solid rgba(255, 255, 255, 0.5); /* Thinner border, more subtle */
         }
 
         .btn-secondary-hero:hover {
           background: rgba(255, 255, 255, 0.3);
           border-color: white;
-          transform: translateY(-3px);
+          transform: translateY(-2px); /* Less dramatic lift than primary */
         }
 
-        /* Features Section */
+        /* --- Features Section: Enhanced Card Design --- */
         .features {
-          padding: 5rem 1.5rem;
-          background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+          padding: 6rem 1.5rem; /* Increased padding */
+          background: linear-gradient(
+            180deg,
+            #ffffff 0%,
+            #f7f9fc 100%
+          ); /* Lighter background gradient */
         }
 
         .container {
@@ -412,7 +438,7 @@ const LandingPage = () => {
 
         .section-header {
           text-align: center;
-          margin-bottom: 4rem;
+          margin-bottom: 5rem; /* Increased margin */
         }
 
         .section-header h2 {
@@ -420,19 +446,19 @@ const LandingPage = () => {
           font-weight: 700;
           color: #111827;
           margin-bottom: 1rem;
-          letter-spacing: -0.01em;
+          letter-spacing: -0.02em;
         }
 
         .section-header p {
           font-size: 1.125rem;
           color: #6b7280;
-          max-width: 36rem;
+          max-width: 38rem;
           margin: 0 auto;
         }
 
         .features-grid {
           display: grid;
-          gap: 1.5rem;
+          gap: 2rem; /* Increased gap */
           grid-template-columns: 1fr;
         }
 
@@ -444,42 +470,44 @@ const LandingPage = () => {
 
         .feature-card {
           background: white;
-          padding: 2rem 1.5rem;
-          border-radius: 12px;
-          border: 1px solid #e5e7eb;
-          transition: all 0.3s ease;
+          padding: 2.5rem 1.5rem; /* Increased padding */
+          border-radius: 16px; /* Rounder corners */
+          border: 1px solid #f3f4f6; /* Lighter border */
+          transition: all 0.4s ease-out; /* Slower, smoother transition */
           text-align: center;
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); /* Subtle initial shadow */
         }
 
         .feature-card:hover {
-          transform: translateY(-8px);
-          box-shadow: 0 20px 50px rgba(37, 99, 235, 0.12);
-          border-color: #93c5fd;
+          transform: translateY(-5px); /* Less dramatic lift */
+          /* Softer, more professional shadow on hover */
+          box-shadow: 0 15px 40px rgba(37, 99, 235, 0.15);
+          border-color: #2563eb; /* Primary color border highlight */
         }
 
         .feature-icon-wrapper {
-          width: 48px;
-          height: 48px;
-          background: #dbeafe;
-          border-radius: 8px;
+          width: 56px; /* Slightly larger icon */
+          height: 56px;
+          background: #e0f2fe; /* Lighter blue */
+          border-radius: 12px; /* Square with rounded corners */
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          margin-bottom: 1.25rem;
+          margin-bottom: 1.5rem;
           transition: all 0.3s ease;
         }
 
         .feature-card:hover .feature-icon-wrapper {
           background: #bfdbfe;
-          transform: scale(1.1);
+          transform: scale(1.05); /* More subtle scale */
         }
 
         .feature-icon {
-          font-size: 1.5rem;
+          font-size: 1.75rem; /* Larger icon emoji */
         }
 
         .feature-card h3 {
-          font-size: 1.25rem;
+          font-size: 1.375rem; /* Slightly larger heading */
           font-weight: 700;
           color: #111827;
           margin-bottom: 0.75rem;
@@ -491,7 +519,7 @@ const LandingPage = () => {
           font-size: 1rem;
         }
 
-        /* Footer */
+        /* --- Footer Styles (Unchanged for visual design, kept structured) --- */
         .footer {
           padding: 3rem 1.5rem 1.5rem;
           background: white;
@@ -537,7 +565,7 @@ const LandingPage = () => {
           color: #9ca3af;
         }
 
-        /* Responsive Typography */
+        /* --- Responsive Typography (Minor adjustments) --- */
         @media (max-width: 768px) {
           .hero {
             padding: 5rem 1.5rem;
@@ -545,15 +573,19 @@ const LandingPage = () => {
           }
 
           .hero-title {
-            font-size: 2.5rem;
+            font-size: 2.25rem;
           }
 
           .hero-description {
-            font-size: 1.125rem;
+            font-size: 1rem;
           }
 
           .section-header h2 {
             font-size: 2rem;
+          }
+
+          .section-header {
+            margin-bottom: 3rem;
           }
 
           .header-content {
@@ -575,11 +607,11 @@ const LandingPage = () => {
           }
 
           .hero-description {
-            font-size: 1rem;
+            font-size: 0.9375rem; /* Slightly smaller for mobile */
           }
 
           .btn {
-            padding: 0.75rem 1.5rem;
+            padding: 0.875rem 1.5rem;
             font-size: 0.875rem;
           }
         }

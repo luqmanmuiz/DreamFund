@@ -1,11 +1,35 @@
 const express = require("express");
 const Scholarship = require("../models/Scholarship");
 const User = require("../models/User");
+const ScrapingSession = require("../models/ScrapingSession");
 const mongoose = require("mongoose");
 const auth = require("../middleware/auth");
 const adminAuth = require("../middleware/adminAuth");
 
 const router = express.Router();
+
+// Helper function: Filter out invalid course names (webpage metadata, non-course terms)
+const filterValidCourses = (courses) => {
+  const normalize = (s) => (typeof s === "string" ? s.trim().toLowerCase() : "");
+  
+  const invalidTerms = [
+    'amount', 'deadline', 'overview', 'where to study', 'study level', 'study levels',
+    'full scholarship', 'public university', 'private university', 'pre university',
+    'course 1', 'course 2', 'course 3', 'course 4', 'course 5', 'course 6', 'course 7', 'course 8',
+    'courses', 'malaysia', 'apply now', 'requirements', 'benefits', 'eligibility', 
+    'deadline full scholarship'
+  ];
+  
+  return courses.filter(c => {
+    const cc = normalize(c);
+    // Filter out short single-word non-descriptive terms
+    if (cc.split(' ').length === 1 && !['engineering', 'accounting', 'business', 'nursing', 'law', 'medicine'].includes(cc)) {
+      return false;
+    }
+    // Filter out invalid terms
+    return !invalidTerms.includes(cc);
+  });
+};
 
 // Global scraping state tracker
 let scrapingState = {
@@ -14,7 +38,11 @@ let scrapingState = {
   current: 0,
   total: 0,
   currentScholarship: '',
-  errors: []
+  errors: [],
+  startTime: null,
+  savedCount: 0,
+  updatedCount: 0,
+  failedCount: 0
 };
 
 // Reset scraping state
@@ -25,6 +53,10 @@ const resetScrapingState = () => {
     current: 0,
     total: 0,
     currentScholarship: '',
+    startTime: null,
+    savedCount: 0,
+    updatedCount: 0,
+    failedCount: 0,
     errors: []
   };
 };
@@ -61,6 +93,29 @@ router.get("/scraping-progress", (req, res) => {
     clearInterval(intervalId);
     res.end();
   });
+});
+
+// @route   GET /api/scholarships/scraping-stats
+// @desc    Get latest scraping session statistics
+// @access  Private (Admin only)
+router.get("/scraping-stats", auth, adminAuth, async (req, res) => {
+  try {
+    // Get the most recent scraping session
+    const latestSession = await ScrapingSession.findOne()
+      .sort({ createdAt: -1 })
+      .lean();
+    
+    res.json({
+      success: true,
+      data: latestSession
+    });
+  } catch (error) {
+    console.error("Error fetching scraping stats:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching scraping statistics"
+    });
+  }
 });
 
 // @route   POST /api/scholarships/cancel-scraping
@@ -100,7 +155,6 @@ router.get("/test-scrape", async (req, res) => {
       console.log(`\n${index + 1}. ${scholarship.title}`);
       console.log(`   Deadline: ${scholarship.deadline || "NOT FOUND"}`);
       console.log(`   Study Level: ${scholarship.studyLevel || "Unknown"}`);
-      console.log(`   Amount: ${scholarship.amount || 0}`);
       console.log(`   Provider: ${scholarship.provider?.name || "Unknown"}`);
 
       if (scholarship.deadline) {
@@ -392,6 +446,7 @@ router.post("/scrape-scholarships", auth, adminAuth, async (req, res) => {
     // Initialize scraping state
     resetScrapingState();
     scrapingState.isRunning = true;
+    scrapingState.startTime = new Date();
 
     if (clearDatabase) {
       console.log("🗑️ Clearing existing scholarships...");
@@ -402,6 +457,9 @@ router.post("/scrape-scholarships", auth, adminAuth, async (req, res) => {
     }
 
     const scholarshipScraper = require("../services/scholarshipScraper");
+
+    // Capture user ID before async background task
+    const userId = req.user ? req.user._id : null;
 
     // Update state to show we're fetching scholarships
     scrapingState.currentScholarship = 'Fetching scholarships from website...';
@@ -423,6 +481,29 @@ router.post("/scrape-scholarships", auth, adminAuth, async (req, res) => {
         
         // Check if cancelled during scraping
         if (scrapingState.shouldCancel) {
+          // Save cancelled session
+          const endTime = new Date();
+          const duration = Math.floor((endTime - scrapingState.startTime) / 1000);
+          const totalProcessed = scrapingState.savedCount + scrapingState.updatedCount + scrapingState.failedCount;
+          const successCount = scrapingState.savedCount + scrapingState.updatedCount;
+          
+          try {
+            await ScrapingSession.create({
+              startTime: scrapingState.startTime,
+              endTime,
+              duration,
+              totalProcessed,
+              successCount,
+              failedCount: scrapingState.failedCount,
+              status: 'cancelled',
+              errors: scrapingState.errors,
+              triggeredBy: userId
+            });
+            console.log('✅ Cancelled scraping session saved to database');
+          } catch (sessionError) {
+            console.error('❌ Error saving cancelled session:', sessionError);
+          }
+          
           scrapingState.isRunning = false;
           scrapingState.shouldCancel = false;
           scrapingState.currentScholarship = '';
@@ -451,9 +532,6 @@ router.post("/scrape-scholarships", auth, adminAuth, async (req, res) => {
           }
           return null;
         };
-
-        let savedCount = 0;
-        let updatedCount = 0;
 
         // Canonicalize helper
         const canonicalizeUrl = (inputUrl) => {
@@ -531,9 +609,9 @@ router.post("/scrape-scholarships", auth, adminAuth, async (req, res) => {
             );
 
             if (result.wasNew) {
-              savedCount++;
+              scrapingState.savedCount++;
             } else {
-              updatedCount++;
+              scrapingState.updatedCount++;
             }
           } catch (error) {
             if (error && error.code === 11000) {
@@ -543,14 +621,70 @@ router.post("/scrape-scholarships", auth, adminAuth, async (req, res) => {
             const errorMsg = `Error saving ${scholarshipData.title}: ${error.message}`;
             console.error(`❌ ${errorMsg}`);
             scrapingState.errors.push(errorMsg);
+            scrapingState.failedCount++;
           }
         }
 
-        console.log(`✅ Scraping complete: ${savedCount} saved, ${updatedCount} updated`);
+        console.log(`✅ Scraping complete: ${scrapingState.savedCount} saved, ${scrapingState.updatedCount} updated`);
+        
+        // Save scraping session
+        const endTime = new Date();
+        const duration = Math.floor((endTime - scrapingState.startTime) / 1000);
+        const totalProcessed = scrapingState.savedCount + scrapingState.updatedCount + scrapingState.failedCount;
+        const successCount = scrapingState.savedCount + scrapingState.updatedCount;
+        
+        let status = 'success';
+        if (scrapingState.failedCount > 0 && successCount > 0) {
+          status = 'partial';
+        } else if (scrapingState.failedCount > 0 && successCount === 0) {
+          status = 'failed';
+        }
+        
+        try {
+          await ScrapingSession.create({
+            startTime: scrapingState.startTime,
+            endTime,
+            duration,
+            totalProcessed,
+            successCount,
+            failedCount: scrapingState.failedCount,
+            status,
+            errors: scrapingState.errors,
+            triggeredBy: userId
+          });
+          console.log('✅ Scraping session saved to database');
+        } catch (sessionError) {
+          console.error('❌ Error saving scraping session:', sessionError);
+        }
+        
         scrapingState.isRunning = false;
       } catch (error) {
         console.error("❌ Scraping error:", error);
         scrapingState.errors.push(`Critical error: ${error.message}`);
+        
+        // Save failed session
+        const endTime = new Date();
+        const duration = scrapingState.startTime ? Math.floor((endTime - scrapingState.startTime) / 1000) : 0;
+        const totalProcessed = scrapingState.savedCount + scrapingState.updatedCount + scrapingState.failedCount;
+        const successCount = scrapingState.savedCount + scrapingState.updatedCount;
+        
+        try {
+          await ScrapingSession.create({
+            startTime: scrapingState.startTime || new Date(),
+            endTime,
+            duration,
+            totalProcessed,
+            successCount,
+            failedCount: scrapingState.failedCount,
+            status: 'failed',
+            errors: scrapingState.errors,
+            triggeredBy: userId
+          });
+          console.log('✅ Failed scraping session saved to database');
+        } catch (sessionError) {
+          console.error('❌ Error saving failed session:', sessionError);
+        }
+        
         scrapingState.isRunning = false;
       }
     })();
@@ -611,6 +745,13 @@ router.delete("/:id", adminAuth, async (req, res) => {
 // @access  Private
 router.get("/matches/:userId", auth, async (req, res) => {
   try {
+    // Block mock admin from using this endpoint
+    if (req.params.userId === 'admin-1') {
+      return res.status(400).json({ 
+        message: "Admin account cannot use scholarship matching. Please create a student account." 
+      });
+    }
+
     const user = await User.findById(req.params.userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -635,7 +776,8 @@ router.get("/matches/:userId", auth, async (req, res) => {
     console.log(`📚 Found ${scholarships.length} active scholarships to check`);
     
     const matches = [];
-    let filteredCount = 0;
+    const nonMatches = [];
+    let expiredCount = 0;
 
     for (const scholarship of scholarships) {
       // 1. Check deadline - skip expired scholarships
@@ -644,7 +786,7 @@ router.get("/matches/:userId", auth, async (req, res) => {
       
       if (!deadlineOk) {
         console.log(`⏰ Skipping expired scholarship: ${scholarship.title} (deadline: ${scholarship.deadline})`);
-        filteredCount++;
+        expiredCount++;
         continue; // Skip expired scholarships
       }
 
@@ -655,13 +797,63 @@ router.get("/matches/:userId", auth, async (req, res) => {
 
       // 3. Check program/course requirements
       const courses = Array.isArray(scholarship.eligibleCourses) ? scholarship.eligibleCourses : [];
-      const hasCourseConstraint = courses.length > 0;
-      const programOk = !hasCourseConstraint
+      const validCourses = filterValidCourses(courses);
+      const hasCourseConstraint = validCourses.length > 0;
+      
+      // Check if scholarship is open to all fields
+      const isOpenToAll = validCourses.some(c => {
+        const cc = normalize(c);
+        return cc === 'all fields' || cc === 'all' || cc === 'any field' || cc === 'any';
+      });
+      
+      // Check if it's just education level (Diploma/Degree) - these are open to all programs at that level
+      const isEducationLevelOnly = validCourses.length > 0 && validCourses.every(c => {
+        const cc = normalize(c);
+        return cc === 'diploma' || cc === 'degree' || cc === 'bachelor' || 
+               cc === 'bachelor degree' || cc === 'diploma programs' || cc === 'degree programs';
+      });
+      
+      const programOk = !hasCourseConstraint || isOpenToAll || isEducationLevelOnly
         ? true
-        : courses.some((c) => {
+        : validCourses.some((c) => {
             const cc = normalize(c);
             if (!cc || !studentProgram) return false;
-            return cc === studentProgram || cc.includes(studentProgram) || studentProgram.includes(cc);
+            
+            // Skip generic education levels in matching
+            if (cc === 'diploma' || cc === 'degree' || cc === 'bachelor' || 
+                cc === 'bachelor degree' || cc === 'diploma programs' || cc === 'degree programs') {
+              return false;
+            }
+            
+            // Split course on slashes to handle "IT / Computer Science / Software Engineering"
+            const courseParts = cc.split('/').map(part => part.trim());
+            
+            // Check each part separately
+            for (const coursePart of courseParts) {
+              // Exact match
+              if (coursePart === studentProgram) return true;
+              
+              // Field name matching (e.g., "Computer Science" in "Diploma Computer Science")
+              const programWords = studentProgram.split(/\s+/);
+              const courseWords = coursePart.split(/\s+/);
+              
+              // Extract field name (removing education level words and common words)
+              const programField = programWords.filter(w => 
+                w !== 'diploma' && w !== 'degree' && w !== 'bachelor' && w !== 'sarjana' && w !== 'muda' && w !== 'in'
+              ).join(' ');
+              const courseField = courseWords.filter(w => 
+                w !== 'diploma' && w !== 'degree' && w !== 'bachelor' && w !== 'sarjana' && w !== 'muda' && w !== 'in'
+              ).join(' ');
+              
+              // Match if field names match (with some fuzzy matching)
+              if (programField && courseField) {
+                if (programField === courseField) return true;
+                if (programField.includes(courseField) && courseField.split(' ').length >= 2) return true;
+                if (courseField.includes(programField) && programField.split(' ').length >= 2) return true;
+              }
+            }
+            
+            return false;
           });
 
       console.log(`🔍 Checking scholarship: ${scholarship.title}`, {
@@ -676,17 +868,32 @@ router.get("/matches/:userId", auth, async (req, res) => {
         hasCourseConstraint
       });
 
-      // Only include scholarships that pass all filters
+      // Check if scholarship passes all filters
       if (deadlineOk && cgpaOk && programOk) {
         matches.push({ scholarship });
         console.log(`✅ Match found: ${scholarship.title}`);
       } else {
-        console.log(`❌ Filtered out: ${scholarship.title} (Deadline: ${deadlineOk}, CGPA: ${cgpaOk}, Program: ${programOk})`);
+        // Add to non-matches with reasons
+        const reasons = [];
+        if (!cgpaOk) reasons.push(`CGPA too low (requires ${minGpa}, you have ${studentCgpa})`);
+        if (!programOk) {
+          if (validCourses.length > 0) {
+            reasons.push(`Program doesn't match (requires: ${validCourses.slice(0, 3).join(', ')}${validCourses.length > 3 ? '...' : ''})`);
+          } else {
+            reasons.push('Program requirements not specified');
+          }
+        }
+        
+        nonMatches.push({ 
+          scholarship,
+          reasons
+        });
+        console.log(`❌ Filtered out: ${scholarship.title} (Reasons: ${reasons.join('; ')})`);
       }
     }
 
-    console.log(`📊 Filtering results: ${matches.length} matches, ${filteredCount} filtered out`);
-    res.json(matches);
+    console.log(`📊 Filtering results: ${matches.length} matches, ${nonMatches.length} non-matches, ${expiredCount} expired`);
+    res.json({ matches, nonMatches });
   } catch (error) {
     console.error("Get matches error:", error);
     res.status(500).json({ message: "Server error" });
@@ -710,8 +917,7 @@ router.get("/debug/filtering", async (req, res) => {
         deadline: scholarship.deadline,
         isExpired: scholarship.deadline ? scholarship.deadline <= now : false,
         requirements: scholarship.requirements,
-        eligibleCourses: scholarship.eligibleCourses,
-        amount: scholarship.amount
+        eligibleCourses: scholarship.eligibleCourses
       }))
     };
     
@@ -741,7 +947,8 @@ router.post("/public-matches", async (req, res) => {
     console.log(`📚 Found ${scholarships.length} active scholarships to check`);
     
     const matches = [];
-    let filteredCount = 0;
+    const nonMatches = [];
+    let expiredCount = 0;
 
     for (const scholarship of scholarships) {
       // 1. Check deadline - skip expired scholarships
@@ -750,7 +957,7 @@ router.post("/public-matches", async (req, res) => {
       
       if (!deadlineOk) {
         console.log(`⏰ Public: Skipping expired scholarship: ${scholarship.title} (deadline: ${scholarship.deadline})`);
-        filteredCount++;
+        expiredCount++;
         continue; // Skip expired scholarships
       }
 
@@ -761,13 +968,63 @@ router.post("/public-matches", async (req, res) => {
 
       // 3. Check program/course requirements
       const courses = Array.isArray(scholarship.eligibleCourses) ? scholarship.eligibleCourses : [];
-      const hasCourseConstraint = courses.length > 0;
-      const programOk = !hasCourseConstraint
+      const validCourses = filterValidCourses(courses);
+      const hasCourseConstraint = validCourses.length > 0;
+      
+      // Check if scholarship is open to all fields
+      const isOpenToAll = validCourses.some(c => {
+        const cc = normalize(c);
+        return cc === 'all fields' || cc === 'all' || cc === 'any field' || cc === 'any';
+      });
+      
+      // Check if it's just education level (Diploma/Degree) - these are open to all programs at that level
+      const isEducationLevelOnly = validCourses.length > 0 && validCourses.every(c => {
+        const cc = normalize(c);
+        return cc === 'diploma' || cc === 'degree' || cc === 'bachelor' || 
+               cc === 'bachelor degree' || cc === 'diploma programs' || cc === 'degree programs';
+      });
+      
+      const programOk = !hasCourseConstraint || isOpenToAll || isEducationLevelOnly
         ? true
-        : courses.some((c) => {
+        : validCourses.some((c) => {
             const cc = normalize(c);
             if (!cc || !studentProgram) return false;
-            return cc === studentProgram || cc.includes(studentProgram) || studentProgram.includes(cc);
+            
+            // Skip generic education levels in matching
+            if (cc === 'diploma' || cc === 'degree' || cc === 'bachelor' || 
+                cc === 'bachelor degree' || cc === 'diploma programs' || cc === 'degree programs') {
+              return false;
+            }
+            
+            // Split course on slashes to handle "IT / Computer Science / Software Engineering"
+            const courseParts = cc.split('/').map(part => part.trim());
+            
+            // Check each part separately
+            for (const coursePart of courseParts) {
+              // Exact match
+              if (coursePart === studentProgram) return true;
+              
+              // Field name matching (e.g., "Computer Science" in "Diploma Computer Science")
+              const programWords = studentProgram.split(/\s+/);
+              const courseWords = coursePart.split(/\s+/);
+              
+              // Extract field name (removing education level words and common words)
+              const programField = programWords.filter(w => 
+                w !== 'diploma' && w !== 'degree' && w !== 'bachelor' && w !== 'sarjana' && w !== 'muda' && w !== 'in'
+              ).join(' ');
+              const courseField = courseWords.filter(w => 
+                w !== 'diploma' && w !== 'degree' && w !== 'bachelor' && w !== 'sarjana' && w !== 'muda' && w !== 'in'
+              ).join(' ');
+              
+              // Match if field names match (with some fuzzy matching)
+              if (programField && courseField) {
+                if (programField === courseField) return true;
+                if (programField.includes(courseField) && courseField.split(' ').length >= 2) return true;
+                if (courseField.includes(programField) && programField.split(' ').length >= 2) return true;
+              }
+            }
+            
+            return false;
           });
 
       console.log(`🔍 Public: Checking scholarship: ${scholarship.title}`, {
@@ -782,18 +1039,32 @@ router.post("/public-matches", async (req, res) => {
         hasCourseConstraint
       });
 
-      // Only include scholarships that pass all filters
+      // Check if scholarship passes all filters
       if (deadlineOk && cgpaOk && programOk) {
         matches.push({ scholarship });
         console.log(`✅ Public: Match found: ${scholarship.title}`);
       } else {
-        console.log(`❌ Public: Filtered out: ${scholarship.title} (Deadline: ${deadlineOk}, CGPA: ${cgpaOk}, Program: ${programOk})`);
-        filteredCount++;
+        // Add to non-matches with reasons
+        const reasons = [];
+        if (!cgpaOk) reasons.push(`CGPA too low (requires ${minGpa}, you have ${studentCgpa})`);
+        if (!programOk) {
+          if (validCourses.length > 0) {
+            reasons.push(`Program doesn't match (requires: ${validCourses.slice(0, 3).join(', ')}${validCourses.length > 3 ? '...' : ''})`);
+          } else {
+            reasons.push('Program requirements not specified');
+          }
+        }
+        
+        nonMatches.push({ 
+          scholarship,
+          reasons
+        });
+        console.log(`❌ Public: Filtered out: ${scholarship.title} (Reasons: ${reasons.join('; ')})`);
       }
     }
 
-    console.log(`📊 Public filtering results: ${matches.length} matches, ${filteredCount} filtered out`);
-    res.json(matches);
+    console.log(`📊 Public filtering results: ${matches.length} matches, ${nonMatches.length} non-matches, ${expiredCount} expired`);
+    res.json({ matches, nonMatches });
   } catch (error) {
     console.error("Public matches error:", error);
     res.status(500).json({ message: "Server error" });

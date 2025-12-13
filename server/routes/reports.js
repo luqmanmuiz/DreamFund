@@ -2,6 +2,7 @@ const express = require("express")
 const User = require("../models/User")
 const Scholarship = require("../models/Scholarship")
 const adminAuth = require("../middleware/adminAuth")
+const axios = require("axios")
 const router = express.Router()
 
 // Get dashboard statistics
@@ -11,6 +12,22 @@ router.get("/stats", adminAuth, async (req, res) => {
     const totalScholarships = await Scholarship.countDocuments()
     const activeScholarships = await Scholarship.countDocuments({ status: "active" })
     const totalApplications = await Scholarship.aggregate([{ $unwind: "$applicants" }, { $count: "total" }])
+
+    // Fetch guest analytics
+    let guestStats = {
+      totalCreated: 0,
+      activeNow: 0,
+      createdToday: 0
+    };
+    
+    try {
+      const guestResponse = await axios.get('http://localhost:5000/api/guests/analytics/stats');
+      if (guestResponse.data.success) {
+        guestStats = guestResponse.data.analytics;
+      }
+    } catch (error) {
+      console.error('Failed to fetch guest analytics:', error.message);
+    }
 
     const recentUsers = await User.find({ role: "user" })
       .select("name email createdAt")
@@ -47,8 +64,11 @@ router.get("/stats", adminAuth, async (req, res) => {
         activeScholarships,
         totalApplications: totalApplications[0]?.total || 0,
       },
+      guestStats,
       recentUsers,
       recentApplications,
+      guestMode: totalUsers === 0,
+      message: totalUsers === 0 ? "System operating in guest mode. No user registration required." : null
     })
   } catch (error) {
     console.error("Get stats error:", error)
@@ -56,9 +76,20 @@ router.get("/stats", adminAuth, async (req, res) => {
   }
 })
 
-// Get user analytics
+// Get user analytics - Update to handle no users
 router.get("/users", adminAuth, async (req, res) => {
   try {
+    const totalUsers = await User.countDocuments({ role: "user" })
+    
+    if (totalUsers === 0) {
+      return res.json({
+        usersByMonth: [],
+        usersByMajor: [],
+        guestMode: true,
+        message: "No user data available. System operates in guest mode."
+      })
+    }
+
     const usersByMonth = await User.aggregate([
       {
         $match: { role: "user" },
@@ -98,6 +129,7 @@ router.get("/users", adminAuth, async (req, res) => {
     res.json({
       usersByMonth,
       usersByMajor,
+      guestMode: false
     })
   } catch (error) {
     console.error("Get user analytics error:", error)

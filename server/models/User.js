@@ -50,11 +50,6 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    authMethod: {
-      type: String,
-      enum: ["password", "otp"],
-      default: "otp",
-    },
   },
   {
     timestamps: true,

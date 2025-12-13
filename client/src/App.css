@@ -297,13 +297,6 @@
   transform: translateY(-2px);
 }
 
-.scholarship-amount {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #10b981;
-  margin-bottom: 0.5rem;
-}
-
 .scholarship-title {
   font-size: 1.2rem;
   font-weight: 600;

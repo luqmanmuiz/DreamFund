@@ -29,7 +29,7 @@ class ScholarshipScraper {
           u.hash = '';
           // keep query if it's pagination like ?page=, drop others
           const params = new URLSearchParams(u.search);
-          const pageParam = params.get('page');
+          const pageParam = params.get('page');we
           u.search = pageParam ? `?page=${pageParam}` : '';
           let out = u.toString();
           if (out.endsWith('/')) out = out.slice(0, -1);
@@ -303,7 +303,7 @@ class ScholarshipScraper {
       let deadline = null;
       
       // Method 1: Look for the specific layout pattern in afterschool.my
-      // The deadline appears to be in a format like "Study Level | Where to Study | Deadline | Amount"
+      // The deadline appears to be in a format like "Study Level | Where to Study | Deadline"
       // IMPORTANT: Exclude JSON/app content like __NEXT_DATA__ and any script/style/noscript content
       const sanitizedBody = $('body')
         .clone()
@@ -612,18 +612,6 @@ class ScholarshipScraper {
         }
       });
 
-      // Extract amount with better parsing
-      let amount = 0;
-      const amountMatch = pageText.match(
-        /(?:RM|MYR|\$|USD|SGD)\s*[\d,]+(?:\.\d{2})?/i
-      );
-      if (amountMatch) {
-        const numStr = amountMatch[0]
-          .replace(/[^\d,\.]/g, "")
-          .replace(/,/g, "");
-        amount = parseFloat(numStr) || 0;
-      }
-
       // Extract minimum CGPA/GPA requirement if mentioned on the page
       // Accept decimals like 3.50, 3.00, 3.33 and reasonable range (2.00 - 4.00)
       let minGPAFromPage = null;
@@ -708,66 +696,137 @@ class ScholarshipScraper {
       let eligibleCourses = [];
       const normalizeCourse = (s) => s.replace(/\s+/g, ' ').trim();
 
-      // 1) Look for sections likely titled "Preferred Discipline", "Eligible Courses", "Fields of Study"
-      const possibleSectionHeadings = [
-        'preferred discipline', 'preferred disciplines', 'eligible courses', 'eligible programmes', 'fields',
-        'field of study', 'fields of study', 'courses', 'programmes', 'programs', 'disciplines', 'areas of study'
+      // Check for "open to all" / "all fields" statements FIRST
+      const openToAllPatterns = [
+        /open to all (courses|programmes|programs|fields|disciplines)/i,
+        /all (courses|programmes|programs|fields|disciplines) are eligible/i,
+        /available for all (courses|programmes|programs|fields|disciplines)/i,
+        /available for all .{1,100}(programmes|programs|courses)/i, // TAR UC: "Available for all Foundation, Diploma and Bachelor Degree programmes"
+        /open for all .{1,100}(degrees|courses|programmes|programs)/i, // KFC: "open for all undergraduate degrees"
+        /any (course|programme|program|field|discipline)/i,
+        /not restricted to any (course|programme|program|field|discipline)/i,
+        /no specific (course|programme|program|field|discipline) requirement/i
       ];
+      
+      const hasOpenToAll = openToAllPatterns.some(pattern => pattern.test(pageText));
+      if (hasOpenToAll) {
+        console.log(`   ✓ Detected "open to all" statement for ${title}`);
+        eligibleCourses = ["All Fields"];
+      } else {
+        // 1) Look for sections likely titled "Preferred Discipline", "Eligible Courses", "Fields of Study"
+        const possibleSectionHeadings = [
+          'preferred discipline', 'preferred disciplines', 'eligible courses', 'eligible programmes', 'fields',
+          'field of study', 'fields of study', 'courses', 'programmes', 'programs', 'disciplines', 'areas of study'
+        ];
 
-      $('h1, h2, h3, h4, h5, h6, strong, b').each((i, el) => {
-        if (eligibleCourses.length > 0) return; // stop at first good section
-        const headingText = $(el).text().toLowerCase().trim();
-        if (possibleSectionHeadings.some(k => headingText.includes(k))) {
-          // gather list items or bullet-like lines following the heading
-          const container = $(el).closest('section, div, article').length ? $(el).closest('section, div, article') : $(el).parent();
-          const items = [];
-          container.find('li').each((j, li) => {
-            const t = normalizeCourse($(li).text());
-            if (t && t.length <= 100) items.push(t);
-          });
-          if (items.length === 0) {
-            // fallback: split paragraphs by newline or bullet characters
-            const para = container.find('p').first().text();
-            if (para) {
-              para.split(/[\n•·\-\u2022]/).map(normalizeCourse).forEach(v => {
-                if (v && v.length <= 100) items.push(v);
-              });
+        // Check headings, divs, and paragraphs (some sites use <div> or <p> instead of proper headings)
+        const allCandidates = []; // Collect all possible course lists
+        
+        $('h1, h2, h3, h4, h5, h6, strong, b, div, p').each((i, el) => {
+          const headingText = $(el).text().toLowerCase().trim();
+          
+          // Only check if text is short enough to be a heading (not entire page content)
+          if (headingText.length > 200) return;
+          
+          if (possibleSectionHeadings.some(k => headingText.includes(k))) {
+            // gather list items or bullet-like lines following the heading
+            const container = $(el).closest('section, div, article').length ? $(el).closest('section, div, article') : $(el).parent();
+            const items = [];
+            container.find('li').each((j, li) => {
+              const t = normalizeCourse($(li).text());
+              if (t && t.length <= 100) items.push(t);
+            });
+            
+            if (items.length === 0) {
+              // fallback: split paragraphs by newline or bullet characters
+              const para = container.find('p').first().text();
+              if (para) {
+                para.split(/[\n•·\-\u2022]/).map(normalizeCourse).forEach(v => {
+                  if (v && v.length <= 100) items.push(v);
+                });
+              }
+            }
+            
+            if (items.length > 0) {
+              allCandidates.push(items);
             }
           }
-          // filter noise
-          eligibleCourses = items
-            .map(s => s.replace(/^[-•·]\s*/, ''))
-            .filter(s => s && s.length > 1)
-            .slice(0, 50);
+        });
+        
+        // Filter out criteria lists and pick the best candidate
+        const criteriaKeywords = ['must be', 'must have', 'applicants', 'demonstrate', 'possess', 'competent', 'aged', 'citizen'];
+        
+        for (const candidate of allCandidates) {
+          const firstItem = candidate[0] ? candidate[0].toLowerCase() : '';
+          const looksLikeCriteria = criteriaKeywords.some(keyword => firstItem.includes(keyword));
+          
+          if (!looksLikeCriteria) {
+            // This looks like a course list!
+            eligibleCourses = candidate
+              .map(s => s.replace(/^[-•·]\s*/, ''))
+              .filter(s => s && s.length > 1)
+              .slice(0, 50);
+            break; // Stop at first non-criteria list
+          }
         }
-      });
+        
+        // 1.5) If still empty, search ALL lists on page and pick ones that look like courses
+        if (eligibleCourses.length === 0) {
+          const courseKeywords = ['engineering', 'science', 'business', 'accounting', 'medicine', 'law', 'education', 'arts', 'technology', 'management', 'surveying', 'architecture', 'design'];
+          const navigationKeywords = ['about us', 'contact', 'home', 'apply', 'courses', 'scholarship', 'institution', 'university', 'college'];
+          
+          $('ul, ol').each((i, list) => {
+            if (eligibleCourses.length > 0) return;
+            
+            const items = [];
+            $(list).find('li').each((j, li) => {
+              const t = normalizeCourse($(li).text());
+              if (t && t.length >= 3 && t.length <= 100) items.push(t);
+            });
+            
+            if (items.length >= 3 && items.length <= 30) {
+              const firstItem = items[0].toLowerCase();
+              const looksLikeCriteria = criteriaKeywords.some(k => firstItem.includes(k));
+              const looksLikeNav = navigationKeywords.some(k => firstItem.includes(k));
+              const looksLikeCourses = courseKeywords.some(k => firstItem.includes(k));
+              
+              if (!looksLikeCriteria && !looksLikeNav && looksLikeCourses) {
+                eligibleCourses = items
+                  .map(s => s.replace(/^[-•·]\s*/, ''))
+                  .filter(s => s && s.length > 1)
+                  .slice(0, 50);
+              }
+            }
+          });
+        }
 
-      // 2) If still empty, try extracting from sentences like "fields such as A, B, and C"
-      if (eligibleCourses.length === 0) {
-        const sources = [];
-        sources.push(pageText);
-        const sentenceRx = /(fields|disciplines|areas|courses)[^\.\n]{0,40}\b(such as|like|include|including|are|eligible|comprise|cover)\b([^\.\n]{10,200})/i;
-        const splitCandidates = (segment) => {
-          return segment
-            .replace(/\(.*?\)/g, "")
-            .split(/,|\band\b|\bor\b|\u2022|\|/i)
-            .map(s => normalizeCourse(s))
-            .map(s => s.replace(/^and\s+/i, '').replace(/^or\s+/i, ''))
-            .filter(Boolean);
-        };
-        const isTooGeneric = (s) => /^(fields|disciplines|courses|areas|more|etc)\b/i.test(s) || s.length < 3;
-        const looksLikeCss = (s) => /[{;}]/.test(s) || /\.[a-z0-9_-]{2,}/i.test(s) || /display\s*:/i.test(s);
-        for (const src of sources) {
-          const m = src.match(sentenceRx);
-          if (m && m[3]) {
-            const parts = splitCandidates(m[3]);
-            const cleaned = parts
-              .map(s => s.replace(/^of\s+/i, ''))
-              .map(s => s.replace(/\s*and\s*$/i, ''))
-              .filter(s => !isTooGeneric(s) && !looksLikeCss(s) && s.length <= 60);
-            if (cleaned.length) {
-              eligibleCourses = Array.from(new Set(cleaned));
-              break;
+        // 2) If still empty, try extracting from sentences like "fields such as A, B, and C"
+        if (eligibleCourses.length === 0) {
+          const sources = [];
+          sources.push(pageText);
+          const sentenceRx = /(fields|disciplines|areas|courses)[^\.\n]{0,40}\b(such as|like|include|including|are|eligible|comprise|cover)\b([^\.\n]{10,200})/i;
+          const splitCandidates = (segment) => {
+            return segment
+              .replace(/\(.*?\)/g, "")
+              .split(/,|\band\b|\bor\b|\u2022|\|/i)
+              .map(s => normalizeCourse(s))
+              .map(s => s.replace(/^and\s+/i, '').replace(/^or\s+/i, ''))
+              .filter(Boolean);
+          };
+          const isTooGeneric = (s) => /^(fields|disciplines|courses|areas|more|etc)\b/i.test(s) || s.length < 3;
+          const looksLikeCss = (s) => /[{;}]/.test(s) || /\.[a-z0-9_-]{2,}/i.test(s) || /display\s*:/i.test(s);
+          for (const src of sources) {
+            const m = src.match(sentenceRx);
+            if (m && m[3]) {
+              const parts = splitCandidates(m[3]);
+              const cleaned = parts
+                .map(s => s.replace(/^of\s+/i, ''))
+                .map(s => s.replace(/\s*and\s*$/i, ''))
+                .filter(s => !isTooGeneric(s) && !looksLikeCss(s) && s.length <= 60);
+              if (cleaned.length) {
+                eligibleCourses = Array.from(new Set(cleaned));
+                break;
+              }
             }
           }
         }
@@ -776,6 +835,8 @@ class ScholarshipScraper {
       // Final sanitation: remove nav/ads/css noise and overly long entries
       const stopwords = [
         'advertise', 'private university', 'public university', 'home', 'institutions', 'contact us', 'apply now',
+        'browse by', 'filter by', 'search by', 'view all', 'read more', 'learn more', 'find out more',
+        'scholarship', 'scholarships', 'application', 'deadline', 'about us', 'terms', 'privacy'
       ];
       const looksLikeCss = (s) => /[{;}]/.test(s) || /\.[a-z0-9_-]{2,}/i.test(s) || /display\s*:/i.test(s);
       const nonLetterRatio = (s) => {
@@ -787,44 +848,52 @@ class ScholarshipScraper {
         return /\b(STPM|A-Level|UEC|O-Level|SPM|IGCSE|IB)\b/i.test(s) && 
                /\d+\s*A['s]*/i.test(s); // Contains patterns like "3As", "8A's", "5 As"
       };
-      if (Array.isArray(eligibleCourses) && eligibleCourses.length) {
+      // Detect navigation/menu items (usually short and generic)
+      const looksLikeNav = (s) => {
+        const lower = s.toLowerCase();
+        return (
+          s.length < 3 || // Too short
+          /^(home|about|contact|apply|login|register|search|filter|browse)$/i.test(lower) ||
+          /click here|view|see|more|less/i.test(lower)
+        );
+      };
+      if (Array.isArray(eligibleCourses) && eligibleCourses.length && eligibleCourses[0] !== "All Fields") {
         eligibleCourses = eligibleCourses
           .map(normalizeCourse)
           .filter((s) => s && s.length >= 2 && s.length <= 80)
           .filter((s) => !looksLikeCss(s))
           .filter((s) => !looksLikeGrade(s)) // Filter out grade requirements
+          .filter((s) => !looksLikeNav(s)) // Filter out navigation items
           .filter((s) => nonLetterRatio(s) < 0.5)
           .filter((s) => !stopwords.some(w => s.toLowerCase().includes(w)))
           .map((s) => s.replace(/^[-•·\s]+/, ''));
       }
 
-      // HYBRID APPROACH: Use Ollama AI if scraper found insufficient courses
+      // AI-FIRST APPROACH: Always use Ollama AI for course extraction (except "All Fields")
       const ollamaEnabled = await isOllamaAvailable();
       // Use globalText for AI (more complete) instead of pageText (may be truncated)
       const textForAI = globalText && globalText.length > pageText.length ? globalText : pageText;
-      const shouldUseAI = ollamaEnabled && 
-                          (!eligibleCourses || eligibleCourses.length < 3) && 
-                          textForAI.length > 500;
+      
+      // Only skip AI if we already detected "All Fields" from scraper patterns
+      const alreadyDetectedAllFields = eligibleCourses && eligibleCourses.length === 1 && eligibleCourses[0] === "All Fields";
+      const shouldUseAI = ollamaEnabled && !alreadyDetectedAllFields && textForAI.length > 500;
       
       if (shouldUseAI) {
-
+        console.log(`   🤖 Using AI to extract eligible courses for ${title}`);
         try {
           const aiCourses = await extractCoursesWithOllama(textForAI, url);
           if (aiCourses && aiCourses.length > 0) {
             eligibleCourses = aiCourses;
-
+            console.log(`   ✓ AI extracted ${aiCourses.length} courses`);
           }
         } catch (aiError) {
-          console.error('Ollama extraction failed, using scraper result:', aiError.message);
+          console.error('   ✗ Ollama extraction failed, using scraper result:', aiError.message);
+          // Fallback to scraper result if AI fails
         }
-      } else if (eligibleCourses && eligibleCourses.length >= 3 && ollamaEnabled) {
-        // Optional: Validate scraped courses with Ollama
-
-        try {
-          eligibleCourses = await validateCoursesWithOllama(eligibleCourses);
-        } catch (validationError) {
-          console.error('Ollama validation failed, keeping scraped result:', validationError.message);
-        }
+      } else if (alreadyDetectedAllFields) {
+        console.log(`   ✓ Already detected "All Fields" from patterns, skipping AI`);
+      } else if (!ollamaEnabled) {
+        console.log(`   ⚠ Ollama not available, using scraper result`);
       }
 
       // If still empty after all extraction attempts, set to null
@@ -834,7 +903,6 @@ class ScholarshipScraper {
 
       return {
         title,
-        amount,
         deadline: deadlineDate,
         status: "active",
         requirements: {

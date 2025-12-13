@@ -10,7 +10,12 @@ router.get("/", adminAuth, async (req, res) => {
       .select("-password")
       .populate("scholarshipMatches.scholarship")
       .sort({ createdAt: -1 })
-    res.json(users)
+    
+    // Return empty array with info message if no users
+    res.json({
+      users: users,
+      message: users.length === 0 ? "No registered users. System currently operates in guest mode without user registration." : null
+    })
   } catch (error) {
     console.error("Get users error:", error)
     res.status(500).json({ message: "Server error" })

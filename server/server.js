@@ -82,11 +82,11 @@ app.use('/uploads', express.static(uploadsDir))
 app.use('/api/upload', require('./routes/upload'))
 app.use('/api/extract', require('./routes/extract'))
 app.use('/api/auth', require('./routes/auth'))
-app.use('/api/otp', require('./routes/otpAuth'))
 app.use('/api/users', require('./routes/users'))
 app.use('/api/scholarships', require('./routes/scholarships'))
 app.use('/api/reports', require('./routes/reports'))
 app.use('/api/clicks', require('./routes/clickTracking'))
+app.use('/api/guests', require('./routes/guests'))
 
 // Health check endpoint with DB status
 app.get('/api/health', (req, res) => {

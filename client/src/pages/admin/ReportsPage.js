@@ -4,10 +4,12 @@ import { useState, useEffect } from "react"
 import { useAuth } from "../../contexts/AuthContext"
 import axios from "axios"
 import AdminLayout from "../../components/AdminLayout"
+import { HiOutlineInformationCircle, HiOutlineChartBarSquare, HiOutlineDocumentArrowDown } from "react-icons/hi2"
 
 const ReportsPage = () => {
   const { user, logout } = useAuth()
   const [stats, setStats] = useState({})
+  const [guestStats, setGuestStats] = useState(null)
   const [userAnalytics, setUserAnalytics] = useState({})
   const [loading, setLoading] = useState(true)
 
@@ -20,6 +22,7 @@ const ReportsPage = () => {
         ])
 
         setStats(statsResponse.data.stats)
+        setGuestStats(statsResponse.data.guestStats)
         setUserAnalytics(analyticsResponse.data)
       } catch (error) {
         console.error("Failed to fetch reports:", error)
@@ -41,6 +44,31 @@ const ReportsPage = () => {
 
   return (
     <AdminLayout title="Reports & Analytics">
+      {/* Guest Mode Banner */}
+      {userAnalytics.guestMode && (
+        <div
+          style={{
+            background: "#dbeafe",
+            border: "1px solid #93c5fd",
+            borderRadius: "8px",
+            padding: "1rem 1.5rem",
+            marginBottom: "2rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.75rem",
+          }}
+        >
+          <HiOutlineInformationCircle className="w-6 h-6 text-blue-600" />
+          <div>
+            <strong style={{ color: "#1e40af" }}>Guest Mode Active:</strong>
+            <span style={{ color: "#1e40af", marginLeft: "0.5rem" }}>
+              System operates without user registration. All analytics below show guest session data.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Stats Grid */}
       <div
         style={{
           display: "grid",
@@ -53,69 +81,249 @@ const ReportsPage = () => {
           style={{
             background: "white",
             padding: "1.5rem",
-            borderRadius: "8px",
+            borderRadius: "12px",
             border: "1px solid #e5e7eb",
             textAlign: "center",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
           }}
         >
-          <div style={{ fontSize: "2rem", fontWeight: "700", color: "#2563eb" }}>{stats.totalUsers}</div>
-          <div style={{ color: "#6b7280", fontSize: "0.9rem" }}>Total Users</div>
+          <div style={{ fontSize: "2.5rem", fontWeight: "800", color: "#2563eb", marginBottom: "0.5rem" }}>
+            {stats.totalScholarships || 0}
+          </div>
+          <div style={{ color: "#6b7280", fontSize: "0.9rem", fontWeight: "600" }}>Total Scholarships</div>
         </div>
+        
         <div
           style={{
             background: "white",
             padding: "1.5rem",
-            borderRadius: "8px",
+            borderRadius: "12px",
             border: "1px solid #e5e7eb",
             textAlign: "center",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
           }}
         >
-          <div style={{ fontSize: "2rem", fontWeight: "700", color: "#2563eb" }}>{stats.totalScholarships}</div>
-          <div style={{ color: "#6b7280", fontSize: "0.9rem" }}>Total Scholarships</div>
+          <div style={{ fontSize: "2.5rem", fontWeight: "800", color: "#10b981", marginBottom: "0.5rem" }}>
+            {stats.activeScholarships || 0}
+          </div>
+          <div style={{ color: "#6b7280", fontSize: "0.9rem", fontWeight: "600" }}>Active Scholarships</div>
         </div>
-        <div
-          style={{
-            background: "white",
-            padding: "1.5rem",
-            borderRadius: "8px",
-            border: "1px solid #e5e7eb",
-            textAlign: "center",
-          }}
-        >
-          <div style={{ fontSize: "2rem", fontWeight: "700", color: "#2563eb" }}>{stats.activeScholarships}</div>
-          <div style={{ color: "#6b7280", fontSize: "0.9rem" }}>Active Scholarships</div>
-        </div>
-        <div
-          style={{
-            background: "white",
-            padding: "1.5rem",
-            borderRadius: "8px",
-            border: "1px solid #e5e7eb",
-            textAlign: "center",
-          }}
-        >
-          <div style={{ fontSize: "2rem", fontWeight: "700", color: "#2563eb" }}>{stats.totalApplications}</div>
-          <div style={{ color: "#6b7280", fontSize: "0.9rem" }}>Total Applications</div>
-        </div>
+
+        {guestStats && (
+          <>
+            <div
+              style={{
+                background: "white",
+                padding: "1.5rem",
+                borderRadius: "12px",
+                border: "1px solid #e5e7eb",
+                textAlign: "center",
+                boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+              }}
+            >
+              <div style={{ fontSize: "2.5rem", fontWeight: "800", color: "#f59e0b", marginBottom: "0.5rem" }}>
+                {guestStats.totalCreated}
+              </div>
+              <div style={{ color: "#6b7280", fontSize: "0.9rem", fontWeight: "600" }}>Total Guest Users</div>
+            </div>
+
+            <div
+              style={{
+                background: "white",
+                padding: "1.5rem",
+                borderRadius: "12px",
+                border: "1px solid #e5e7eb",
+                textAlign: "center",
+                boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+              }}
+            >
+              <div style={{ fontSize: "2.5rem", fontWeight: "800", color: "#8b5cf6", marginBottom: "0.5rem" }}>
+                {guestStats.activeNow}
+              </div>
+              <div style={{ color: "#6b7280", fontSize: "0.9rem", fontWeight: "600" }}>Active Sessions</div>
+            </div>
+          </>
+        )}
       </div>
 
-      {userAnalytics.usersByMonth && (
+      {/* Guest Analytics Section */}
+      {guestStats && userAnalytics.guestMode && (
         <div
           style={{
             background: "white",
-            borderRadius: "8px",
+            borderRadius: "12px",
             border: "1px solid #e5e7eb",
             marginBottom: "2rem",
             overflow: "hidden",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
           }}
         >
           <h3
             style={{
-              padding: "1rem 1.5rem",
+              padding: "1.5rem",
               margin: 0,
               borderBottom: "1px solid #e5e7eb",
-              fontSize: "1.1rem",
-              fontWeight: "600",
+              fontSize: "1.25rem",
+              fontWeight: "700",
+              color: "#1f2937",
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}
+          >
+            <HiOutlineChartBarSquare className="w-6 h-6 text-blue-600" />
+            Guest Session Analytics
+          </h3>
+          <div style={{ padding: "2rem" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+                gap: "2rem",
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontSize: "3rem",
+                    fontWeight: "800",
+                    color: "#2563eb",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  {guestStats.totalCreated}
+                </div>
+                <div style={{ color: "#6b7280", fontSize: "1rem", fontWeight: "600", marginBottom: "0.5rem" }}>
+                  Total Guests Created
+                </div>
+                <div style={{ color: "#9ca3af", fontSize: "0.875rem" }}>
+                  All-time count of transcript uploads
+                </div>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    fontSize: "3rem",
+                    fontWeight: "800",
+                    color: "#10b981",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  {guestStats.activeNow}
+                </div>
+                <div style={{ color: "#6b7280", fontSize: "1rem", fontWeight: "600", marginBottom: "0.5rem" }}>
+                  Active Sessions
+                </div>
+                <div style={{ color: "#9ca3af", fontSize: "0.875rem" }}>
+                  Currently active guest sessions
+                </div>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    fontSize: "3rem",
+                    fontWeight: "800",
+                    color: "#f59e0b",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  {guestStats.createdToday}
+                </div>
+                <div style={{ color: "#6b7280", fontSize: "1rem", fontWeight: "600", marginBottom: "0.5rem" }}>
+                  Created Today
+                </div>
+                <div style={{ color: "#9ca3af", fontSize: "0.875rem" }}>
+                  New uploads in the last 24 hours
+                </div>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    fontSize: "3rem",
+                    fontWeight: "800",
+                    color: "#6b7280",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  {guestStats.totalExpired}
+                </div>
+                <div style={{ color: "#6b7280", fontSize: "1rem", fontWeight: "600", marginBottom: "0.5rem" }}>
+                  Expired Sessions
+                </div>
+                <div style={{ color: "#9ca3af", fontSize: "0.875rem" }}>
+                  Sessions that have expired (24h+)
+                </div>
+              </div>
+            </div>
+
+            {/* Session Retention Info */}
+            <div
+              style={{
+                marginTop: "2rem",
+                padding: "1.5rem",
+                background: "#f0f9ff",
+                border: "1px solid #bae6fd",
+                borderRadius: "8px",
+              }}
+            >
+              <h4 style={{ margin: "0 0 1rem 0", color: "#0369a1", fontSize: "1.1rem", fontWeight: "700" }}>
+                💡 Session Retention Insights
+              </h4>
+              <div style={{ display: "grid", gap: "0.75rem", color: "#075985", fontSize: "0.95rem" }}>
+                <div>
+                  <strong>Retention Rate:</strong>{" "}
+                  {guestStats.totalCreated > 0
+                    ? ((guestStats.activeNow / guestStats.totalCreated) * 100).toFixed(1)
+                    : 0}%
+                  <span style={{ marginLeft: "0.5rem", color: "#0891b2" }}>
+                    ({guestStats.activeNow} active / {guestStats.totalCreated} total)
+                  </span>
+                </div>
+                <div>
+                  <strong>Expiration Rate:</strong>{" "}
+                  {guestStats.totalCreated > 0
+                    ? ((guestStats.totalExpired / guestStats.totalCreated) * 100).toFixed(1)
+                    : 0}%
+                  <span style={{ marginLeft: "0.5rem", color: "#0891b2" }}>
+                    ({guestStats.totalExpired} expired / {guestStats.totalCreated} total)
+                  </span>
+                </div>
+                <div>
+                  <strong>Today's Activity:</strong>{" "}
+                  {guestStats.createdToday} new sessions
+                  <span style={{ marginLeft: "0.5rem", color: "#0891b2" }}>
+                    (Last reset: {guestStats.lastResetDate})
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Show User Analytics Only If Not Guest Mode */}
+      {!userAnalytics.guestMode && userAnalytics.usersByMonth && (
+        <div
+          style={{
+            background: "white",
+            borderRadius: "12px",
+            border: "1px solid #e5e7eb",
+            marginBottom: "2rem",
+            overflow: "hidden",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+          }}
+        >
+          <h3
+            style={{
+              padding: "1.5rem",
+              margin: 0,
+              borderBottom: "1px solid #e5e7eb",
+              fontSize: "1.25rem",
+              fontWeight: "700",
+              color: "#1f2937",
             }}
           >
             User Registration Trends
@@ -141,23 +349,25 @@ const ReportsPage = () => {
         </div>
       )}
 
-      {userAnalytics.usersByMajor && (
+      {!userAnalytics.guestMode && userAnalytics.usersByMajor && (
         <div
           style={{
             background: "white",
-            borderRadius: "8px",
+            borderRadius: "12px",
             border: "1px solid #e5e7eb",
             marginBottom: "2rem",
             overflow: "hidden",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
           }}
         >
           <h3
             style={{
-              padding: "1rem 1.5rem",
+              padding: "1.5rem",
               margin: 0,
               borderBottom: "1px solid #e5e7eb",
-              fontSize: "1.1rem",
-              fontWeight: "600",
+              fontSize: "1.25rem",
+              fontWeight: "700",
+              color: "#1f2937",
             }}
           >
             Popular Majors
@@ -188,15 +398,19 @@ const ReportsPage = () => {
         </div>
       )}
 
+      {/* Export Section */}
       <div
         style={{
           background: "white",
-          borderRadius: "8px",
+          borderRadius: "12px",
           border: "1px solid #e5e7eb",
-          padding: "1.5rem",
+          padding: "2rem",
+          boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
         }}
       >
-        <h3 style={{ margin: "0 0 1rem 0", fontSize: "1.1rem", fontWeight: "600" }}>Export Data</h3>
+        <h3 style={{ margin: "0 0 1rem 0", fontSize: "1.25rem", fontWeight: "700", color: "#1f2937" }}>
+          Export Data
+        </h3>
         <p style={{ color: "#6b7280", marginBottom: "1.5rem", margin: 0 }}>
           Export platform data for external analysis or backup purposes.
         </p>
@@ -205,47 +419,107 @@ const ReportsPage = () => {
             display: "flex",
             gap: "1rem",
             flexWrap: "wrap",
-            marginTop: "1rem",
+            marginTop: "1.5rem",
           }}
         >
+          {!userAnalytics.guestMode && (
+            <button
+              style={{
+                padding: "0.875rem 1.5rem",
+                background: "#f3f4f6",
+                border: "1px solid #d1d5db",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontWeight: "600",
+                fontSize: "0.95rem",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = "#e5e7eb"
+                e.target.style.borderColor = "#9ca3af"
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = "#f3f4f6"
+                e.target.style.borderColor = "#d1d5db"
+              }}
+            >
+              📥 Export Users (CSV)
+            </button>
+          )}
+          
+          {userAnalytics.guestMode && (
+            <button
+              style={{
+                padding: "0.875rem 1.5rem",
+                background: "#f3f4f6",
+                border: "1px solid #d1d5db",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontWeight: "600",
+                fontSize: "0.95rem",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = "#e5e7eb"
+                e.target.style.borderColor = "#9ca3af"
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = "#f3f4f6"
+                e.target.style.borderColor = "#d1d5db"
+              }}
+            >
+              📥 Export Guest Analytics (CSV)
+            </button>
+          )}
+
           <button
             style={{
-              padding: "0.75rem 1rem",
+              padding: "0.875rem 1.5rem",
               background: "#f3f4f6",
               border: "1px solid #d1d5db",
-              borderRadius: "6px",
+              borderRadius: "8px",
               cursor: "pointer",
-              fontWeight: "500",
+              fontWeight: "600",
+              fontSize: "0.95rem",
+              transition: "all 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = "#e5e7eb"
+              e.target.style.borderColor = "#9ca3af"
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = "#f3f4f6"
+              e.target.style.borderColor = "#d1d5db"
             }}
           >
-            Export Users (CSV)
+            📥 Export Scholarships (CSV)
           </button>
+
           <button
             style={{
-              padding: "0.75rem 1rem",
-              background: "#f3f4f6",
-              border: "1px solid #d1d5db",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontWeight: "500",
-            }}
-          >
-            Export Scholarships (CSV)
-          </button>
-          <button
-            style={{
-              padding: "0.75rem 1rem",
+              padding: "0.875rem 1.5rem",
               background: "#2563eb",
               color: "white",
               border: "none",
-              borderRadius: "6px",
+              borderRadius: "8px",
               cursor: "pointer",
-              fontWeight: "600",
-              transition: "all 0.2s",
+              fontWeight: "700",
+              fontSize: "0.95rem",
+              transition: "all 0.3s",
+              boxShadow: "0 2px 4px rgba(37, 99, 235, 0.2)",
             }}
-            onMouseEnter={(e) => e.target.style.background = "#1d4ed8"}
-            onMouseLeave={(e) => e.target.style.background = "#2563eb"}
+            onMouseEnter={(e) => {
+              e.target.style.background = "#1d4ed8"
+              e.target.style.transform = "translateY(-2px)"
+              e.target.style.boxShadow = "0 4px 8px rgba(37, 99, 235, 0.3)"
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = "#2563eb"
+              e.target.style.transform = "translateY(0)"
+              e.target.style.boxShadow = "0 2px 4px rgba(37, 99, 235, 0.2)"
+            }}
           >
+            <HiOutlineDocumentArrowDown className="w-5 h-5 inline" style={{ marginRight: '0.5rem' }} />
             Generate Full Report (PDF)
           </button>
         </div>
