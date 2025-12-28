@@ -20,6 +20,8 @@ import {
   HiOutlineChartBarSquare,
   HiExclamationTriangle,
   HiSparkles,
+  HiOutlineArrowUpTray,
+  HiOutlineTrash,
 } from "react-icons/hi2";
 
 const UploadPage = () => {
@@ -104,7 +106,7 @@ const UploadPage = () => {
     setShareId(null);
 
     try {
-      // Step 1: Upload files to the backend server (port 5000)
+      // Step 1: Upload files
       setMessage("Uploading files...");
       const uploadPromises = files.map(async (file) => {
         const formData = new FormData();
@@ -128,9 +130,9 @@ const UploadPage = () => {
 
       const uploadResults = await Promise.all(uploadPromises);
 
-      // Step 2: Extract data from uploaded files via Node.js backend
+      // Step 2: Extract data
       setExtracting(true);
-      setMessage("Extracting data from documents...");
+      setMessage("AI Analysis in progress...");
 
       const extractionPromises = uploadResults.map(async (result) => {
         try {
@@ -210,7 +212,6 @@ const UploadPage = () => {
         );
       });
 
-      console.log("Valid extraction results:", validResults);
       setExtractedData(validResults);
 
       const serviceUnavailable = validResults.some(
@@ -220,13 +221,11 @@ const UploadPage = () => {
 
       if (serviceUnavailable) {
         setMessage(
-          "Files uploaded but extraction service is unavailable. Please start the Python extraction service on port 5001 and try again."
+          "Files uploaded but extraction service is unavailable. Please start the Python extraction service on port 5001."
         );
       } else if (validResults.length > 0) {
-        // Step 3: Create Guest Profile - ALWAYS attempt this
+        // Step 3: Create Guest Profile
         const latestResult = validResults[validResults.length - 1];
-
-        console.log("Creating guest profile with data:", latestResult);
 
         try {
           const guestResponse = await axios.post(
@@ -253,36 +252,21 @@ const UploadPage = () => {
             }
           );
 
-          console.log("Guest profile response:", guestResponse.data);
-
           if (guestResponse.data.success && guestResponse.data.shareId) {
             setShareId(guestResponse.data.shareId);
-            console.log("Share ID set:", guestResponse.data.shareId);
             setMessage(
-              "Analysis complete! Your unique results link is ready. 🎉"
+              "Analysis successful. Your scholarship matches are ready."
             );
           } else {
-            console.error(
-              "Guest response missing shareId:",
-              guestResponse.data
-            );
             setMessage("Analysis complete, but failed to generate share link.");
           }
         } catch (guestError) {
-          if (guestError.response && guestError.response.status === 404) {
-            setMessage(
-              "Error: Guest API endpoint not found. Please ensure server/routes/guests.js is created and registered in server/index.js."
-            );
-          } else {
-            setMessage("Analysis complete, but failed to save results.");
-          }
+          setMessage("Analysis complete, but failed to save results.");
         }
       }
     } catch (error) {
       if (error.code === "ERR_NETWORK" || error.code === "ECONNREFUSED") {
-        setMessage(
-          "Cannot connect to the server. Please make sure the backend server is running on port 5000. ❌"
-        );
+        setMessage("Cannot connect to the server. Is backend running?");
       } else {
         setMessage(error.response?.data?.message || "Upload failed. ❌");
       }
@@ -309,43 +293,30 @@ const UploadPage = () => {
     );
   };
 
+  // Modern Color Palette
   const getConfidenceColor = (confidence) => {
-    if (confidence >= 0.85) return "#059669";
-    if (confidence >= 0.65) return "#f59e0b";
-    return "#ef4444";
+    if (confidence >= 0.85) return "#10b981"; // Emerald 500
+    if (confidence >= 0.65) return "#f59e0b"; // Amber 500
+    return "#ef4444"; // Red 500
   };
 
   const getConfidenceBg = (confidence) => {
-    if (confidence >= 0.85) return "#d1fae5";
-    if (confidence >= 0.65) return "#fef3c7";
-    return "#fee2e2";
-  };
-
-  const getConfidenceTier = (confidence) => {
-    if (confidence >= 0.85) return "high";
-    if (confidence >= 0.65) return "medium";
-    return "low";
+    if (confidence >= 0.85) return "#ecfdf5"; // Emerald 50
+    if (confidence >= 0.65) return "#fffbeb"; // Amber 50
+    return "#fef2f2"; // Red 50
   };
 
   const getConfidenceLabel = (confidence) => {
-    const tier = getConfidenceTier(confidence);
-    if (tier === "high") return "High Confidence";
-    if (tier === "medium") return "Medium Confidence";
-    return "Low Confidence";
-  };
-
-  const getConfidenceIcon = (confidence) => {
-    const tier = getConfidenceTier(confidence);
-    if (tier === "high") return "✓";
-    if (tier === "medium") return "⚠";
-    return "⚠";
+    if (confidence >= 0.85) return "High";
+    if (confidence >= 0.65) return "Medium";
+    return "Low";
   };
 
   const getMethodLabel = (method) => {
-    if (method === "custom_ner") return "ML Model (Raw)";
-    if (method === "custom_ner_cleaned") return "ML Model (Cleaned)";
-    if (method === "rules") return "Pattern Matching";
-    if (method === "spacy_fallback") return "Fallback NER";
+    if (method === "custom_ner") return "AI Model";
+    if (method === "custom_ner_cleaned") return "AI Model (Cleaned)";
+    if (method === "rules") return "Rules Engine";
+    if (method === "spacy_fallback") return "NLP Fallback";
     return "Unknown";
   };
 
@@ -353,98 +324,93 @@ const UploadPage = () => {
     <div className="page-wrapper">
       <Header navItems={[{ to: "/", label: "Home" }]} />
 
-      <div className="main-content-area">
-        <div className="hero-section">
-          <div className="hero-badge">
-            <HiOutlineDocumentText className="w-8 h-8 text-blue-600" />
-            <span className="hero-badge-text">Document Upload & Analysis</span>
+      <div className="main-container">
+        {/* Header Section */}
+        <div className="header-section fade-in-up">
+          <div className="badge-pill">
+            <HiOutlineDocumentText className="w-4 h-4" />
+            <span>Document Analysis</span>
           </div>
-
-          <h1 className="hero-title">Upload Your Academic Documents</h1>
-
-          <p className="hero-description">
-            Upload transcripts, essays, or recommendation letters. Our AI
-            extracts key information to match you with perfect scholarships.
+          <h1 className="hero-heading">Upload Your Transcript</h1>
+          <p className="hero-subheading">
+            Our AI will scan your academic records to instantly find your GPA,
+            Program, and eligibility for scholarships.
           </p>
         </div>
 
-        <div className="main-card">
+        {/* Main Card */}
+        <div className="content-card fade-in-up delay-100">
+          {/* Status Message Bar */}
           {message && (
             <div
-              className="message-alert"
-              style={{
-                background:
-                  message.includes("success") ||
-                  message.includes("complete") ||
-                  message.includes("ready")
-                    ? "#f0fdf4"
-                    : message.includes("Error") || message.includes("failed")
-                    ? "#fef2f2"
-                    : "#eff6ff",
-              }}
+              className={`status-bar ${
+                message.includes("success") || message.includes("complete")
+                  ? "success"
+                  : message.includes("Error") || message.includes("failed")
+                  ? "error"
+                  : "info"
+              }`}
             >
-              <div className="message-content">
-                {message.includes("success") ||
-                message.includes("complete") ||
-                message.includes("ready") ? (
-                  <HiCheckCircle className="w-5 h-5 text-green-600 inline" />
+              <div className="status-icon">
+                {message.includes("success") || message.includes("complete") ? (
+                  <HiCheckCircle className="w-5 h-5" />
                 ) : message.includes("Error") || message.includes("failed") ? (
-                  <HiXCircle className="w-5 h-5 text-red-600 inline" />
+                  <HiXCircle className="w-5 h-5" />
                 ) : (
-                  <HiOutlineInformationCircle className="w-5 h-5 text-blue-600 inline" />
+                  <HiOutlineInformationCircle className="w-5 h-5" />
                 )}
-                <span style={{ marginLeft: "0.5rem" }}>{message}</span>
               </div>
-              {(uploading || extracting) && (
-                <div className="progress-bar-container">
-                  <div className="progress-bar-track">
-                    <div className="progress-bar-fill" />
-                  </div>
-                </div>
-              )}
+              <span>{message}</span>
             </div>
           )}
 
-          <div className="card-padding">
+          {/* Progress Bar */}
+          {(uploading || extracting) && (
+            <div className="progress-container">
+              <div className="progress-bar"></div>
+            </div>
+          )}
+
+          <div className="card-body">
+            {/* Upload Zone */}
             <div
-              className={`upload-area ${dragOver ? "dragover" : ""}`}
+              className={`upload-zone ${dragOver ? "drag-active" : ""} ${
+                uploading ? "disabled" : ""
+              }`}
               onDrop={handleDrop}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
-              onClick={() => fileInputRef.current?.click()}
-              style={{
-                opacity: uploading ? 0.6 : 1,
-                pointerEvents: uploading ? "none" : "auto",
-                border: dragOver ? "2px dashed #2563eb" : "2px dashed #d1d5db",
-                background: dragOver ? "#f5f3ff" : "#fafafa",
-              }}
+              onClick={() => !uploading && fileInputRef.current?.click()}
             >
               <div
-                className="upload-icon-wrapper"
-                style={{
-                  background: uploading ? "#fef3c7" : "#ede9fe",
-                }}
+                className={`icon-circle ${
+                  uploading ? "animate-pulse-soft" : ""
+                }`}
               >
                 {uploading ? (
-                  <HiOutlineClock className="w-12 h-12 text-amber-600 animate-pulse" />
+                  <HiOutlineClock className="w-8 h-8 text-amber-600" />
                 ) : (
-                  <HiOutlineCloudArrowUp className="w-12 h-12 text-purple-600" />
+                  <HiOutlineArrowUpTray className="w-8 h-8 text-blue-600" />
                 )}
               </div>
 
-              <h3 className="upload-title">
-                {uploading
-                  ? "Processing your documents..."
-                  : "Drop files here or click to browse"}
-              </h3>
-
-              <p className="upload-specs-text">
-                Supported: PDF only
-                <br />
-                <span className="upload-max-size">
-                  Maximum 10MB • One transcript per upload
-                </span>
-              </p>
+              <div className="upload-text-group">
+                <h3>
+                  {uploading ? (
+                    extracting ? (
+                      "Analyzing Document..."
+                    ) : (
+                      "Uploading..."
+                    )
+                  ) : (
+                    <span>
+                      <span className="link-text">Click to upload</span> or drag
+                      and drop
+                    </span>
+                  )}
+                </h3>
+                <p>PDF only (Max 10MB)</p>
+              </div>
 
               <input
                 ref={fileInputRef}
@@ -456,946 +422,720 @@ const UploadPage = () => {
               />
             </div>
 
+            {/* Selected Files List */}
             {files.length > 0 && (
-              <div className="selected-files-section">
-                <div className="selected-files-header">
-                  <h3 className="selected-files-title">
-                    Selected Files
-                    <span className="file-count-badge">{files.length}</span>
-                  </h3>
+              <div className="file-list-section fade-in">
+                <div className="section-header">
+                  <h4>Attached Files</h4>
                   {!uploading && (
-                    <button onClick={clearAll} className="btn-clear-all">
-                      Clear All
+                    <button onClick={clearAll} className="btn-text">
+                      Remove All
                     </button>
                   )}
                 </div>
-
-                <div className="file-list">
+                <div className="file-items">
                   {files.map((file, index) => (
-                    <div key={index} className="file-item">
-                      <div className="file-info-group">
-                        <div className="file-icon-square">
-                          <HiOutlineDocumentText className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <div className="file-details">
-                          <div className="file-name">{file.name}</div>
-                          <div className="file-size">
-                            {formatFileSize(file.size)}
-                          </div>
-                        </div>
+                    <div key={index} className="file-row">
+                      <div className="file-icon">
+                        <HiOutlineDocumentText className="w-6 h-6 text-blue-500" />
                       </div>
-                      <button
-                        onClick={() => removeFile(index)}
-                        className="btn-remove-file"
-                        disabled={uploading}
-                      >
-                        Remove
-                      </button>
+                      <div className="file-meta">
+                        <span className="name">{file.name}</span>
+                        <span className="size">
+                          {formatFileSize(file.size)}
+                        </span>
+                      </div>
+                      {!uploading && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeFile(index);
+                          }}
+                          className="btn-icon"
+                        >
+                          <HiOutlineTrash className="w-5 h-5" />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
 
-            <div className="upload-button-container">
-              <button
-                onClick={uploadFiles}
-                disabled={uploading || files.length === 0}
-                className="btn-upload-extract"
-              >
-                {uploading ? (
-                  extracting ? (
+                {/* Primary Action Button */}
+                <button
+                  onClick={uploadFiles}
+                  disabled={uploading}
+                  className="btn-primary"
+                >
+                  {uploading ? (
                     <>
-                      <HiMagnifyingGlass className="w-5 h-5 inline" />
-                      <span style={{ marginLeft: "0.5rem" }}>
-                        Extracting Data...
-                      </span>
+                      <div className="spinner-sm"></div>
+                      <span>Processing...</span>
                     </>
                   ) : (
-                    <span>Uploading...</span>
-                  )
-                ) : (
-                  <>
-                    <HiOutlineRocketLaunch className="w-5 h-5 inline" />
-                    <span style={{ marginLeft: "0.5rem" }}>
-                      Upload & Extract {files.length} File
-                      {files.length !== 1 ? "s" : ""}
-                    </span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {extractedData.length > 0 && (
-              <div className="extracted-data-section">
-                <h3 className="extracted-data-title">
-                  <HiOutlineCursorArrowRays className="w-6 h-6 inline text-blue-600" />
-                  <span style={{ marginLeft: "0.5rem" }}>
-                    Extracted Information
-                  </span>
-                </h3>
-
-                {extractedData
-                  .filter(
-                    (data) =>
-                      data && typeof data === "object" && data.fileName
-                  )
-                  .map((data, index) => (
-                    <div
-                      key={`${data.fileName}-${index}`}
-                      className="extraction-card"
-                    >
-                      <div className="extraction-card-header">
-                        <div className="file-icon-square">
-                          <HiOutlineDocumentText className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <h4 className="extraction-file-name">
-                          {data.fileName}
-                        </h4>
-                      </div>
-
-                      {data.error && (
-                        <div className="extraction-error-alert">
-                          <HiExclamationTriangle className="w-5 h-5 text-amber-600 inline" />
-                          <span
-                            className="error-text"
-                            style={{ marginLeft: "0.5rem" }}
-                          >
-                            {data.error}
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="extracted-data-grid">
-                        {[
-                          {
-                            label: "Name",
-                            value: data.name,
-                            confidence: data.confidence?.name,
-                            method: data.extractionMethods?.name,
-                            icon: (
-                              <HiOutlineUser className="w-5 h-5 text-gray-600" />
-                            ),
-                          },
-                          {
-                            label: "CGPA",
-                            value: data.cgpa,
-                            confidence: data.confidence?.cgpa,
-                            method: data.extractionMethods?.cgpa,
-                            icon: (
-                              <HiOutlineChartBarSquare className="w-5 h-5 text-gray-600" />
-                            ),
-                          },
-                          {
-                            label: "Program",
-                            value: data.program,
-                            confidence: data.confidence?.program,
-                            method: data.extractionMethods?.program,
-                            icon: (
-                              <FaGraduationCap className="w-5 h-5 text-gray-600" />
-                            ),
-                          },
-                        ].map((item, idx) => (
-                          <div
-                            key={idx}
-                            className="data-field-card"
-                            style={{
-                              border: `1px solid ${getConfidenceBg(
-                                item.confidence
-                              )}`,
-                              background:
-                                getConfidenceBg(item.confidence) ===
-                                "#fee2e2"
-                                  ? "#fef7f7"
-                                  : getConfidenceBg(item.confidence),
-                            }}
-                          >
-                            <div className="data-field-header">
-                              <span className="data-field-icon">
-                                {item.icon}
-                              </span>
-                              <label className="data-field-label">
-                                {item.label}
-                              </label>
-                            </div>
-
-                            <div className="data-field-value-group">
-                              <span className="data-field-value">
-                                {item.value || "Not found"}
-                              </span>
-                            </div>
-
-                            {/* UPDATED: Footer for bottom alignment */}
-                            {item.confidence > 0 && (
-                              <div className="data-field-footer">
-                                {/* Percentage Badge Moved Here */}
-                                <span
-                                  className="confidence-badge"
-                                  style={{
-                                    backgroundColor: getConfidenceColor(
-                                      item.confidence
-                                    ),
-                                    alignSelf: "flex-start",
-                                    marginBottom: "0.5rem",
-                                  }}
-                                >
-                                  {getConfidenceIcon(item.confidence)}{" "}
-                                  {Math.round(item.confidence * 100)}%
-                                </span>
-
-                                <div className="confidence-details">
-                                  <div>
-                                    <strong>Confidence:</strong>{" "}
-                                    {getConfidenceLabel(item.confidence)}
-                                  </div>
-                                  {item.method && (
-                                    <div>
-                                      <strong>Method:</strong>{" "}
-                                      {getMethodLabel(item.method)}
-                                    </div>
-                                  )}
-                                  {item.confidence < 0.65 && (
-                                    <div className="verification-required-text">
-                                      <HiExclamationTriangle className="w-4 h-4 inline text-amber-600" />
-                                      <span
-                                        style={{ marginLeft: "0.25rem" }}
-                                      >
-                                        Please verify manually
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-
-                      {data.confidence?.overall > 0 && (
-                        <div
-                          className="overall-quality-banner"
-                          style={{
-                            background: getConfidenceBg(
-                              data.confidence.overall
-                            ),
-                            border: `1px solid ${getConfidenceColor(
-                              data.confidence.overall
-                            )}`,
-                          }}
-                        >
-                          <div className="quality-content">
-                            <div className="quality-indicator">
-                              {data.qualityTier === "high" ? (
-                                <HiCheckCircle className="w-5 h-5 text-green-600 inline" />
-                              ) : data.qualityTier === "medium" ? (
-                                <HiExclamationTriangle className="w-5 h-5 text-amber-600 inline" />
-                              ) : (
-                                <HiXCircle className="w-5 h-5 text-red-600 inline" />
-                              )}
-                              <span
-                                className="quality-text"
-                                style={{ marginLeft: "0.5rem" }}
-                              >
-                                Overall Quality:{" "}
-                                {getConfidenceLabel(data.confidence.overall)}
-                              </span>
-                            </div>
-                            <span className="quality-percentage">
-                              {Math.round(data.confidence.overall * 100)}%
-                            </span>
-                          </div>
-                          <div className="progress-bar-overall">
-                            <div
-                              className="progress-bar-fill-overall"
-                              style={{
-                                width: `${Math.round(
-                                  data.confidence.overall * 100
-                                )}%`,
-                                backgroundColor: getConfidenceColor(
-                                  data.confidence.overall
-                                ),
-                              }}
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-
-                <div className="upload-more-container">
-                  <button
-                    className="btn-upload-more"
-                    onClick={() => {
-                      setFiles([]);
-                      setExtractedData([]);
-                      setMessage("");
-                      setShareId(null);
-                    }}
-                  >
-                    <HiOutlineCloudArrowUp className="w-5 h-5 inline" />
-                    <span style={{ marginLeft: "0.5rem" }}>
-                      Upload More Files
-                    </span>
-                  </button>
-                </div>
-
-                {shareId && (
-                  <div className="success-cta-card">
-                    <div className="success-icon">
-                      <HiSparkles className="w-12 h-12 text-green-600" />
-                    </div>
-                    <h3 className="success-title">
-                      Documents processed successfully!
-                    </h3>
-                    <p className="success-description">
-                      Your unique results link is ready. You can access your
-                      matches anytime with this link.
-                    </p>
-                    <div
-                      className="share-link-box"
-                      style={{
-                        background: "white",
-                        padding: "0.75rem",
-                        borderRadius: "8px",
-                        border: "1px solid #bbf7d0",
-                        margin: "1rem 0",
-                        fontFamily: "monospace",
-                        color: "#166534",
-                      }}
-                    >
-                      dreamfund.com/results/{shareId}
-                    </div>
-                    <button
-                      onClick={() => navigate(`/results/${shareId}`)}
-                      className="btn-view-matches"
-                    >
-                      <HiMagnifyingGlass className="w-5 h-5 inline" />
-                      <span style={{ marginLeft: "0.5rem" }}>
-                        View Scholarship Matches
-                      </span>
-                    </button>
-                  </div>
-                )}
+                    <>
+                      <HiOutlineRocketLaunch className="w-5 h-5" />
+                      <span>Start Analysis</span>
+                    </>
+                  )}
+                </button>
               </div>
             )}
           </div>
         </div>
+
+        {/* Results Section */}
+        {extractedData.length > 0 && (
+          <div className="results-container fade-in-up delay-200">
+            <h2 className="section-title">
+              <HiOutlineCursorArrowRays className="w-6 h-6 text-blue-600" />
+              Extraction Results
+            </h2>
+
+            {extractedData.map((data, index) => (
+              <div key={index} className="result-card">
+                {/* Result Header */}
+                <div className="result-header">
+                  <div className="file-identifier">
+                    <HiOutlineDocumentText className="w-5 h-5 text-gray-500" />
+                    <span>{data.fileName}</span>
+                  </div>
+                  {data.confidence?.overall > 0 && (
+                    <div
+                      className="score-pill"
+                      style={{
+                        backgroundColor: getConfidenceBg(
+                          data.confidence.overall
+                        ),
+                        color: getConfidenceColor(data.confidence.overall),
+                        borderColor: getConfidenceColor(
+                          data.confidence.overall
+                        ),
+                      }}
+                    >
+                      <span className="score-val">
+                        {Math.round(data.confidence.overall * 100)}%
+                      </span>
+                      <span className="score-label">Accuracy Score</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Data Grid */}
+                <div className="data-grid">
+                  {[
+                    {
+                      label: "Student Name",
+                      value: data.name,
+                      conf: data.confidence?.name,
+                      method: data.extractionMethods?.name,
+                      icon: <HiOutlineUser />,
+                    },
+                    {
+                      label: "CGPA",
+                      value: data.cgpa,
+                      conf: data.confidence?.cgpa,
+                      method: data.extractionMethods?.cgpa,
+                      icon: <HiOutlineChartBarSquare />,
+                    },
+                    {
+                      label: "Program",
+                      value: data.program,
+                      conf: data.confidence?.program,
+                      method: data.extractionMethods?.program,
+                      icon: <FaGraduationCap />,
+                    },
+                  ].map((item, i) => (
+                    <div key={i} className="data-box">
+                      <div className="data-box-header">
+                        <span className="icon-wrapper">{item.icon}</span>
+                        <span className="label">{item.label}</span>
+                      </div>
+                      <div className="data-value">
+                        {item.value || "Not Found"}
+                      </div>
+                      <div className="data-footer">
+                        <div
+                          className="conf-dot"
+                          style={{
+                            backgroundColor: getConfidenceColor(item.conf),
+                          }}
+                        ></div>
+                        <span>
+                          {getConfidenceLabel(item.conf)} Confidence
+                          {/* ONLY show method if it exists and is valid */}
+                          {item.method &&
+                          getMethodLabel(item.method) !== "Unknown"
+                            ? ` (${getMethodLabel(item.method)})`
+                            : ""}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {data.error && (
+                  <div className="error-banner">
+                    <HiExclamationTriangle className="w-5 h-5" />
+                    {data.error}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {/* Success / Next Steps CTA */}
+            {shareId && (
+              <div className="success-card fade-in-up">
+                <div className="success-content">
+                  <div className="success-icon-lg">
+                    <HiSparkles />
+                  </div>
+                  <h3>Ready for Scholarships!</h3>
+                  <p>
+                    We've matched your profile with our database. View your
+                    matches now.
+                  </p>
+                  <button
+                    onClick={() => navigate(`/results/${shareId}`)}
+                    className="btn-success-lg"
+                  >
+                    View Scholarship Matches
+                  </button>
+                  <div className="share-link">
+                    dreamfund.com/results/{shareId}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <button onClick={clearAll} className="btn-secondary-outline">
+              Upload Another Document
+            </button>
+          </div>
+        )}
       </div>
 
       <style jsx>{`
+        /* Global & Reset */
         .page-wrapper {
           min-height: 100vh;
-          background: #f8fafc;
-          font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
-            "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+          background: radial-gradient(
+              at 0% 0%,
+              hsla(253, 16%, 7%, 1) 0,
+              transparent 50%
+            ),
+            radial-gradient(
+              at 50% 0%,
+              hsla(225, 39%, 30%, 1) 0,
+              transparent 50%
+            ),
+            radial-gradient(
+              at 100% 0%,
+              hsla(339, 49%, 30%, 1) 0,
+              transparent 50%
+            );
+          background-color: #f8fafc;
+          background-image: radial-gradient(
+              at top left,
+              #eff6ff 0%,
+              transparent 40%
+            ),
+            radial-gradient(at bottom right, #f0fdf4 0%, transparent 40%);
+          font-family: "Inter", sans-serif;
+          color: #1e293b;
+          padding-bottom: 4rem;
         }
 
-        .main-content-area {
-          max-width: 1000px;
+        .main-container {
+          max-width: 800px;
           margin: 0 auto;
-          padding: 3rem 2rem 5rem 2rem;
+          padding: 2rem 1.5rem;
         }
 
-        .hero-section {
+        /* Animations */
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .fade-in-up {
+          animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          opacity: 0;
+        }
+        .delay-100 {
+          animation-delay: 0.1s;
+        }
+        .delay-200 {
+          animation-delay: 0.2s;
+        }
+        @keyframes pulseSoft {
+          0%,
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+          50% {
+            transform: scale(0.95);
+            opacity: 0.8;
+          }
+        }
+        .animate-pulse-soft {
+          animation: pulseSoft 2s infinite;
+        }
+
+        /* Header */
+        .header-section {
           text-align: center;
-          margin-bottom: 4rem;
+          margin-bottom: 3rem;
         }
-
-        .hero-badge {
+        .badge-pill {
           display: inline-flex;
           align-items: center;
           gap: 0.5rem;
-          padding: 0.5rem 1rem;
-          background: #eef2ff;
-          border-radius: 50px;
+          padding: 0.35rem 1rem;
+          background: white;
+          border: 1px solid #e2e8f0;
+          border-radius: 999px;
+          color: #2563eb;
+          font-weight: 600;
+          font-size: 0.875rem;
+          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
           margin-bottom: 1.5rem;
         }
-
-        .hero-badge-icon {
-          font-size: 1rem;
-        }
-
-        .hero-badge-text {
-          font-size: 0.875rem;
-          color: #4f46e5;
-          font-weight: 600;
-          letter-spacing: 0.01em;
-        }
-
-        .hero-title {
-          font-size: 2.75rem;
+        .hero-heading {
+          font-size: 2.5rem;
           font-weight: 800;
-          color: #111827;
+          letter-spacing: -0.025em;
+          color: #0f172a;
           margin-bottom: 1rem;
-          line-height: 1.1;
-          letter-spacing: -0.02em;
+          background: -webkit-linear-gradient(135deg, #60a5fa 0%, #2563eb 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
         }
-
-        .hero-description {
+        .hero-subheading {
           font-size: 1.125rem;
-          color: #6b7280;
-          max-width: 600px;
-          margin: 0 auto;
+          color: #64748b;
           line-height: 1.6;
+          max-width: 500px;
+          margin: 0 auto;
         }
 
-        .main-card {
-          background: white;
-          border-radius: 16px;
-          border: 1px solid #e5e7eb;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-        }
-
-        .card-padding {
-          padding: 2.5rem;
-        }
-
-        .message-alert {
-          padding: 1rem 1.5rem;
-          border-bottom: 1px solid #e5e7eb;
-          border-radius: 16px 16px 0 0;
-        }
-
-        .message-content {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-        }
-
-        .message-icon {
-          font-size: 1.25rem;
-        }
-
-        .message-text {
-          font-weight: 600;
-          font-size: 0.95rem;
-        }
-
-        .progress-bar-container {
-          margin-top: 0.75rem;
-        }
-
-        .progress-bar-track {
-          width: 100%;
-          height: 4px;
-          background-color: #e5e7eb;
-          border-radius: 2px;
+        /* Content Card */
+        .content-card {
+          background: rgba(255, 255, 255, 0.8);
+          backdrop-filter: blur(12px);
+          border-radius: 20px;
+          border: 1px solid white;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05),
+            0 8px 10px -6px rgba(0, 0, 0, 0.01);
           overflow: hidden;
         }
 
-        .progress-bar-fill {
-          width: 100%;
-          height: 100%;
-          background-color: #2563eb;
-          border-radius: 2px;
-          animation: pulse-progress 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        /* Status Bar */
+        .status-bar {
+          padding: 0.75rem 1.5rem;
+          font-size: 0.9rem;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          font-weight: 500;
+        }
+        .status-bar.info {
+          background: #eff6ff;
+          color: #1e40af;
+        }
+        .status-bar.success {
+          background: #f0fdf4;
+          color: #166534;
+        }
+        .status-bar.error {
+          background: #fef2f2;
+          color: #991b1b;
         }
 
-        @keyframes pulse-progress {
+        /* Progress Line */
+        .progress-container {
+          height: 3px;
+          background: #e2e8f0;
+          width: 100%;
+          overflow: hidden;
+        }
+        .progress-bar {
+          height: 100%;
+          width: 50%;
+          background: #2563eb;
+          animation: loadingMove 1.5s infinite ease-in-out;
+        }
+        @keyframes loadingMove {
           0% {
             transform: translateX(-100%);
           }
-          50% {
-            transform: translateX(0);
-          }
           100% {
-            transform: translateX(100%);
+            transform: translateX(200%);
           }
         }
 
-        .upload-area {
-          border-radius: 12px;
-          padding: 3rem 2rem;
+        .card-body {
+          padding: 2rem;
+        }
+
+        /* Upload Zone */
+        .upload-zone {
+          border: 2px dashed #cbd5e1;
+          border-radius: 16px;
+          padding: 3rem 1.5rem;
           text-align: center;
           cursor: pointer;
           transition: all 0.2s ease;
+          background: #f8fafc;
+        }
+        .upload-zone:hover:not(.disabled) {
+          border-color: #2563eb;
+          background: #eff6ff;
+        }
+        .upload-zone.drag-active {
+          border-color: #2563eb;
+          background: #eff6ff;
+          transform: scale(0.99);
+        }
+        .upload-zone.disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
         }
 
-        .upload-area.dragover {
-          transform: scale(1.02);
-          box-shadow: 0 0 0 4px #bfdbfe;
-        }
-
-        .upload-icon-wrapper {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
+        .icon-circle {
           width: 64px;
           height: 64px;
-          border-radius: 12px;
-          margin-bottom: 1.5rem;
-          transition: background 0.2s;
+          border-radius: 50%;
+          background: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 1.5rem;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         }
 
-        .upload-icon {
-          font-size: 2rem;
-        }
-
-        .upload-title {
-          font-size: 1.25rem;
-          font-weight: 700;
-          color: #111827;
+        .upload-text-group h3 {
+          font-size: 1.125rem;
+          font-weight: 600;
+          color: #1e293b;
           margin-bottom: 0.5rem;
         }
-
-        .upload-specs-text {
-          color: #6b7280;
-          font-size: 0.95rem;
-          margin: 0;
-          line-height: 1.6;
+        .link-text {
+          color: #2563eb;
+          text-decoration: underline;
+          text-underline-offset: 2px;
+        }
+        .upload-text-group p {
+          color: #94a3b8;
+          font-size: 0.875rem;
         }
 
-        .upload-max-size {
-          font-size: 0.85rem;
-          opacity: 0.8;
-          display: block;
-          margin-top: 0.25rem;
-        }
-
-        .selected-files-section {
+        /* File List */
+        .file-list-section {
           margin-top: 2rem;
         }
-
-        .selected-files-header {
+        .section-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
           margin-bottom: 1rem;
         }
-
-        .selected-files-title {
-          font-size: 1.125rem;
-          font-weight: 700;
-          color: #111827;
-          margin: 0;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .file-count-badge {
-          background: #f3f4f6;
-          color: #4b5563;
-          padding: 0.25rem 0.625rem;
-          border-radius: 12px;
-          font-size: 0.875rem;
-          font-weight: 500;
-        }
-
-        .btn-clear-all {
-          padding: 0.5rem 1rem;
-          font-size: 0.875rem;
-          background: white;
-          color: #dc2626;
-          border: 1px solid #fecaca;
-          border-radius: 8px;
-          cursor: pointer;
+        .section-header h4 {
+          font-size: 0.95rem;
           font-weight: 600;
-          transition: all 0.2s ease;
+          color: #334155;
+        }
+        .btn-text {
+          background: none;
+          border: none;
+          color: #ef4444;
+          font-size: 0.85rem;
+          font-weight: 500;
+          cursor: pointer;
         }
 
-        .btn-clear-all:hover {
-          background: #fef2f2;
-          border-color: #fca5a5;
-        }
-
-        .file-list {
-          display: grid;
-          gap: 0.75rem;
-        }
-
-        .file-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 1rem;
-          background: #fafafa;
-          border-radius: 10px;
-          border: 1px solid #e5e7eb;
-          transition: all 0.2s ease;
-        }
-
-        .file-info-group {
+        .file-row {
           display: flex;
           align-items: center;
           gap: 1rem;
+          padding: 0.75rem;
+          background: white;
+          border: 1px solid #e2e8f0;
+          border-radius: 10px;
+          margin-bottom: 1rem;
+        }
+        .file-icon {
+          padding: 0.5rem;
+          background: #eff6ff;
+          border-radius: 8px;
+        }
+        .file-meta {
           flex: 1;
-          min-width: 0;
+          display: flex;
+          flex-direction: column;
+        }
+        .file-meta .name {
+          font-size: 0.9rem;
+          font-weight: 600;
+          color: #1e293b;
+        }
+        .file-meta .size {
+          font-size: 0.8rem;
+          color: #64748b;
+        }
+        .btn-icon {
+          background: none;
+          border: none;
+          color: #94a3b8;
+          cursor: pointer;
+          padding: 0.25rem;
+          transition: color 0.2s;
+        }
+        .btn-icon:hover {
+          color: #ef4444;
         }
 
-        .file-icon-square {
-          width: 40px;
-          height: 40px;
-          border-radius: 8px;
-          background: #ede9fe;
+        /* Primary Button */
+        .btn-primary {
+          width: 100%;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 1.25rem;
-          flex-shrink: 0;
-        }
-
-        .file-details {
-          flex: 1;
-          min-width: 0;
-        }
-
-        .file-name {
-          font-weight: 600;
-          color: #111827;
-          font-size: 0.95rem;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        .file-size {
-          font-size: 0.85rem;
-          color: #6b7280;
-          margin-top: 0.125rem;
-        }
-
-        .btn-remove-file {
-          padding: 0.5rem 1rem;
-          font-size: 0.875rem;
-          background: white;
-          color: #dc2626;
-          border: 1px solid #fecaca;
-          border-radius: 6px;
-          cursor: pointer;
-          font-weight: 500;
-          transition: all 0.2s ease;
-          flex-shrink: 0;
-        }
-
-        .btn-remove-file:not([disabled]):hover {
-          background: #fef2f2;
-        }
-
-        .upload-button-container {
-          margin-top: 2.5rem;
-          text-align: center;
-        }
-
-        .btn-upload-extract {
-          padding: 1rem 2.5rem;
-          font-size: 1rem;
-          font-weight: 700;
+          gap: 0.5rem;
+          padding: 0.875rem;
           background: #2563eb;
           color: white;
           border: none;
           border-radius: 10px;
+          font-size: 1rem;
+          font-weight: 600;
           cursor: pointer;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
-          opacity: 1;
+          transition: all 0.2s;
+          box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
         }
-
-        .btn-upload-extract:not([disabled]):hover {
+        .btn-primary:hover:not(:disabled) {
           background: #1d4ed8;
-          transform: translateY(-3px);
-          box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+          transform: translateY(-1px);
         }
-
-        .btn-upload-extract[disabled] {
+        .btn-primary:disabled {
+          background: #94a3b8;
           cursor: not-allowed;
-          background: #9ca3af;
           box-shadow: none;
-          transform: translateY(0);
+        }
+        .spinner-sm {
+          width: 16px;
+          height: 16px;
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          border-radius: 50%;
+          border-top-color: white;
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
         }
 
-        .extracted-data-section {
-          margin-top: 3.5rem;
+        /* Results Section */
+        .results-container {
+          margin-top: 3rem;
           padding-top: 2rem;
-          border-top: 1px solid #e5e7eb;
+          border-top: 1px solid #e2e8f0;
         }
-
-        .extracted-data-title {
-          font-size: 1.375rem;
+        .section-title {
+          font-size: 1.25rem;
           font-weight: 700;
-          color: #111827;
+          color: #0f172a;
           margin-bottom: 1.5rem;
           display: flex;
           align-items: center;
           gap: 0.75rem;
         }
 
-        .extraction-card {
-          margin-bottom: 2rem;
-          padding: 1.5rem;
-          background: #f9fafb;
+        .result-card {
+          background: white;
           border-radius: 16px;
-          border: 1px solid #e5e7eb;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+          border: 1px solid #e2e8f0;
+          overflow: hidden;
+          margin-bottom: 2rem;
         }
 
-        .extraction-card-header {
+        .result-header {
+          padding: 1rem 1.5rem;
+          background: #f8fafc;
+          border-bottom: 1px solid #e2e8f0;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .file-identifier {
           display: flex;
           align-items: center;
-          gap: 0.75rem;
-          margin-bottom: 1.5rem;
+          gap: 0.5rem;
+          font-weight: 600;
+          color: #475569;
         }
 
-        .extraction-file-name {
-          margin: 0;
-          color: #111827;
-          font-size: 1.15rem;
+        .score-pill {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.25rem 0.75rem;
+          border-radius: 99px;
+          border: 1px solid;
+          font-size: 0.8rem;
           font-weight: 700;
         }
 
-        .extraction-error-alert {
-          color: #991b1b;
-          font-size: 0.95rem;
-          margin-bottom: 1.25rem;
-          padding: 0.875rem;
-          background: #fef2f2;
-          border-radius: 8px;
-          border: 1px solid #fecaca;
-          display: flex;
-          align-items: center;
-          gap: 0.625rem;
-          font-weight: 500;
-        }
-
-        .error-icon {
-          font-size: 1.1rem;
-        }
-
-        .extracted-data-grid {
+        .data-grid {
+          padding: 1.5rem;
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
           gap: 1.5rem;
         }
 
-        /* UPDATED CARD STYLING */
-        .data-field-card {
+        .data-box {
+          background: #fff;
+          border: 1px solid #f1f5f9;
+          border-radius: 12px;
           padding: 1.25rem;
-          background: white;
-          border-radius: 12px;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
-          transition: border-color 0.2s;
           display: flex;
           flex-direction: column;
-          height: 100%;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
         }
 
-        .data-field-header {
+        .data-box-header {
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          margin-bottom: 0.5rem;
+          margin-bottom: 0.75rem;
         }
-
-        .data-field-icon {
-          font-size: 1rem;
-        }
-
-        .data-field-label {
-          font-size: 0.8rem;
-          font-weight: 600;
-          color: #6b7280;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-        }
-
-        .data-field-value-group {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 0.5rem;
-        }
-
-        .data-field-value {
-          font-weight: 700;
-          color: #111827;
-          font-size: 1rem;
-        }
-
-        /* NEW FOOTER CLASS FOR BOTTOM ANCHORING */
-        .data-field-footer {
-          margin-top: auto;
-          display: flex;
-          flex-direction: column;
-          padding-top: 1rem;
-        }
-
-        .confidence-badge {
-          font-size: 0.7rem;
-          padding: 0.25rem 0.625rem;
-          border-radius: 12px;
-          color: white;
-          font-weight: 700;
-          display: flex;
-          align-items: center;
-          gap: 0.25rem;
-        }
-
-        .confidence-details {
-          font-size: 0.7rem;
-          color: #6b7280;
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-          padding-top: 0.75rem;
-        }
-
-        .confidence-details strong {
-          color: #4b5563;
-          font-weight: 600;
-        }
-
-        .verification-required-text {
-          color: #dc2626;
-          font-weight: 700;
-          margin-top: 0.25rem;
-          display: flex;
-          align-items: center;
-          gap: 0.25rem;
-        }
-
-        .overall-quality-banner {
-          margin-top: 2rem;
-          padding: 1rem;
-          border-radius: 10px;
-          position: relative;
-          overflow: hidden;
-        }
-
-        .quality-content {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          flex-wrap: wrap;
-          gap: 0.5rem;
-          position: relative;
-          z-index: 1;
-        }
-
-        .quality-indicator {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .quality-icon {
+        .icon-wrapper {
+          color: #64748b;
           font-size: 1.1rem;
         }
-
-        .quality-text {
-          font-weight: 700;
-          color: #111827;
-          font-size: 1rem;
-        }
-
-        .quality-percentage {
-          font-size: 1rem;
-          font-weight: 700;
-          color: #111827;
-        }
-
-        .progress-bar-overall {
-          height: 6px;
-          width: 100%;
-          background: rgba(255, 255, 255, 0.4);
-          border-radius: 3px;
-          margin-top: 0.75rem;
-          overflow: hidden;
-          position: relative;
-          z-index: 1;
-        }
-
-        .progress-bar-fill-overall {
-          height: 100%;
-          border-radius: 3px;
-          transition: width 0.5s ease-out;
-        }
-
-        .upload-more-container {
-          text-align: center;
-          margin-top: 2rem;
-        }
-
-        .btn-upload-more {
-          padding: 0.875rem 1.75rem;
-          background: white;
-          color: #6b7280;
-          border: 1px solid #d1d5db;
-          border-radius: 8px;
-          cursor: pointer;
-          font-size: 0.95rem;
+        .label {
+          font-size: 0.75rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: #64748b;
           font-weight: 600;
-          transition: all 0.2s ease;
         }
-
-        .btn-upload-more:hover {
-          background: #f9fafb;
-          border-color: #9ca3af;
-        }
-
-        .success-cta-card {
-          margin-top: 2.5rem;
-          padding: 2.5rem;
-          background: #f0fdf4;
-          border-radius: 16px;
-          border: 1px solid #bbf7d0;
-          text-align: center;
-        }
-
-        .success-icon {
-          font-size: 3rem;
+        .data-value {
+          font-size: 1.125rem;
+          font-weight: 700;
+          color: #1e293b;
           margin-bottom: 1rem;
         }
-
-        .success-title {
-          font-size: 1.75rem;
-          font-weight: 800;
-          color: #166534;
-          margin-bottom: 0.75rem;
-          letter-spacing: -0.01em;
+        .data-footer {
+          margin-top: auto;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.75rem;
+          color: #64748b;
+        }
+        .conf-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
         }
 
-        .success-description {
-          color: #15803d;
-          margin-bottom: 1.75rem;
-          font-size: 1.125rem;
-          line-height: 1.75;
+        .error-banner {
+          margin: 0 1.5rem 1.5rem;
+          padding: 1rem;
+          background: #fef2f2;
+          color: #991b1b;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.9rem;
+          font-weight: 500;
         }
 
-        .btn-view-matches {
-          padding: 1rem 2.5rem;
-          background: #2563eb;
+        /* Success Card */
+        .success-card {
+          background: linear-gradient(135deg, #10b981, #059669);
+          border-radius: 20px;
+          padding: 2.5rem;
           color: white;
-          text-decoration: none;
-          border-radius: 10px;
-          display: inline-block;
+          text-align: center;
+          margin-bottom: 2rem;
+          box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
+        }
+        .success-icon-lg {
+          font-size: 3rem;
+          margin-bottom: 1rem;
+          color: #d1fae5;
+        }
+        .success-content h3 {
+          font-size: 1.5rem;
+          font-weight: 800;
+          margin-bottom: 0.5rem;
+        }
+        .success-content p {
+          color: #d1fae5;
+          margin-bottom: 2rem;
+        }
+        .btn-success-lg {
+          background: white;
+          color: #059669;
+          border: none;
+          padding: 1rem 2rem;
+          border-radius: 12px;
           font-size: 1rem;
           font-weight: 700;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
-          border: none;
           cursor: pointer;
+          transition: transform 0.2s;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .btn-success-lg:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+        .share-link {
+          margin-top: 1.5rem;
+          font-family: monospace;
+          background: rgba(0, 0, 0, 0.1);
+          padding: 0.5rem;
+          border-radius: 6px;
+          font-size: 0.9rem;
+          display: inline-block;
         }
 
-        .btn-view-matches:hover {
-          background: #1d4ed8;
-          transform: translateY(-3px);
-          box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+        .btn-secondary-outline {
+          width: 100%;
+          padding: 1rem;
+          background: transparent;
+          border: 1px solid #cbd5e1;
+          color: #475569;
+          font-weight: 600;
+          border-radius: 10px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .btn-secondary-outline:hover {
+          background: white;
+          border-color: #94a3b8;
+          color: #1e293b;
         }
 
-        @media (max-width: 768px) {
-          .main-content-area {
-            padding: 2rem 1rem 4rem 1rem;
-          }
-
-          .hero-title {
+        @media (max-width: 640px) {
+          .hero-heading {
             font-size: 2rem;
           }
-
-          .card-padding {
-            padding: 1.5rem;
-          }
-
-          .extracted-data-grid {
+          .data-grid {
             grid-template-columns: 1fr;
+          }
+          .card-body {
+            padding: 1.5rem;
           }
         }
       `}</style>

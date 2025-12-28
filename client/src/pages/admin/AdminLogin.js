@@ -196,7 +196,7 @@ const AdminLogin = () => {
           </form>
 
           <div className="footer">
-            <p>© 2025 DreamFund. Secured by 256-bit encryption.</p>
+            <p>© 2025 DreamFund.</p>
           </div>
         </div>
       </div>

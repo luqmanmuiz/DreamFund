@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import ConfirmModal from "../../components/ConfirmModal";
-import { useAuth } from "../../contexts/AuthContext";
 import { useScholarships } from "../../contexts/ScholarshipContext";
 import AdminLayout from "../../components/AdminLayout";
 import {
@@ -12,11 +11,11 @@ import {
   HiOutlineChartBarSquare,
   HiOutlineClock,
   HiOutlineCalendar,
+  HiOutlineArrowTopRightOnSquare,
 } from "react-icons/hi2";
 import { FaGraduationCap } from "react-icons/fa";
 
 const ScholarshipManagement = () => {
-  const { user, logout } = useAuth();
   const {
     scholarships,
     updateScholarship,
@@ -48,7 +47,7 @@ const ScholarshipManagement = () => {
   const [scholarshipToDelete, setScholarshipToDelete] = useState(null);
   const [loading, setLoading] = useState(false);
   const [scrapeLoading, setScrapeLoading] = useState(false);
-  const [scrapeMessage, setScrapeMessage] = useState("");
+  const [setScrapeMessage] = useState("");
   const [scrapeProgress, setScrapeProgress] = useState({
     current: 0,
     total: 0,
@@ -429,6 +428,19 @@ const ScholarshipManagement = () => {
     setMessage("");
   };
 
+  useEffect(() => {
+    const handleEscKey = (event) => {
+      if (event.key === "Escape" && showForm) {
+        resetForm();
+      }
+    };
+
+    document.addEventListener("keydown", handleEscKey);
+    return () => {
+      document.removeEventListener("keydown", handleEscKey);
+    };
+  }, [showForm]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
 
@@ -695,7 +707,10 @@ const ScholarshipManagement = () => {
         <div className="stats-grid">
           {/* All-Time Scholarships */}
           <div className="stat-card">
-            <div className="icon-box" style={{ backgroundColor: "#eff6ff", color: "#2563eb" }}>
+            <div
+              className="icon-box"
+              style={{ backgroundColor: "#eff6ff", color: "#2563eb" }}
+            >
               <HiOutlineDocumentText className="icon-size" />
             </div>
             <div className="stat-info">
@@ -706,69 +721,80 @@ const ScholarshipManagement = () => {
 
           {/* Successful Extractions */}
           <div className="stat-card">
-            <div className="icon-box" style={{ backgroundColor: "#ecfdf5", color: "#059669" }}>
+            <div
+              className="icon-box"
+              style={{ backgroundColor: "#ecfdf5", color: "#059669" }}
+            >
               <HiOutlineCheckCircle className="icon-size" />
             </div>
             <div className="stat-info">
               <div className="stat-label">Successful</div>
               <div className="stat-value">{getDisplayStats().successCount}</div>
             </div>
-            {getDisplayStats().isLive && (
-              <div className="live-badge">Live</div>
-            )}
+            {getDisplayStats().isLive && <div className="live-badge">Live</div>}
           </div>
 
           {/* Failed Extractions */}
           <div className="stat-card">
-             <div className="icon-box" style={{ backgroundColor: "#fef2f2", color: "#dc2626" }}>
+            <div
+              className="icon-box"
+              style={{ backgroundColor: "#fef2f2", color: "#dc2626" }}
+            >
               <HiOutlineXCircle className="icon-size" />
             </div>
             <div className="stat-info">
               <div className="stat-label">Failed</div>
               <div className="stat-value">{getDisplayStats().failedCount}</div>
             </div>
-            {getDisplayStats().isLive && (
-               <div className="live-badge">Live</div>
-            )}
+            {getDisplayStats().isLive && <div className="live-badge">Live</div>}
           </div>
 
           {/* Success Rate */}
           <div className="stat-card">
-             <div className="icon-box" style={{ backgroundColor: "#f3e8ff", color: "#9333ea" }}>
+            <div
+              className="icon-box"
+              style={{ backgroundColor: "#f3e8ff", color: "#9333ea" }}
+            >
               <HiOutlineChartBarSquare className="icon-size" />
             </div>
             <div className="stat-info">
               <div className="stat-label">Success Rate</div>
-              <div className="stat-value">{getDisplayStats().successRate.toFixed(0)}%</div>
+              <div className="stat-value">
+                {getDisplayStats().successRate.toFixed(0)}%
+              </div>
             </div>
-             {getDisplayStats().isLive && (
-               <div className="live-badge">Live</div>
-            )}
+            {getDisplayStats().isLive && <div className="live-badge">Live</div>}
           </div>
 
           {/* Scraping Duration */}
           <div className="stat-card">
-             <div className="icon-box" style={{ backgroundColor: "#fffbeb", color: "#d97706" }}>
+            <div
+              className="icon-box"
+              style={{ backgroundColor: "#fffbeb", color: "#d97706" }}
+            >
               <HiOutlineClock className="icon-size" />
             </div>
             <div className="stat-info">
               <div className="stat-label">Duration</div>
-              <div className="stat-value">{formatDuration(getDisplayStats().duration)}</div>
+              <div className="stat-value">
+                {formatDuration(getDisplayStats().duration)}
+              </div>
             </div>
-             {getDisplayStats().isLive && (
-               <div className="live-badge">Live</div>
-            )}
+            {getDisplayStats().isLive && <div className="live-badge">Live</div>}
           </div>
 
           {/* Last Successful Scrape */}
           {lastSuccessfulScrape && (
             <div className="stat-card">
-               <div className="icon-box" style={{ backgroundColor: "#e0e7ff", color: "#4f46e5" }}>
+              <div
+                className="icon-box"
+                style={{ backgroundColor: "#e0e7ff", color: "#4f46e5" }}
+              >
                 <HiOutlineCalendar className="icon-size" />
               </div>
               <div className="stat-info">
                 <div className="stat-label">Last Scrape</div>
-                <div className="stat-value" style={{fontSize: "1.1rem"}}>
+                <div className="stat-value" style={{ fontSize: "1.1rem" }}>
                   {formatLastScrapeTime(lastSuccessfulScrape)}
                 </div>
               </div>
@@ -949,14 +975,33 @@ const ScholarshipManagement = () => {
               </div>
               <div className="form-group span-2">
                 <label className="form-label">Website (Application URL)</label>
-                <input
-                  type="url"
-                  name="provider.website"
-                  className="form-input"
-                  value={formData.provider.website}
-                  onChange={handleInputChange}
-                  placeholder="https://example.com/apply"
-                />
+                <div className="input-with-button">
+                  <input
+                    type="url"
+                    name="provider.website"
+                    className="form-input"
+                    value={formData.provider.website}
+                    onChange={handleInputChange}
+                    placeholder="https://example.com/apply"
+                  />
+                  <button
+                    type="button"
+                    className="btn-icon-append"
+                    title="Open link in new tab"
+                    onClick={() => {
+                      if (formData.provider.website) {
+                        window.open(
+                          formData.provider.website,
+                          "_blank",
+                          "noopener,noreferrer"
+                        );
+                      }
+                    }}
+                    disabled={!formData.provider.website}
+                  >
+                    <HiOutlineArrowTopRightOnSquare className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1105,7 +1150,7 @@ const ScholarshipManagement = () => {
           padding: 1.5rem;
           border-radius: 16px;
           border: 1px solid #e5e7eb;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
           display: flex;
           align-items: center;
           gap: 1.25rem;
@@ -1115,7 +1160,7 @@ const ScholarshipManagement = () => {
 
         .stat-card:hover {
           transform: translateY(-2px);
-          box-shadow: 0 8px 16px rgba(0,0,0,0.06);
+          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.06);
         }
 
         .icon-box {
@@ -1151,7 +1196,7 @@ const ScholarshipManagement = () => {
           font-weight: 800;
           line-height: 1.2;
         }
-        
+
         .live-badge {
           position: absolute;
           top: 1rem;
@@ -1165,11 +1210,17 @@ const ScholarshipManagement = () => {
           border: 1px solid #bfdbfe;
           animation: pulse 2s infinite;
         }
-        
+
         @keyframes pulse {
-            0% { opacity: 0.6; }
-            50% { opacity: 1; }
-            100% { opacity: 0.6; }
+          0% {
+            opacity: 0.6;
+          }
+          50% {
+            opacity: 1;
+          }
+          100% {
+            opacity: 0.6;
+          }
         }
 
         /* --- Layout & Utilities --- */
@@ -1357,10 +1408,14 @@ const ScholarshipManagement = () => {
           display: block;
           margin-top: 0.25rem;
         }
-        
+
         @keyframes spin {
-             0% { transform: rotate(0deg); }
-             100% { transform: rotate(360deg); }
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
         }
 
         /* --- Form Styling --- */
@@ -1695,6 +1750,44 @@ const ScholarshipManagement = () => {
           .form-actions {
             flex-direction: column;
           }
+        }
+        /* --- Input Group with Button --- */
+        .input-with-button {
+          display: flex;
+          gap: 0.5rem;
+          align-items: stretch;
+        }
+
+        .input-with-button .form-input {
+          flex: 1; /* Input takes up remaining space */
+          border-top-right-radius: 0;
+          border-bottom-right-radius: 0;
+        }
+
+        .btn-icon-append {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0 1rem;
+          background-color: #f3f4f6;
+          border: 1px solid #d1d5db;
+          border-left: none; /* Merge look with input */
+          border-top-right-radius: 8px;
+          border-bottom-right-radius: 8px;
+          color: #4b5563;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .btn-icon-append:hover:not(:disabled) {
+          background-color: #e5e7eb;
+          color: #2563eb;
+        }
+
+        .btn-icon-append:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          background-color: #f9fafb;
         }
       `}</style>
     </AdminLayout>

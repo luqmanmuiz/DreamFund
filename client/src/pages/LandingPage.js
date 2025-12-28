@@ -339,7 +339,7 @@ const LandingPage = () => {
           letter-spacing: -0.02em;
         }
         .text-gradient {
-          background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+          background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
         }
