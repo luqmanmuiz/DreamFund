@@ -51,15 +51,13 @@ const FeedbackBanner = ({ scholarshipId, scholarshipTitle, onClose }) => {
       const data = await response.json();
       
       if (data.success) {
-        // Mark this scholarship as responded in localStorage
-        markScholarshipAsResponded(scholarshipId);
+        // Mark this scholarship as responded in localStorage (only for "completed")
+        markScholarshipAsResponded(scholarshipId, responseType);
         onClose(responseType);
       } else {
-        console.error("Failed to submit feedback:", data.message);
         onClose(responseType);
       }
     } catch (error) {
-      console.error("Error submitting feedback:", error);
       onClose(responseType);
     } finally {
       setIsSubmitting(false);
@@ -78,12 +76,16 @@ const FeedbackBanner = ({ scholarshipId, scholarshipTitle, onClose }) => {
     submitFeedback("dismissed");
   };
 
-  const markScholarshipAsResponded = (scholarshipId) => {
-    const key = "feedbackResponded";
-    const responded = JSON.parse(localStorage.getItem(key) || "[]");
-    if (!responded.includes(scholarshipId)) {
-      responded.push(scholarshipId);
-      localStorage.setItem(key, JSON.stringify(responded));
+  const markScholarshipAsResponded = (scholarshipId, responseType) => {
+    // Only mark as "responded" (prevent future popups) if completed
+    // Allow popups to show again for "not_yet" and "dismissed" responses
+    if (responseType === "completed") {
+      const key = "feedbackResponded";
+      const responded = JSON.parse(localStorage.getItem(key) || "[]");
+      if (!responded.includes(scholarshipId)) {
+        responded.push(scholarshipId);
+        localStorage.setItem(key, JSON.stringify(responded));
+      }
     }
   };
 

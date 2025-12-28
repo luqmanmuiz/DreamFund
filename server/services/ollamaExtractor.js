@@ -34,7 +34,6 @@ async function getAvailableModels() {
     const response = await axios.get(`${OLLAMA_URL}/api/tags`);
     return response.data.models || [];
   } catch (error) {
-    console.error('Failed to get Ollama models:', error.message);
     return [];
   }
 }

@@ -1,9 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, Link } from "react-router-dom"; // Import Link
 import { useAuth } from "../../contexts/AuthContext";
-import { HiLockClosed } from "react-icons/hi2";
+import {
+  HiLockClosed,
+  HiEnvelope,
+  HiEye,
+  HiEyeSlash,
+  HiArrowRight,
+  HiShieldCheck,
+  HiArrowLeft, // Import Back Icon
+} from "react-icons/hi2";
 
 const AdminLogin = () => {
   const { user, login, loading: authLoading } = useAuth();
@@ -11,6 +19,7 @@ const AdminLogin = () => {
     email: "",
     password: "",
   });
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -36,11 +45,12 @@ const AdminLogin = () => {
     setLoading(true);
     setMessage("");
 
+    // Simulate delay for smooth feel
+    await new Promise((r) => setTimeout(r, 800));
+
     const result = await login(formData.email, formData.password);
 
-    if (result.success) {
-      // Navigation will be handled by the useEffect in the component
-    } else {
+    if (!result.success) {
       setMessage(result.message);
     }
     setLoading(false);
@@ -49,26 +59,30 @@ const AdminLogin = () => {
   if (authLoading) {
     return (
       <div className="loading-container">
-        <div className="spinner"></div>
+        <div className="loader"></div>
         <style jsx>{`
           .loading-container {
             min-height: 100vh;
             display: flex;
-            align-items: center;
             justify-content: center;
-            background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+            align-items: center;
+            background: #0f172a;
           }
-          .spinner {
-            width: 50px;
-            height: 50px;
-            border: 3px solid #e5e7eb;
-            border-top: 3px solid #2563eb;
+          .loader {
+            width: 48px;
+            height: 48px;
+            border: 5px solid #fff;
+            border-bottom-color: #3b82f6;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
+            animation: rotation 1s linear infinite;
           }
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+          @keyframes rotation {
+            0% {
+              transform: rotate(0deg);
+            }
+            100% {
+              transform: rotate(360deg);
+            }
           }
         `}</style>
       </div>
@@ -76,270 +90,483 @@ const AdminLogin = () => {
   }
 
   return (
-    <div className="admin-login-page">
-      <div className="login-card">
-        <div className="header-section">
-          <div className="icon-wrapper">
-            <HiLockClosed className="w-8 h-8 text-blue-600" />
+    <div className="split-screen-layout">
+      {/* LEFT SIDE: Visual / Brand */}
+      <div className="brand-section">
+        {/* Dark overlay to ensure text readability over the image */}
+        <div className="brand-overlay"></div>
+
+        <div className="brand-content">
+          <div className="logo-container">
+            <div className="logo-icon-bg">
+              <HiShieldCheck className="brand-logo" />
+            </div>
+            <span className="brand-name">DreamFund</span>
           </div>
-          <h1 className="title">
-            Admin Login
+          <h1 className="hero-title">
+            Unlock the <br />
+            <span className="text-highlight">Potential of Tomorrow.</span>
           </h1>
-          <p className="subtitle">Access the DreamFund administration panel</p>
-        </div>
-
-        {message && (
-          <div className="message-alert">
-            {message}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="login-form">
-          {/* Email Input */}
-          <div className="form-group">
-            <label htmlFor="email" className="form-label">
-              Email Address
-            </label>
-            <input
-              id="email"
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              required
-              placeholder="admin@dreamfund.com"
-              className="form-input"
-            />
-          </div>
-
-          {/* Password Input */}
-          <div className="form-group">
-            <label htmlFor="password" className="form-label">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleInputChange}
-              required
-              placeholder="Enter your password"
-              className="form-input"
-            />
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn-submit"
-            style={{
-              opacity: loading ? 0.6 : 1,
-            }}
-          >
-            {loading ? "Signing In..." : "Sign In"}
-          </button>
-        </form>
-
-        {/* Info Card */}
-        <div className="info-card">
-          <strong className="info-title">Default Admin Credentials:</strong>
-          <br />
-          Email: admin@dreamfund.com
-          <br />
-          Password: admin123
-        </div>
-
-        {/* Back Link */}
-        <div className="back-link-container">
-          <a href="/" className="back-link">
-            ← Back to Main Site
-          </a>
+          <p className="hero-subtitle">
+            Secure administration panel for managing scholarships, tracking
+            applications, and ensuring student success.
+          </p>
         </div>
       </div>
-      
+
+      {/* RIGHT SIDE: Form */}
+      <div className="form-section">
+        {/* Back to Home Button */}
+        <Link to="/" className="back-home-btn">
+          <HiArrowLeft className="back-icon" />
+          <span>Back to Home</span>
+        </Link>
+
+        <div className="form-container">
+          <div className="form-header">
+            <div className="mobile-logo">
+              <HiShieldCheck />
+            </div>
+            <h2>Admin Login</h2>
+            <p>Welcome back. Please enter your details.</p>
+          </div>
+
+          {message && (
+            <div className="error-alert">
+              <span className="error-icon">!</span>
+              {message}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit}>
+            <div className="input-group">
+              <label htmlFor="email">Email</label>
+              <div className={`input-field ${formData.email ? "active" : ""}`}>
+                <HiEnvelope className="field-icon" />
+                <input
+                  id="email"
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  required
+                  placeholder="name@company.com"
+                />
+              </div>
+            </div>
+
+            <div className="input-group">
+              <label htmlFor="password">Password</label>
+              <div
+                className={`input-field ${formData.password ? "active" : ""}`}
+              >
+                <HiLockClosed className="field-icon" />
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  required
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  className="eye-btn"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <HiEyeSlash /> : <HiEye />}
+                </button>
+              </div>
+            </div>
+
+            <button type="submit" className="login-btn" disabled={loading}>
+              {loading ? (
+                <div className="dots-loader">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              ) : (
+                <>
+                  Sign In <HiArrowRight />
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="footer">
+            <p>© 2025 DreamFund. Secured by 256-bit encryption.</p>
+          </div>
+        </div>
+      </div>
+
       <style jsx>{`
-        /* --- General Layout and Typography --- */
-        .admin-login-page {
+        /* --- MAIN LAYOUT --- */
+        .split-screen-layout {
+          display: flex;
           min-height: 100vh;
+          font-family: "Inter", sans-serif;
+          background: #fff;
+          overflow: hidden;
+        }
+
+        /* --- LEFT SIDE (BRAND & IMAGE) --- */
+        .brand-section {
+          flex: 1.2;
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          padding: 4rem;
+          color: white;
+          overflow: hidden;
+          background-image: url("https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1920&auto=format&fit=crop");
+          background-size: cover;
+          background-position: center;
+        }
+
+        .brand-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(
+            135deg,
+            rgba(15, 23, 42, 0.9) 0%,
+            rgba(30, 58, 138, 0.85) 100%
+          );
+          z-index: 1;
+        }
+
+        .brand-content {
+          position: relative;
+          z-index: 10;
+          max-width: 550px;
+        }
+
+        .logo-container {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          margin-bottom: 2.5rem;
+        }
+        .logo-icon-bg {
+          width: 48px;
+          height: 48px;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 12px;
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
-          font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+          backdrop-filter: blur(4px);
+        }
+        .brand-logo {
+          font-size: 1.75rem;
+          color: #60a5fa;
+        }
+        .brand-name {
+          font-size: 1.75rem;
+          font-weight: 700;
+          letter-spacing: -0.01em;
+          color: white;
         }
 
-        /* --- Login Card --- */
-        .login-card {
-          background: white;
-          padding: 2.5rem;
-          border-radius: 16px;
-          border: 1px solid #e5e7eb;
-          box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1); /* Deeper shadow */
+        .hero-title {
+          font-size: 3.5rem;
+          line-height: 1.1;
+          font-weight: 800;
+          margin-bottom: 1.5rem;
+          letter-spacing: -0.03em;
+          color: white;
+        }
+        .text-highlight {
+          color: #60a5fa;
+        }
+        .hero-subtitle {
+          font-size: 1.125rem;
+          color: #cbd5e1;
+          line-height: 1.6;
+          margin-bottom: 3.5rem;
+          max-width: 90%;
+        }
+
+        /* --- RIGHT SIDE (FORM) --- */
+        .form-section {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 2rem;
+          background: #ffffff;
+          position: relative; /* For absolute positioning of Back button */
+        }
+
+        /* Back to Home Button */
+        .back-home-btn {
+          position: absolute;
+          top: 2rem;
+          left: 2rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          color: #64748b;
+          text-decoration: none;
+          font-size: 0.9rem;
+          font-weight: 500;
+          transition: all 0.2s ease;
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+        }
+        .back-home-btn:hover {
+          color: #0f172a;
+          background-color: #f1f5f9;
+        }
+        .back-icon {
+          font-size: 1.1rem;
+        }
+
+        .form-container {
           width: 100%;
           max-width: 400px;
-        }
-        
-        /* --- Header --- */
-        .header-section {
-          text-align: center;
-          margin-bottom: 2rem;
+          animation: slideUp 0.6s ease-out;
         }
 
-        .icon-wrapper {
-          width: 80px;
-          height: 80px;
-          margin: 0 auto 1.5rem;
-          background: #dbeafe; /* Light blue */
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .form-header {
+          margin-bottom: 2.5rem;
+        }
+        .mobile-logo {
+          display: none;
+          font-size: 2.5rem;
+          color: #2563eb;
+          margin-bottom: 1rem;
+        }
+        .form-header h2 {
+          font-size: 2.25rem;
+          font-weight: 700;
+          color: #0f172a;
+          margin: 0 0 0.5rem;
+          letter-spacing: -0.03em;
+        }
+        .form-header p {
+          color: #64748b;
+          margin: 0;
+          font-size: 1rem;
+        }
+
+        .input-group {
+          margin-bottom: 1.5rem;
+        }
+        .input-group label {
+          display: block;
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: #334155;
+          margin-bottom: 0.5rem;
+        }
+
+        .input-field {
+          position: relative;
+          display: flex;
+          align-items: center;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          background: #fff;
+          transition: all 0.2s ease;
+        }
+        .input-field:focus-within {
+          border-color: #2563eb;
+          box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+        }
+        .field-icon {
+          position: absolute;
+          left: 1rem;
+          color: #94a3b8;
+          font-size: 1.25rem;
+          transition: color 0.2s;
+        }
+        .input-field:focus-within .field-icon {
+          color: #2563eb;
+        }
+
+        .input-field input {
+          width: 100%;
+          padding: 1rem 1rem 1rem 3rem;
+          border: none;
+          background: transparent;
+          font-size: 1rem;
+          color: #0f172a;
+          outline: none;
+          border-radius: 12px;
+        }
+
+        .eye-btn {
+          position: absolute;
+          right: 1rem;
+          background: none;
+          border: none;
+          color: #94a3b8;
+          cursor: pointer;
+          padding: 0;
+          display: flex;
+          transition: color 0.2s;
+        }
+        .eye-btn:hover {
+          color: #475569;
+        }
+
+        .form-options {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 2rem;
+          font-size: 0.875rem;
+        }
+        .remember-me {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          color: #475569;
+          cursor: pointer;
+          font-weight: 500;
+        }
+        .remember-me input {
+          width: 16px;
+          height: 16px;
+          accent-color: #2563eb;
+        }
+
+        .login-btn {
+          width: 100%;
+          padding: 1rem;
+          background: #0f172a;
+          color: white;
+          border: none;
+          border-radius: 12px;
+          font-size: 1rem;
+          font-weight: 600;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          transition: all 0.2s ease;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .login-btn:hover:not(:disabled) {
+          background: #1e293b;
+          transform: translateY(-1px);
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .login-btn:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
+
+        .error-alert {
+          background: #fef2f2;
+          border: 1px solid #fee2e2;
+          color: #b91c1c;
+          padding: 0.75rem 1rem;
+          border-radius: 8px;
+          font-size: 0.875rem;
+          margin-bottom: 1.5rem;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+        .error-icon {
+          background: #ef4444;
+          color: white;
+          width: 20px;
+          height: 20px;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 2.5rem;
+          font-weight: bold;
+          font-size: 0.75rem;
         }
 
-        .title {
-          color: #1f2937; /* Darker heading color */
-          margin-bottom: 0.5rem;
-          font-size: 1.875rem;
-          font-weight: 800; /* Bolder title */
-          letter-spacing: -0.02em;
-        }
-
-        .subtitle {
-          color: #6b7280;
-          margin: 0;
-          line-height: 1.7;
-          font-size: 1rem;
-        }
-
-        /* --- Alert Message --- */
-        .message-alert {
-          padding: 1rem 1.5rem;
-          margin-bottom: 1.5rem;
-          background-color: #fef2f2;
-          color: #991b1b;
-          border-radius: 12px;
-          font-size: 0.95rem;
-          font-weight: 600;
-          border: 1px solid #fecaca;
-        }
-
-        /* --- Form Elements --- */
-        .login-form {
-          margin-top: 1.5rem;
-        }
-        
-        .form-group {
-          margin-bottom: 1.5rem;
-        }
-
-        .form-label {
-          display: block;
-          margin-bottom: 0.5rem;
-          font-weight: 600; /* Slightly bolder label */
-          color: #374151;
-          font-size: 0.9rem;
-        }
-
-        .form-input {
-          width: 100%;
-          padding: 0.75rem 1rem;
-          border: 1px solid #d1d5db;
-          border-radius: 8px; /* Slightly rounder inputs */
-          font-size: 1rem;
-          outline: none;
-          transition: all 0.2s ease;
-          box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
-        }
-        
-        .form-input:focus {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 3px #bfdbfe;
-        }
-
-        /* --- Submit Button --- */
-        .btn-submit {
-          width: 100%;
-          padding: 0.875rem;
-          background: #2563eb;
-          color: white;
-          border: none;
-          border-radius: 8px;
-          font-size: 1rem;
-          font-weight: 700; /* Bolder button text */
-          cursor: pointer;
-          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-          box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
-        }
-        
-        .btn-submit:not([disabled]):hover {
-            background: #1d4ed8;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(37, 99, 235, 0.4);
-        }
-
-        .btn-submit[disabled] {
-            cursor: not-allowed;
-            background: #9ca3af;
-            box-shadow: none;
-            transform: translateY(0);
-        }
-
-        /* --- Info Card (Admin Credentials) --- */
-        .info-card {
-          margin-top: 2rem; /* Increased margin for separation */
-          padding: 1rem 1.5rem;
-          background: #eff6ff; /* Light blue background */
-          border-radius: 12px;
-          font-size: 0.875rem; /* Slightly smaller font */
-          color: #1e40af;
-          border: 1px solid #bfdbfe;
-          line-height: 1.6;
-        }
-        
-        .info-title {
-            font-weight: 700;
-            color: #1e40af; /* Ensure title stands out slightly */
-        }
-
-        /* --- Back Link --- */
-        .back-link-container {
+        .footer {
+          margin-top: 3rem;
           text-align: center;
-          margin-top: 1.5rem;
+          color: #94a3b8;
+          font-size: 0.8rem;
         }
 
-        .back-link {
-          color: #6b7280;
-          text-decoration: none;
-          font-size: 0.9rem;
-          transition: color 0.2s ease;
+        .dots-loader span {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background-color: white;
+          display: inline-block;
+          margin: 0 3px;
+          animation: bounce 1.4s infinite ease-in-out both;
         }
-        
-        .back-link:hover {
-            color: #374151;
-            text-decoration: underline;
+        .dots-loader span:nth-child(1) {
+          animation-delay: -0.32s;
         }
-        
-        /* --- Responsive Adjustments --- */
-        @media (max-width: 480px) {
-            .login-card {
-                margin: 1rem;
-                padding: 1.5rem;
-            }
-            .title {
-                font-size: 1.5rem;
-            }
-            .icon-wrapper {
-                width: 60px;
-                height: 60px;
-                font-size: 2rem;
-            }
-            .info-card {
-                font-size: 0.8rem;
-                padding: 0.75rem 1rem;
-            }
+        .dots-loader span:nth-child(2) {
+          animation-delay: -0.16s;
+        }
+        @keyframes bounce {
+          0%,
+          80%,
+          100% {
+            transform: scale(0);
+          }
+          40% {
+            transform: scale(1);
+          }
+        }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 1024px) {
+          .hero-title {
+            font-size: 2.5rem;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .brand-section {
+            display: none;
+          }
+          .form-section {
+            background: #f8fafc;
+          }
+          .mobile-logo {
+            display: block;
+          }
+          .form-header {
+            text-align: center;
+          }
+          .form-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+          }
+          /* Adjust back button for mobile layout */
+          .back-home-btn {
+            top: 1rem;
+            left: 1rem;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+          }
         }
       `}</style>
     </div>

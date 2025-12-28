@@ -28,6 +28,7 @@ export const ScholarshipProvider = ({ children }) => {
       params: {
         status: "All",
         limit: 100,
+        latestSessionOnly: true,
       },
     })
     
@@ -63,7 +64,6 @@ export const ScholarshipProvider = ({ children }) => {
 
       setScholarships(scholarshipArray);
     } catch (error) {
-      console.error("Error fetching scholarships:", error);
       setError(error.response?.data?.message || "Failed to fetch scholarships");
       setScholarships([]); // Ensure it's still an array on error
     } finally {
@@ -110,30 +110,6 @@ export const ScholarshipProvider = ({ children }) => {
       return {
         success: false,
         message: error.response?.data?.message || "Application failed",
-      };
-    }
-  }, []);
-
-  const createScholarship = useCallback(async (scholarshipData) => {
-    try {
-      const response = await axios.post("/api/scholarships", scholarshipData);
-
-      // Handle the response format
-      const newScholarship = response.data.scholarship || response.data;
-
-      setScholarships((prev) => {
-        if (Array.isArray(prev)) {
-          return [...prev, newScholarship];
-        }
-        return [newScholarship];
-      });
-
-      return { success: true, scholarship: newScholarship };
-    } catch (error) {
-      return {
-        success: false,
-        message:
-          error.response?.data?.message || "Failed to create scholarship",
       };
     }
   }, []);
@@ -196,7 +172,6 @@ export const ScholarshipProvider = ({ children }) => {
     fetchScholarships,
     getScholarshipMatches,
     applyForScholarship,
-    createScholarship,
     updateScholarship,
     deleteScholarship,
   };

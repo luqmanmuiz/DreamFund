@@ -10,13 +10,13 @@ def convert_labelstudio_to_spacy(labelstudio_file, output_file):
     """
     Convert Label Studio JSON export to spaCy training format
     """
-    print("🔄 Converting Label Studio data to spaCy format...")
+    print("Converting Label Studio data to spaCy format...")
     
     # Load Label Studio export
     with open(labelstudio_file, 'r', encoding='utf-8') as f:
         labelstudio_data = json.load(f)
     
-    print(f"📊 Loaded {len(labelstudio_data)} labeled transcripts")
+    print(f"Loaded {len(labelstudio_data)} labeled transcripts")
     
     # Convert to spaCy format
     training_data = []
@@ -29,7 +29,6 @@ def convert_labelstudio_to_spacy(labelstudio_file, output_file):
             
             # Get annotations
             if 'annotations' not in item or len(item['annotations']) == 0:
-                print(f"⚠️  Skipping unlabeled item: {item.get('id', 'unknown')}")
                 skipped += 1
                 continue
             
@@ -54,12 +53,13 @@ def convert_labelstudio_to_spacy(labelstudio_file, output_file):
                 skipped += 1
                 
         except Exception as e:
-            print(f"❌ Error processing item: {e}")
+            print(f"Error processing item: {e}")
             skipped += 1
             continue
     
-    print(f"\n✅ Converted {len(training_data)} transcripts")
-    print(f"⚠️  Skipped {skipped} transcripts")
+    print(f"\nConverted {len(training_data)} transcripts")
+    if skipped > 0:
+        print(f"Skipped {skipped} transcripts")
     
     # Save as Python file
     output_path = Path(output_file)
@@ -75,21 +75,13 @@ def convert_labelstudio_to_spacy(labelstudio_file, output_file):
         
         f.write("]\n")
     
-    print(f"💾 Saved training data to: {output_path}")
-    
-    # Show statistics
-    print(f"\n📈 Training Data Statistics:")
-    print(f"   Total examples: {len(training_data)}")
-    
     # Count entities by type
     entity_counts = {}
     for _, annotations in training_data:
         for _, _, label in annotations['entities']:
             entity_counts[label] = entity_counts.get(label, 0) + 1
     
-    print(f"\n   Entity counts:")
-    for label, count in sorted(entity_counts.items()):
-        print(f"      {label}: {count}")
+    print(f"\nEntity counts: {dict(sorted(entity_counts.items()))}")
     
     return training_data
 
@@ -103,9 +95,7 @@ def split_train_test(training_data, test_size=0.2):
     train_data = training_data[:split_index]
     test_data = training_data[split_index:]
     
-    print(f"\n📊 Data Split:")
-    print(f"   Training: {len(train_data)} examples ({(1-test_size)*100:.0f}%)")
-    print(f"   Testing:  {len(test_data)} examples ({test_size*100:.0f}%)")
+    print(f"\nData Split: {len(train_data)} training, {len(test_data)} testing")
     
     return train_data, test_data
 
@@ -114,20 +104,14 @@ if __name__ == "__main__":
     LABELSTUDIO_FILE = "./exported_data/labeled_data.json"  # From Label Studio export
     OUTPUT_FILE = "./train_data.py"
     
+    print("\n" + "=" * 60)
+    print("Convert Labeled Data to spaCy Format")
     print("=" * 60)
-    print("STEP 2: Convert Labeled Data to spaCy Format")
-    print("=" * 60)
-    print(f"\n📂 Input file: {LABELSTUDIO_FILE}")
-    print(f"💾 Output file: {OUTPUT_FILE}\n")
     
     # Check if input file exists
     if not Path(LABELSTUDIO_FILE).exists():
-        print(f"❌ Error: File not found: {LABELSTUDIO_FILE}")
-        print("\n📝 Instructions:")
-        print("1. Label your transcripts in Label Studio")
-        print("2. Export as JSON format")
-        print("3. Save to './exported_data/labeled_data.json'")
-        print("4. Run this script again")
+        print(f"Error: File not found: {LABELSTUDIO_FILE}")
+        print("Please export labeled data from Label Studio to './exported_data/labeled_data.json'")
         exit(1)
     
     # Convert data
@@ -152,14 +136,8 @@ if __name__ == "__main__":
                 f.write(f'    ("{text_escaped}", {annotations}),\n')
             f.write("]\n")
         
-        print(f"\n💾 Saved split data:")
-        print(f"   Training: ./train_data.py")
-        print(f"   Testing:  ./test_data.py")
+        print(f"\nSaved: train_data.py ({len(train_data)} examples), test_data.py ({len(test_data)} examples)")
     
     print("\n" + "=" * 60)
-    print("✅ CONVERSION COMPLETE!")
-    print("=" * 60)
-    print("\n📝 Next Steps:")
-    print("1. Review the training data in 'train_data.py'")
-    print("2. Run the training script (Step 3)")
+    print("Conversion complete. Run 'python modelTraining.py' to train.")
     print("=" * 60)

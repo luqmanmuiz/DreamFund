@@ -2,12 +2,6 @@ const mongoose = require("mongoose");
 
 const scholarshipClickSchema = new mongoose.Schema(
   {
-    // User ID if logged in, null if guest
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      default: null,
-    },
     // Scholarship that was clicked
     scholarshipId: {
       type: mongoose.Schema.Types.ObjectId,

@@ -1,16 +1,26 @@
 const express = require('express');
 const router = express.Router();
+const Guest = require('../models/Guest');
+const GuestAnalytics = require('../models/GuestAnalytics');
 
-// In-memory storage for guest profiles (expires after 24 hours)
-const guestProfiles = new Map();
+// Initialize analytics singleton in database
+async function initializeAnalytics() {
+  try {
+    let analytics = await GuestAnalytics.findById('guest_analytics_singleton');
+    if (!analytics) {
+      analytics = new GuestAnalytics({ _id: 'guest_analytics_singleton' });
+      await analytics.save();
+      console.log('✅ Guest analytics initialized');
+    }
+    return analytics;
+  } catch (error) {
+    console.error('Error initializing analytics:', error);
+    return null;
+  }
+}
 
-// Analytics tracking
-const guestAnalytics = {
-  totalCreated: 0,
-  totalExpired: 0,
-  createdToday: 0,
-  lastResetDate: new Date().toDateString()
-};
+// Initialize on module load
+initializeAnalytics();
 
 // Helper function to generate unique share ID
 function generateShareId() {
@@ -18,35 +28,35 @@ function generateShareId() {
          Math.random().toString(36).substring(2, 15);
 }
 
-// Helper function to clean up expired profiles
-function cleanupExpiredProfiles() {
-  const now = Date.now();
-  let expiredCount = 0;
-  
-  for (const [shareId, profile] of guestProfiles.entries()) {
-    if (now > profile.expiresAt) {
-      guestProfiles.delete(shareId);
-      expiredCount++;
-    }
-  }
-  
-  if (expiredCount > 0) {
-    guestAnalytics.totalExpired += expiredCount;
-    console.log(`🧹 Cleaned up ${expiredCount} expired guest profiles`);
-  }
-}
-
 // Reset daily counter at midnight
-function resetDailyCounter() {
-  const today = new Date().toDateString();
-  if (guestAnalytics.lastResetDate !== today) {
-    guestAnalytics.createdToday = 0;
-    guestAnalytics.lastResetDate = today;
+async function resetDailyCounter() {
+  try {
+    const today = new Date().toDateString();
+    const analytics = await GuestAnalytics.findById('guest_analytics_singleton');
+    
+    if (analytics && analytics.lastResetDate !== today) {
+      // Save previous day's stats to history
+      await GuestAnalytics.findByIdAndUpdate(
+        'guest_analytics_singleton',
+        {
+          createdToday: 0,
+          lastResetDate: today,
+          $push: {
+            dailyHistory: {
+              date: analytics.lastResetDate,
+              created: analytics.createdToday,
+              expired: 0,
+              timestamp: new Date()
+            }
+          }
+        }
+      );
+      console.log(`📅 Daily counter reset for ${today}`);
+    }
+  } catch (error) {
+    console.error('Error resetting daily counter:', error);
   }
 }
-
-// Run cleanup every hour
-setInterval(cleanupExpiredProfiles, 60 * 60 * 1000);
 
 // Run daily counter reset every minute
 setInterval(resetDailyCounter, 60 * 1000);
@@ -61,24 +71,28 @@ router.post('/create', async (req, res) => {
     // Generate a unique share ID
     const shareId = generateShareId();
     
-    // Store guest profile (expires after 24 hours)
-    const profile = {
+    // Create guest profile in database (expires after 35 days)
+    const profile = await Guest.create({
       shareId,
       name: name || 'Student',
       cgpa: parseFloat(cgpa) || 0,
       program: program || 'General Studies',
-      createdAt: Date.now(),
-      expiresAt: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
-    };
-    
-    guestProfiles.set(shareId, profile);
+      expiresAt: new Date(Date.now() + (35 * 24 * 60 * 60 * 1000)) // 35 days
+    });
     
     // Update analytics
-    guestAnalytics.totalCreated++;
-    guestAnalytics.createdToday++;
+    await GuestAnalytics.findByIdAndUpdate(
+      'guest_analytics_singleton',
+      { 
+        $inc: { 
+          totalCreated: 1,
+          createdToday: 1
+        }
+      }
+    );
     
     console.log('Guest profile created:', shareId);
-    console.log('📊 Total guests created:', guestAnalytics.totalCreated);
+    console.log('📊 Expires at:', profile.expiresAt);
     
     res.json({ 
       success: true, 
@@ -106,21 +120,13 @@ router.get('/:shareId', async (req, res) => {
     
     console.log('Fetching guest profile:', shareId);
     
-    const profile = guestProfiles.get(shareId);
+    // MongoDB TTL index automatically deletes expired documents
+    const profile = await Guest.findOne({ shareId });
     
     if (!profile) {
       return res.status(404).json({ 
         success: false, 
         error: 'Profile not found or expired' 
-      });
-    }
-    
-    // Check if expired
-    if (Date.now() > profile.expiresAt) {
-      guestProfiles.delete(shareId);
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Profile expired' 
       });
     }
     
@@ -145,18 +151,26 @@ router.get('/:shareId', async (req, res) => {
 // GET /api/guests/analytics/stats - Get guest analytics (Admin only)
 router.get('/analytics/stats', async (req, res) => {
   try {
-    // Clean up expired profiles first
-    cleanupExpiredProfiles();
-    resetDailyCounter();
+    // Reset daily counter if needed
+    await resetDailyCounter();
+    
+    // Get analytics from database
+    const analytics = await GuestAnalytics.findById('guest_analytics_singleton');
+    
+    // Count active guests (not yet expired)
+    const activeNow = await Guest.countDocuments({ 
+      expiresAt: { $gt: new Date() } 
+    });
     
     res.json({
       success: true,
       analytics: {
-        totalCreated: guestAnalytics.totalCreated,
-        totalExpired: guestAnalytics.totalExpired,
-        createdToday: guestAnalytics.createdToday,
-        activeNow: guestProfiles.size,
-        lastResetDate: guestAnalytics.lastResetDate
+        totalCreated: analytics?.totalCreated || 0,
+        totalExpired: analytics?.totalExpired || 0,
+        createdToday: analytics?.createdToday || 0,
+        activeNow,
+        lastResetDate: analytics?.lastResetDate || new Date().toDateString(),
+        dailyHistory: analytics?.dailyHistory || []
       }
     });
   } catch (error) {

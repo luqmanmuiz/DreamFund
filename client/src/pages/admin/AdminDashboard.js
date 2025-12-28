@@ -3,31 +3,27 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { useScholarships } from "../../contexts/ScholarshipContext"; // Import shared context
+import { useScholarships } from "../../contexts/ScholarshipContext";
 import axios from "axios";
 import AdminLayout from "../../components/AdminLayout";
 import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Legend,
-  Tooltip,
-} from "recharts";
-import {
   HiOutlineUsers,
-  HiOutlineDocumentText,
   HiOutlineChartBar,
   HiOutlineInformationCircle,
-  HiOutlineBookOpen,
   HiOutlineCheckBadge,
+  HiOutlineAcademicCap,
+  HiOutlineCursorArrowRays,
+  HiOutlineSparkles,
+  HiOutlineBookOpen,
   HiOutlineCircleStack,
-  HiOutlineStar
-} from 'react-icons/hi2';
+  HiOutlineClock,
+} from "react-icons/hi2";
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
   const { scholarships, fetchScholarships } = useScholarships();
+
+  // --- State Management ---
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalScholarships: 0,
@@ -38,14 +34,17 @@ const AdminDashboard = () => {
     totalCreated: 0,
     activeNow: 0,
     createdToday: 0,
-    totalExpired: 0
+    totalExpired: 0,
   });
   const [recentUsers, setRecentUsers] = useState([]);
   const [recentApplications, setRecentApplications] = useState([]);
   const [scholarshipStatus, setScholarshipStatus] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [upcomingDeadlines, setUpcomingDeadlines] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Add helper function to parse deadline (same as ScholarshipManagement)
+  // --- Helper Functions ---
+
   const tryParseDeadline = (value) => {
     if (!value) return null;
     if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
@@ -64,7 +63,6 @@ const AdminDashboard = () => {
     return null;
   };
 
-  // Add status computation function (same as ScholarshipManagement)
   const computeDisplayStatus = (scholarship) => {
     const studyLevels = scholarship.studyLevels || [];
     const studyLevel = scholarship.studyLevel;
@@ -75,7 +73,7 @@ const AdminDashboard = () => {
       studyLevel === "diploma";
 
     if (!hasValidStudyLevel) {
-      return "draft";
+      return "missing-study-level";
     }
 
     const deadlineValue = scholarship.deadline || scholarship.extractedDeadline;
@@ -101,7 +99,42 @@ const AdminDashboard = () => {
       : "active";
   };
 
-  // Fetch general stats and trigger scholarship fetch
+  const getRelativeTime = (timestamp) => {
+    const now = new Date();
+    const date = new Date(timestamp);
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? "s" : ""} ago`;
+    if (diffHours < 24)
+      return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
+  const getDeadlineUrgency = (deadline) => {
+    const now = new Date();
+    const diffMs = deadline - now;
+    const diffDays = Math.ceil(diffMs / 86400000);
+
+    if (diffDays <= 7) return "urgent"; // red
+    if (diffDays <= 14) return "soon"; // amber
+    return "upcoming"; // blue
+  };
+
+  const formatDeadline = (deadline) => {
+    return deadline.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  // --- Data Fetching ---
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
@@ -113,23 +146,25 @@ const AdminDashboard = () => {
         };
 
         const statsResponse = await axios.get("/api/reports/stats", config);
-        
-        setStats(prev => ({
-            ...prev,
-            totalUsers: statsResponse.data.stats.totalUsers,
-            totalApplications: statsResponse.data.stats.totalApplicationations,
+
+        setStats((prev) => ({
+          ...prev,
+          totalUsers: statsResponse.data.stats.totalUsers,
+          totalApplications: statsResponse.data.stats.totalApplications,
         }));
-        
-        // Set guest stats
+
         if (statsResponse.data.guestStats) {
           setGuestStats(statsResponse.data.guestStats);
         }
-        
+
+        if (statsResponse.data.recentActivity) {
+          setRecentActivity(statsResponse.data.recentActivity);
+        }
+
         setRecentUsers(statsResponse.data.recentUsers);
         setRecentApplications(statsResponse.data.recentApplications);
 
         await fetchScholarships();
-        
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
       } finally {
@@ -140,104 +175,121 @@ const AdminDashboard = () => {
     fetchDashboardData();
   }, [fetchScholarships]);
 
-  // Process scholarships whenever the context data changes
   useEffect(() => {
     if (!scholarships) return;
-
-    console.log("Dashboard processing scholarships from context:", scholarships.length);
 
     const counts = {
       all: scholarships.length,
       active: 0,
       inactive: 0,
-      draft: 0,
+      missingStudyLevel: 0,
     };
 
     scholarships.forEach((scholarship) => {
       const status = computeDisplayStatus(scholarship);
-      
-      if (status === 'active') {
+
+      if (status === "active") {
         counts.active++;
-      } else if (status === 'inactive') {
-        // Logic from ScholarshipManagement getFilteredCounts
-        const deadlineValue = scholarship.deadline || scholarship.extractedDeadline;
+      } else if (status === "inactive") {
+        const deadlineValue =
+          scholarship.deadline || scholarship.extractedDeadline;
         const deadlineDate = tryParseDeadline(deadlineValue);
-        const isExpired = deadlineDate && deadlineDate.getTime() < new Date().getTime();
-        
+        const isExpired =
+          deadlineDate && deadlineDate.getTime() < new Date().getTime();
+
         if (isExpired) {
           counts.inactive++;
         } else {
-          counts.draft++;
+          counts.missingStudyLevel++;
         }
       } else {
-        counts.draft++;
+        counts.missingStudyLevel++;
       }
     });
 
-    console.log("Dashboard computed counts:", counts);
-
-    // Update stats state to match the calculated counts
-    setStats(prev => ({
+    setStats((prev) => ({
       ...prev,
       totalScholarships: counts.all,
-      activeScholarships: counts.active
+      activeScholarships: counts.active,
     }));
 
-    // Create chart data
     const statusData = [
       { name: "Active", value: counts.active, status: "active" },
       { name: "Inactive", value: counts.inactive, status: "inactive" },
-      { name: "Draft", value: counts.draft, status: "draft" },
+      {
+        name: "Missing Study Level",
+        value: counts.missingStudyLevel,
+        status: "missing-study-level",
+      },
     ];
 
     if (scholarships.length > 0) {
-       setScholarshipStatus(statusData);
+      setScholarshipStatus(statusData);
     } else {
-       setScholarshipStatus([]);
+      setScholarshipStatus([]);
     }
 
+    const now = new Date();
+    const thirtyDaysFromNow = new Date(
+      now.getTime() + 30 * 24 * 60 * 60 * 1000
+    );
+
+    const upcoming = scholarships
+      .map((s) => ({
+        ...s,
+        parsedDeadline: tryParseDeadline(s.deadline || s.extractedDeadline),
+      }))
+      .filter((s) => {
+        if (!s.parsedDeadline) return false;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return (
+          s.parsedDeadline >= today && s.parsedDeadline <= thirtyDaysFromNow
+        );
+      })
+      .sort((a, b) => a.parsedDeadline - b.parsedDeadline)
+      .slice(0, 10); // INCREASED SLICE TO SHOW MORE IF SPACE ALLOWS
+
+    setUpcomingDeadlines(upcoming);
   }, [scholarships]);
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-    const getMetricIcon = (key) => {
-    switch (key) {
-      case "totalUsers":
-        return <HiOutlineUsers className="w-6 h-6 text-blue-600" />;
-      case "totalScholarships":
-        return <HiOutlineBookOpen className="w-6 h-6 text-blue-600" />;
-      case "activeScholarships":
-        return <HiOutlineCheckBadge className="w-6 h-6 text-green-600" />;
-      case "totalApplications":
-        return <HiOutlineDocumentText className="w-6 h-6 text-gray-600" />;
-      default:
-        return <HiOutlineChartBar className="w-6 h-6 text-gray-600" />;
-    }
-  };
-
-  const getStatusColors = (status) => {
-    const colors = {
-      active: "#2563eb", // Blue
-      inactive: "#6b7280", // Gray
-      draft: "#f59e0b", // Amber
-      expired: "#ef4444", // Red
-    };
-    return colors[status] || "#2563eb";
-  };
-  
-  // Metric Cards Data Array - Add guest metrics
+  // --- Configuration: Metric Cards ---
   const metricData = [
-    { key: "totalScholarships", label: "Total Scholarships", icon: <HiOutlineBookOpen className="w-6 h-6 text-blue-600" /> },
-    { key: "activeScholarships", label: "Active Scholarships", icon: <HiOutlineCheckBadge className="w-6 h-6 text-green-600" /> },
-    { key: "guestTotalCreated", label: "Total Guests", icon: <HiOutlineUsers className="w-6 h-6 text-blue-600" />, value: guestStats.totalCreated },
-    { key: "guestActiveNow", label: "Active Sessions", icon: <HiOutlineCircleStack className="w-6 h-6 text-blue-600" />, value: guestStats.activeNow },
-    { key: "guestCreatedToday", label: "New Today", icon: <HiOutlineStar className="w-6 h-6 text-amber-600" />, value: guestStats.createdToday },
+    {
+      key: "totalScholarships",
+      label: "Total Scholarships",
+      value: stats.totalScholarships,
+      icon: <HiOutlineAcademicCap />,
+      theme: { bg: "#eff6ff", text: "#2563eb" },
+    },
+    {
+      key: "activeScholarships",
+      label: "Active Scholarships",
+      value: stats.activeScholarships,
+      icon: <HiOutlineCheckBadge />,
+      theme: { bg: "#ecfdf5", text: "#059669" },
+    },
+    {
+      key: "guestTotalCreated",
+      label: "Total Guest Users",
+      value: guestStats.totalCreated,
+      icon: <HiOutlineUsers />,
+      theme: { bg: "#f3e8ff", text: "#9333ea" },
+    },
+    {
+      key: "guestActiveNow",
+      label: "Active Sessions",
+      value: guestStats.activeNow,
+      icon: <HiOutlineCursorArrowRays />,
+      theme: { bg: "#e0e7ff", text: "#4f46e5" },
+    },
+    {
+      key: "guestCreatedToday",
+      label: "New Today",
+      value: guestStats.createdToday,
+      icon: <HiOutlineSparkles />,
+      theme: { bg: "#fffbeb", text: "#d97706" },
+    },
   ];
 
   if (loading) {
@@ -261,8 +313,12 @@ const AdminDashboard = () => {
             animation: spin 1s linear infinite;
           }
           @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+              transform: rotate(0deg);
+            }
+            100% {
+              transform: rotate(360deg);
+            }
           }
         `}</style>
       </div>
@@ -271,355 +327,517 @@ const AdminDashboard = () => {
 
   return (
     <AdminLayout title="Dashboard">
-      {/* Info Banner about Guest Mode */}
-      <div
-        style={{
-          background: "#dbeafe",
-          border: "1px solid #93c5fd",
-          borderRadius: "8px",
-          padding: "1rem 1.5rem",
-          marginBottom: "2rem",
-          display: "flex",
-          alignItems: "center",
-          gap: "0.75rem",
-        }}
-      >
-        <HiOutlineInformationCircle className="w-6 h-6 text-blue-600" />
-        <div>
-          <strong style={{ color: "#1e40af" }}>Guest Mode Active:</strong>
-          <span style={{ color: "#1e40af", marginLeft: "0.5rem" }}>
-            {guestStats.totalCreated} users have uploaded transcripts. {guestStats.activeNow} sessions currently active.
-          </span>
-        </div>
-      </div>
-
       {/* 1. Metric Cards Grid */}
       <div className="stats-grid">
         {metricData.map((metric) => (
           <div key={metric.key} className="stat-card">
-            <div className="card-top">
-              <span className="card-icon">{metric.icon || getMetricIcon(metric.key)}</span>
-              <div className="card-value">
-                {metric.value !== undefined ? metric.value : stats[metric.key]}
+            <div
+              className="icon-box"
+              style={{
+                backgroundColor: metric.theme.bg,
+                color: metric.theme.text,
+              }}
+            >
+              <div className="icon-size">{metric.icon}</div>
+            </div>
+            <div className="stat-info">
+              <div className="stat-label">{metric.label}</div>
+              <div className="stat-value">
+                {metric.value !== undefined ? metric.value : "..."}
               </div>
             </div>
-            <div className="card-label">{metric.label}</div>
           </div>
         ))}
       </div>
 
-      {/* 2. Charts and Lists Grid */}
-      <div className="main-content-grid">
-        {/* Scholarship Status Distribution Chart */}
-        <div className="chart-panel">
-          <h3 className="panel-title">
-            Scholarship Status Distribution
-          </h3>
-          {scholarshipStatus.length > 0 ? (
-            <div className="chart-container">
-              <ResponsiveContainer width="100%" height={400}>
-                <PieChart>
-                  <Pie
-                    data={scholarshipStatus}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={80} /* Smaller inner radius */
-                    outerRadius={140} /* Smaller outer radius */
-                    paddingAngle={3}
-                    dataKey="value"
-                    label={({ name, value, percent }) =>
-                      `${name}: ${value} (${(percent * 100).toFixed(0)}%)`
-                    }
-                    labelLine={{ stroke: "#9ca3af", strokeWidth: 1 }}
-                  >
-                    {scholarshipStatus.map((entry, index) => {
-                      return (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={getStatusColors(entry.status)}
-                        />
-                      );
-                    })}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      background: "white",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "8px",
-                      padding: "0.5rem 1rem",
-                      boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-                    }}
-                    itemStyle={{ color: "#111827", fontWeight: "600" }}
-                  />
-                  <Legend
-                    verticalAlign="bottom"
-                    height={36}
-                    iconType="circle"
-                    formatter={(value, entry) => (
-                      <span className="legend-text">
-                        {value}: {entry.payload.value}
-                      </span>
-                    )}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div className="chart-empty-state">
-              <p>
-                No scholarship data available yet. Add scholarships to see the
-                distribution chart.
-              </p>
-            </div>
-          )}
+      {/* Widgets Grid */}
+      <div className="widgets-grid">
+        {/* Recent Activity Feed */}
+        <div className="widget-card">
+          <div className="widget-header">
+            <h3 className="widget-title">
+              <HiOutlineChartBar className="w-5 h-5 text-gray-500" />
+              Recent Activity
+            </h3>
+            <span className="widget-badge">Real-time</span>
+          </div>
+
+          <div className="activity-feed custom-scrollbar">
+            {recentActivity.length > 0 ? (
+              <div className="timeline-container">
+                {recentActivity.map((activity, index) => (
+                  <div key={index} className="timeline-item">
+                    <div className="timeline-connector"></div>
+                    <div
+                      className={`timeline-marker marker-${
+                        activity.type === "guest_created"
+                          ? "blue"
+                          : activity.type === "scholarship_added"
+                          ? "green"
+                          : "purple"
+                      }`}
+                    >
+                      {activity.type === "guest_created" && <HiOutlineUsers />}
+                      {activity.type === "scholarship_clicked" && (
+                        <HiOutlineCursorArrowRays />
+                      )}
+                      {activity.type === "scholarship_added" && (
+                        <HiOutlineBookOpen />
+                      )}
+                    </div>
+                    <div className="timeline-content">
+                      <div className="timeline-header">
+                        <span className="timeline-action">
+                          {activity.type === "guest_created" &&
+                            "New Guest Session"}
+                          {activity.type === "scholarship_clicked" &&
+                            "Scholarship Interest"}
+                          {activity.type === "scholarship_added" &&
+                            "System Update"}
+                        </span>
+                        <span className="timeline-time">
+                          {getRelativeTime(activity.timestamp)}
+                        </span>
+                      </div>
+                      <div className="timeline-body">
+                        {activity.type === "guest_created" && (
+                          <span>
+                            <span className="font-semibold text-slate-800">
+                              {activity.data.name}
+                            </span>{" "}
+                            started looking for{" "}
+                            <span className="text-slate-600">
+                              {activity.data.program || "scholarships"}
+                            </span>
+                            .
+                          </span>
+                        )}
+                        {activity.type === "scholarship_clicked" && (
+                          <span>
+                            User viewed{" "}
+                            <span className="font-semibold text-blue-600">
+                              {activity.data.scholarshipTitle}
+                            </span>
+                          </span>
+                        )}
+                        {activity.type === "scholarship_added" && (
+                          <span>
+                            Added{" "}
+                            <span className="font-semibold text-green-600">
+                              {activity.data.title}
+                            </span>{" "}
+                            to the database.
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state">
+                <p>No recent activity recorded.</p>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Remove Recent Users and Recent Applications sections */}
-        
-        {/* Quick Actions Panel - Update layout */}
-        <div className="quick-actions-panel">
-            <h3 className="quick-actions-title">Quick Actions</h3>
-            <div className="quick-actions-grid">
-              <Link to="/admin/scholarships" className="action-link-card">
-                <h4 className="action-card-title">Manage Scholarships</h4>
-                <p className="action-card-text">
-                  Add, edit, or remove scholarship opportunities
-                </p>
-              </Link>
-              <Link to="/admin/reports" className="action-link-card">
-                <h4 className="action-card-title">View Reports</h4>
-                <p className="action-card-text">
-                  Analyze scholarship status and performance metrics
-                </p>
-              </Link>
-              <a 
-                href="http://localhost:5000/api/health" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="action-link-card"
-              >
-                <h4 className="action-card-title">System Health</h4>
-                <p className="action-card-text">
-                  Check API server and database connection status
-                </p>
-              </a>
-            </div>
+        {/* Upcoming Deadlines Widget */}
+        <div className="widget-card">
+          <div className="widget-header">
+            <h3 className="widget-title">
+              <HiOutlineClock className="w-5 h-5 text-gray-500" />
+              Upcoming Deadlines
+            </h3>
+            <span className="widget-badge bg-blue-50 text-blue-600">
+              Next 30 Days
+            </span>
           </div>
+
+          <div className="deadlines-list custom-scrollbar">
+            {upcomingDeadlines.length > 0 ? (
+              <div className="deadlines-container">
+                {upcomingDeadlines.map((scholarship, index) => {
+                  const urgency = getDeadlineUrgency(
+                    scholarship.parsedDeadline
+                  );
+                  const daysLeft = Math.ceil(
+                    (scholarship.parsedDeadline - new Date()) / 86400000
+                  );
+
+                  return (
+                    <div key={index} className="deadline-card">
+                      <div className="deadline-info">
+                        <Link
+                          to="/admin/scholarships"
+                          className="deadline-link"
+                        >
+                          {scholarship.title}
+                        </Link>
+                        <div className="deadline-meta">
+                          <span className="deadline-date">
+                            {formatDeadline(scholarship.parsedDeadline)}
+                          </span>
+                          <span className="deadline-provider text-truncate">
+                            • {scholarship.provider?.name || "Various"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div
+                        className={`deadline-status-badge status-${urgency}`}
+                      >
+                        <HiOutlineClock className="w-3.5 h-3.5" />
+                        <span>{daysLeft} days left</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="empty-state">
+                <div className="empty-icon-bg">
+                  <HiOutlineCheckBadge className="w-6 h-6 text-green-500" />
+                </div>
+                <p>No urgent deadlines!</p>
+                <span className="empty-sub">
+                  All scholarships are either active for >30 days or expired.
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-      
+
       <style jsx>{`
-        /* --- Layout Grids --- */
+        /* --- Grid Layouts --- */
         .stats-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
           gap: 1.5rem;
           margin-bottom: 2rem;
         }
 
-        .main-content-grid {
+        .widgets-grid {
           display: grid;
-          grid-template-columns: 2fr 1fr;
-          grid-template-rows: auto;
-          gap: 2rem;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 1.5rem;
           margin-bottom: 2rem;
         }
 
-        /* Adjusting grid layout for smaller screens */
         @media (max-width: 1024px) {
-          .main-content-grid {
-            grid-template-columns: 1fr; /* Single column stack */
-          }
-          .list-panel {
-            grid-column: 1 / -1; /* Lists span full width */
-          }
-          .quick-actions-panel {
-              grid-column: 1 / -1;
-          }
-          .quick-actions-grid {
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          .widgets-grid {
+            grid-template-columns: 1fr;
           }
         }
-        
-        /* --- Stat Cards (Key Metrics) --- */
+
+        /* --- Stat Cards --- */
         .stat-card {
           background: white;
           padding: 1.5rem;
-          border-radius: 12px;
-          border: 1px solid #e5e7eb;
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.04);
-          transition: transform 0.2s, box-shadow 0.2s;
+          border-radius: 16px;
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+          display: flex;
+          align-items: center;
+          gap: 1.25rem;
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
-        
         .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+          transform: translateY(-2px);
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
         }
-
-        .card-top {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 0.5rem;
+        .icon-box {
+          width: 56px;
+          height: 56px;
+          border-radius: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
         }
-
-        .card-icon {
-            font-size: 1.5rem;
-            opacity: 0.7;
+        .icon-size {
+          font-size: 1.75rem;
+          display: flex;
         }
-
-        .card-value {
-          font-size: 2.2rem; /* Slightly larger, bolder value */
+        .stat-info {
+          flex: 1;
+        }
+        .stat-label {
+          color: #64748b;
+          font-size: 0.875rem;
+          font-weight: 600;
+          margin-bottom: 0.25rem;
+        }
+        .stat-value {
+          color: #0f172a;
+          font-size: 1.875rem;
           font-weight: 800;
-          color: #1f2937; /* Darker text for importance */
-        }
-        
-        .card-label {
-            color: #6b7280;
-            font-size: 0.95rem;
-            font-weight: 600;
-            letter-spacing: 0.01em;
+          line-height: 1.2;
         }
 
-        /* --- Panels (Chart & Lists) --- */
-        .chart-panel {
-          grid-column: 1 / 2;
-        }
-        
-        .list-panel, .chart-panel, .quick-actions-panel {
-            background: white;
-            border-radius: 12px;
-            border: 1px solid #e5e7eb;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.04);
-            overflow: hidden;
-            height: fit-content;
-        }
-        
-        .panel-title {
-            padding: 1rem 1.5rem;
-            margin: 0;
-            border-bottom: 1px solid #e5e7eb;
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: #1f2937;
+        /* --- Widget Containers --- */
+        .widget-card {
+          background: white;
+          border-radius: 16px;
+          border: 1px solid #e2e8f0;
+          overflow: hidden;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+          display: flex;
+          flex-direction: column;
+          /* CHANGED: Increased height to 650px to fill space */
+          height: 650px;
         }
 
-        .chart-container {
-            padding: 3rem 1.5rem;
-        }
-        
-        .chart-empty-state {
-            padding: 3rem 2rem;
-            text-align: center;
-            color: #6b7280;
-        }
-        
-        .chart-empty-state p {
-            margin: 0;
-            font-size: 0.95rem;
+        .widget-header {
+          padding: 1.25rem 1.5rem;
+          border-bottom: 1px solid #f1f5f9;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          background: #fff;
+          flex-shrink: 0; /* Header doesn't shrink */
         }
 
-        /* Customizing chart text/legend for clarity */
-        .legend-text {
-            color: #6b7280;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-        
-        /* --- Recent Activity Lists --- */
-        .list-body {
-            padding: 0 1.5rem 1rem 1.5rem;
-        }
-        
-        .list-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem 0;
-            border-bottom: 1px solid #f3f4f6;
-            transition: background 0.2s;
-        }
-        
-        .list-item:last-child {
-            border-bottom: none;
-        }
-        
-        .list-item:hover {
-            background: #fcfcfd;
+        .widget-title {
+          font-size: 1.1rem;
+          font-weight: 700;
+          color: #1e293b;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin: 0;
         }
 
-        .user-details, .app-details {
-            display: flex;
-            flex-direction: column;
+        .widget-badge {
+          font-size: 0.75rem;
+          font-weight: 600;
+          padding: 0.25rem 0.75rem;
+          border-radius: 99px;
+          background: #f1f5f9;
+          color: #64748b;
         }
 
-        .user-name, .app-title {
-            font-weight: 600;
-            color: #1f2937;
-            font-size: 0.95rem;
+        /* CHANGED: Flex 1 allows list to fill the taller card */
+        .activity-feed,
+        .deadlines-list {
+          padding: 1rem;
+          flex: 1;
+          overflow-y: auto;
         }
 
-        .user-email, .app-user-name {
-            font-size: 0.8rem;
-            color: #6b7280;
-            margin-top: 0.125rem;
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
         }
-        
-        .item-date {
-            font-size: 0.8rem;
-            color: #6b7280;
-            flex-shrink: 0;
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
         }
-
-        /* --- Quick Actions --- */
-        .quick-actions-panel {
-          grid-column: 2 / 3;
-          grid-row: 2 / 3; /* Position under Recent Users on large screens */
-        }
-        
-        .quick-actions-title {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: #1f2937;
-            padding: 1rem 1.5rem;
-            margin: 0;
-            border-bottom: 1px solid #e5e7eb;
-        }
-        
-        .quick-actions-grid {
-            display: grid;
-            gap: 1rem;
-            padding: 1.5rem;
-            grid-template-columns: 1fr;
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: #cbd5e1;
+          border-radius: 20px;
         }
 
-        .action-link-card {
-            display: block;
-            padding: 1rem 1.5rem;
-            background: #f9fafb; /* Light background for contrast */
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            text-decoration: none;
-            color: inherit;
-            transition: all 0.2s ease;
+        /* --- Timeline Styles (Activity) --- */
+        .timeline-container {
+          padding: 1.5rem 1.5rem 0 1.5rem;
         }
 
-        .action-link-card:hover {
-            background: #ffffff;
-            border-color: #2563eb;
-            box-shadow: 0 4px 8px rgba(37, 99, 235, 0.1);
+        .timeline-item {
+          position: relative;
+          padding-left: 2rem;
+          padding-bottom: 2rem; /* Increased spacing */
+        }
+        .timeline-item:last-child {
+          padding-bottom: 0;
         }
 
-        .action-card-title {
-            margin: 0 0 0.5rem 0;
-            color: #2563eb;
-            font-weight: 700;
-            font-size: 1rem;
+        .timeline-connector {
+          position: absolute;
+          left: 11px;
+          top: 6px;
+          bottom: 0;
+          width: 2px;
+          background-color: #e2e8f0;
+        }
+        .timeline-item:last-child .timeline-connector {
+          display: none;
         }
 
-        .action-card-text {
-            margin: 0;
-            color: #6b7280;
-            font-size: 0.85rem;
+        .timeline-marker {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          border: 2px solid white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.75rem;
+          z-index: 10;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        .marker-blue {
+          background-color: #dbeafe;
+          color: #2563eb;
+        }
+        .marker-purple {
+          background-color: #f3e8ff;
+          color: #9333ea;
+        }
+        .marker-green {
+          background-color: #dcfce7;
+          color: #16a34a;
+        }
+
+        .timeline-content {
+          margin-top: -2px;
+        }
+
+        .timeline-header {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 0.25rem;
+        }
+
+        .timeline-action {
+          font-size: 0.8rem;
+          font-weight: 700;
+          color: #64748b;
+          text-transform: uppercase;
+          letter-spacing: 0.02em;
+        }
+
+        .timeline-time {
+          font-size: 0.75rem;
+          color: #94a3b8;
+          font-weight: 500;
+        }
+
+        .timeline-body {
+          font-size: 0.9rem;
+          color: #334155;
+          line-height: 1.5;
+        }
+
+        /* --- Deadline List Styles --- */
+        .deadlines-container {
+          padding: 1rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .deadline-card {
+          background: #fff;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 1rem;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          transition: all 0.2s ease;
+        }
+        .deadline-card:hover {
+          border-color: #cbd5e1;
+          background: #f8fafc;
+          transform: translateX(2px);
+        }
+
+        .deadline-info {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+          overflow: hidden;
+        }
+
+        .deadline-link {
+          font-weight: 600;
+          color: #1e293b;
+          text-decoration: none;
+          font-size: 0.95rem;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 250px;
+        }
+        .deadline-link:hover {
+          color: #2563eb;
+        }
+
+        .deadline-meta {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.8rem;
+          color: #64748b;
+        }
+
+        .text-truncate {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 150px;
+        }
+
+        .deadline-status-badge {
+          display: flex;
+          align-items: center;
+          gap: 0.35rem;
+          padding: 0.35rem 0.75rem;
+          border-radius: 8px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+
+        .status-urgent {
+          background: #fef2f2;
+          color: #dc2626;
+          border: 1px solid #fecaca;
+        }
+        .status-soon {
+          background: #fffbeb;
+          color: #d97706;
+          border: 1px solid #fde68a;
+        }
+        .status-upcoming {
+          background: #eff6ff;
+          color: #2563eb;
+          border: 1px solid #bfdbfe;
+        }
+
+        /* --- Empty States --- */
+        .empty-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          height: 100%;
+          text-align: center;
+          padding: 2rem;
+          color: #94a3b8;
+        }
+        .empty-icon-bg {
+          width: 48px;
+          height: 48px;
+          background: #f0fdf4;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 1rem;
+        }
+        .empty-state p {
+          margin: 0;
+          font-weight: 600;
+          color: #475569;
+        }
+        .empty-sub {
+          font-size: 0.8rem;
+          margin-top: 0.5rem;
+          max-width: 200px;
         }
       `}</style>
     </AdminLayout>

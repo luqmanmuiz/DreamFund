@@ -3,6 +3,7 @@ const cors = require('cors')
 const path = require('path')
 const fs = require('fs')
 const mongoose = require('mongoose')
+const seedAdmin = require('./scripts/seedAdmin')
 require('dotenv').config()
 
 const app = express()
@@ -51,8 +52,10 @@ const connectDB = async () => {
 
 // Call it like this in your server.js
 connectDB()
-  .then(() => {
+  .then(async () => {
     console.log('🚀 Database connection established, server ready!');
+    // Seed admin user automatically on startup
+    await seedAdmin();
   })
   .catch((error) => {
     console.log('⚠️ Server starting without database connection');

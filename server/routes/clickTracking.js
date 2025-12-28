@@ -216,8 +216,9 @@ router.post("/feedback", async (req, res) => {
         });
       }
   
-      // Check if feedback already submitted
-      if (clickRecord.feedbackResponse) {
+      // Check if feedback already submitted with "completed"
+      // Allow re-submission if previous response was "not_yet" or "dismissed"
+      if (clickRecord.feedbackResponse === "completed") {
         return res.status(400).json({
           success: false,
           message: "Feedback already submitted for this scholarship",

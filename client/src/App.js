@@ -10,7 +10,6 @@ import ResultsPage from "./pages/ResultsPage"
 import AdminLogin from "./pages/admin/AdminLogin"
 import AdminDashboard from "./pages/admin/AdminDashboard"
 import ScholarshipManagement from "./pages/admin/ScholarshipManagement"
-import UserManagement from "./pages/admin/UserManagement"
 import ReportsPage from "./pages/admin/ReportsPage"
 
 // Components
@@ -47,14 +46,6 @@ function App() {
                 element={
                   <ProtectedRoute adminOnly>
                     <ScholarshipManagement />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/users"
-                element={
-                  <ProtectedRoute adminOnly>
-                    <UserManagement />
                   </ProtectedRoute>
                 }
               />

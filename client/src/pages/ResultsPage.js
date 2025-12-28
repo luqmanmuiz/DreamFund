@@ -67,7 +67,6 @@ const ResultsPage = () => {
               }
             }
           } catch (e) {
-            console.error("Failed to fetch guest profile:", e);
           }
 
           if (!guestProfile) {
@@ -102,7 +101,6 @@ const ResultsPage = () => {
           }
         }
       } catch (error) {
-        console.error("Error fetching matches:", error);
         setMessage("Failed to load scholarship matches")
       } finally {
         setLoading(false)
@@ -192,6 +190,17 @@ const ResultsPage = () => {
 
     // Immediately open the scholarship website
     window.open(scholarship.provider.website, "_blank");
+
+    // Show feedback popup after a short delay (3 seconds)
+    setTimeout(() => {
+      if (!feedbackScholarship) {
+        setFeedbackScholarship({
+          id: scholarship._id,
+          title: scholarship.title,
+        });
+        markFeedbackShown(scholarship._id);
+      }
+    }, 3000);
   };
 
   const handleFeedbackClose = (responseType) => {
@@ -331,15 +340,6 @@ const ResultsPage = () => {
 
     const prog = programMatches(scholarship?.eligibleCourses, studentCtx.program)
     reasons.push({ text: prog.detail, ok: prog.ok });
-    
-    if (scholarship.requirements.maxAge < 100) {
-        reasons.push({ text: `Meets Max Age requirement (< ${scholarship.requirements.maxAge} years)`, ok: true });
-    }
-    
-    if (scholarship.requirements.financialNeed !== "any" && scholarship.requirements.financialNeed !== "") {
-        reasons.push({ text: `Requires Financial Need: ${capitalizeWords(scholarship.requirements.financialNeed)}`, ok: false });
-    }
-
 
     return reasons
   }
@@ -473,14 +473,7 @@ const ResultsPage = () => {
                     <div className="requirements-list">
                       <h4 className="list-title">Requirements:</h4>
                       <ul>
-                        {scholarship.requirements.minGPA > 0 && <li>Min. GPA: **{scholarship.requirements.minGPA}**</li>}
-                        {scholarship.requirements.maxAge < 100 && <li>Max. Age: **{scholarship.requirements.maxAge}**</li>}
-                        {scholarship.requirements.majors.length > 0 && (
-                          <li>Majors: **{scholarship.requirements.majors.slice(0, 3).join(", ")}**</li>
-                        )}
-                        {scholarship.requirements.financialNeed !== "any" && (
-                          <li>Financial Need: **{capitalizeWords(scholarship.requirements.financialNeed)}**</li>
-                        )}
+                        {scholarship.requirements.minGPA > 0 && <li>Minimum CGPA: {scholarship.requirements.minGPA.toFixed(2)}</li>}
                       </ul>
                     </div>
 
@@ -533,8 +526,7 @@ const ResultsPage = () => {
                 Other Available Scholarships
               </h2>
               <p className="non-matches-subtitle">
-                These scholarships are available but don't meet all your current qualifications. **See why below**:
-              </p>
+                These scholarships are available but don't meet all your current qualifications:              </p>
             </div>
 
             <div className="matches-grid">

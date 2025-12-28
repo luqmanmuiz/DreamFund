@@ -301,8 +301,7 @@ def extract_with_custom_ner(text):
                 logger.info(f"✓ NER extracted PROGRAM: '{program[:50]}...' (confidence: {program_confidence})")
     
     # Calculate overall confidence
-    confidences = [c for c in [name_confidence, cgpa_confidence, program_confidence] if c > 0]
-    overall_confidence = sum(confidences) / len(confidences) if confidences else 0.0
+    overall_confidence = (name_confidence + cgpa_confidence + program_confidence) / 3
     
     # Translate program from Malay to English
     program_malay = program

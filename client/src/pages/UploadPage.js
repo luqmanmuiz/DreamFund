@@ -5,7 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import axios from "axios";
 import { useAuth } from "../contexts/AuthContext";
-import { FaGraduationCap } from 'react-icons/fa';
+import { FaGraduationCap } from "react-icons/fa";
 import {
   HiOutlineDocumentText,
   HiCheckCircle,
@@ -19,8 +19,8 @@ import {
   HiOutlineUser,
   HiOutlineChartBarSquare,
   HiExclamationTriangle,
-  HiSparkles
-} from 'react-icons/hi2';
+  HiSparkles,
+} from "react-icons/hi2";
 
 const UploadPage = () => {
   const [files, setFiles] = useState([]);
@@ -39,21 +39,19 @@ const UploadPage = () => {
 
     const fileArray = Array.from(selectedFiles);
 
-    // Validate files
-    const allowedTypes = [
-      "application/pdf",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "image/jpeg",
-      "image/png",
-      "image/gif",
-    ];
+    // Only allow 1 PDF file
+    if (fileArray.length > 1) {
+      setMessage("Please select only one transcript file at a time.");
+      return;
+    }
+
+    const allowedTypes = ["application/pdf"];
     const maxSize = 10 * 1024 * 1024; // 10MB
 
     const validFiles = fileArray.filter((file) => {
       if (!allowedTypes.includes(file.type)) {
         setMessage(
-          `Invalid file type: ${file.name}. Only PDF, DOC, DOCX, JPG, PNG, and GIF files are allowed.`
+          `Invalid file type: ${file.name}. Only PDF files are allowed for transcript uploads.`
         );
         return false;
       }
@@ -67,7 +65,7 @@ const UploadPage = () => {
     });
 
     if (validFiles.length > 0) {
-      setFiles((prev) => [...prev, ...validFiles]);
+      setFiles(validFiles); // Replace existing file instead of adding
       setMessage("");
     }
   };
@@ -91,7 +89,7 @@ const UploadPage = () => {
 
   const removeFile = (index) => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
-    setExtractedData((prev) => prev.filter((_, i) => i !== index)); 
+    setExtractedData((prev) => prev.filter((_, i) => i !== index));
   };
 
   const uploadFiles = async () => {
@@ -227,39 +225,60 @@ const UploadPage = () => {
       } else if (validResults.length > 0) {
         // Step 3: Create Guest Profile - ALWAYS attempt this
         const latestResult = validResults[validResults.length - 1];
-        
+
         console.log("Creating guest profile with data:", latestResult);
-        
+
         try {
-          const guestResponse = await axios.post("http://localhost:5000/api/guests/create", {
-            name: (latestResult.name !== "Not found" && latestResult.name !== "Extraction failed" && latestResult.name !== "Service unavailable") ? latestResult.name : "Student",
-            cgpa: (latestResult.cgpa !== "Not found" && latestResult.cgpa !== "Extraction failed" && latestResult.cgpa !== "Service unavailable") ? latestResult.cgpa : 0,
-            program: (latestResult.program !== "Not found" && latestResult.program !== "Extraction failed" && latestResult.program !== "Service unavailable") ? latestResult.program : "General Studies"
-          });
+          const guestResponse = await axios.post(
+            "http://localhost:5000/api/guests/create",
+            {
+              name:
+                latestResult.name !== "Not found" &&
+                latestResult.name !== "Extraction failed" &&
+                latestResult.name !== "Service unavailable"
+                  ? latestResult.name
+                  : "Student",
+              cgpa:
+                latestResult.cgpa !== "Not found" &&
+                latestResult.cgpa !== "Extraction failed" &&
+                latestResult.cgpa !== "Service unavailable"
+                  ? latestResult.cgpa
+                  : 0,
+              program:
+                latestResult.program !== "Not found" &&
+                latestResult.program !== "Extraction failed" &&
+                latestResult.program !== "Service unavailable"
+                  ? latestResult.program
+                  : "General Studies",
+            }
+          );
 
           console.log("Guest profile response:", guestResponse.data);
 
           if (guestResponse.data.success && guestResponse.data.shareId) {
             setShareId(guestResponse.data.shareId);
             console.log("Share ID set:", guestResponse.data.shareId);
-            setMessage("Analysis complete! Your unique results link is ready. 🎉");
+            setMessage(
+              "Analysis complete! Your unique results link is ready. 🎉"
+            );
           } else {
-            console.error("Guest response missing shareId:", guestResponse.data);
+            console.error(
+              "Guest response missing shareId:",
+              guestResponse.data
+            );
             setMessage("Analysis complete, but failed to generate share link.");
           }
         } catch (guestError) {
-          console.error("Guest profile creation error:", guestError);
-          console.error("Error response:", guestError.response?.data);
-          
           if (guestError.response && guestError.response.status === 404) {
-             setMessage("Error: Guest API endpoint not found. Please ensure server/routes/guests.js is created and registered in server/index.js.");
+            setMessage(
+              "Error: Guest API endpoint not found. Please ensure server/routes/guests.js is created and registered in server/index.js."
+            );
           } else {
-             setMessage("Analysis complete, but failed to save results.");
+            setMessage("Analysis complete, but failed to save results.");
           }
         }
       }
     } catch (error) {
-      console.error("Upload error:", error);
       if (error.code === "ERR_NETWORK" || error.code === "ECONNREFUSED") {
         setMessage(
           "Cannot connect to the server. Please make sure the backend server is running on port 5000. ❌"
@@ -295,7 +314,7 @@ const UploadPage = () => {
     if (confidence >= 0.65) return "#f59e0b";
     return "#ef4444";
   };
-  
+
   const getConfidenceBg = (confidence) => {
     if (confidence >= 0.85) return "#d1fae5";
     if (confidence >= 0.65) return "#fef3c7";
@@ -341,35 +360,40 @@ const UploadPage = () => {
             <span className="hero-badge-text">Document Upload & Analysis</span>
           </div>
 
-          <h1 className="hero-title">
-            Upload Your Academic Documents
-          </h1>
+          <h1 className="hero-title">Upload Your Academic Documents</h1>
 
           <p className="hero-description">
-            Upload transcripts, essays, or recommendation letters. Our **AI**
+            Upload transcripts, essays, or recommendation letters. Our AI
             extracts key information to match you with perfect scholarships.
           </p>
         </div>
 
         <div className="main-card">
           {message && (
-            <div className="message-alert" style={{
-                background: message.includes("success") || message.includes("complete") || message.includes("ready")
-                  ? "#f0fdf4"
-                  : message.includes("Error") || message.includes("failed")
-                  ? "#fef2f2"
-                  : "#eff6ff",
+            <div
+              className="message-alert"
+              style={{
+                background:
+                  message.includes("success") ||
+                  message.includes("complete") ||
+                  message.includes("ready")
+                    ? "#f0fdf4"
+                    : message.includes("Error") || message.includes("failed")
+                    ? "#fef2f2"
+                    : "#eff6ff",
               }}
             >
               <div className="message-content">
-                {message.includes("success") || message.includes("complete") || message.includes("ready") ? (
+                {message.includes("success") ||
+                message.includes("complete") ||
+                message.includes("ready") ? (
                   <HiCheckCircle className="w-5 h-5 text-green-600 inline" />
                 ) : message.includes("Error") || message.includes("failed") ? (
                   <HiXCircle className="w-5 h-5 text-red-600 inline" />
                 ) : (
                   <HiOutlineInformationCircle className="w-5 h-5 text-blue-600 inline" />
                 )}
-                <span style={{ marginLeft: '0.5rem' }}>{message}</span>
+                <span style={{ marginLeft: "0.5rem" }}>{message}</span>
               </div>
               {(uploading || extracting) && (
                 <div className="progress-bar-container">
@@ -395,9 +419,12 @@ const UploadPage = () => {
                 background: dragOver ? "#f5f3ff" : "#fafafa",
               }}
             >
-              <div className="upload-icon-wrapper" style={{
-                background: uploading ? "#fef3c7" : "#ede9fe",
-              }}>
+              <div
+                className="upload-icon-wrapper"
+                style={{
+                  background: uploading ? "#fef3c7" : "#ede9fe",
+                }}
+              >
                 {uploading ? (
                   <HiOutlineClock className="w-12 h-12 text-amber-600 animate-pulse" />
                 ) : (
@@ -412,18 +439,17 @@ const UploadPage = () => {
               </h3>
 
               <p className="upload-specs-text">
-                Supported: PDF, DOC, DOCX, JPG, PNG, GIF
+                Supported: PDF only
                 <br />
                 <span className="upload-max-size">
-                  Maximum 10MB per file
+                  Maximum 10MB • One transcript per upload
                 </span>
               </p>
 
               <input
                 ref={fileInputRef}
                 type="file"
-                multiple
-                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif"
+                accept=".pdf"
                 onChange={(e) => handleFileSelect(e.target.files)}
                 style={{ display: "none" }}
                 disabled={uploading}
@@ -435,15 +461,10 @@ const UploadPage = () => {
                 <div className="selected-files-header">
                   <h3 className="selected-files-title">
                     Selected Files
-                    <span className="file-count-badge">
-                      {files.length}
-                    </span>
+                    <span className="file-count-badge">{files.length}</span>
                   </h3>
                   {!uploading && (
-                    <button
-                      onClick={clearAll}
-                      className="btn-clear-all"
-                    >
+                    <button onClick={clearAll} className="btn-clear-all">
                       Clear All
                     </button>
                   )}
@@ -451,10 +472,7 @@ const UploadPage = () => {
 
                 <div className="file-list">
                   {files.map((file, index) => (
-                    <div
-                      key={index}
-                      className="file-item"
-                    >
+                    <div key={index} className="file-item">
                       <div className="file-info-group">
                         <div className="file-icon-square">
                           <HiOutlineDocumentText className="w-5 h-5 text-blue-600" />
@@ -489,7 +507,9 @@ const UploadPage = () => {
                   extracting ? (
                     <>
                       <HiMagnifyingGlass className="w-5 h-5 inline" />
-                      <span style={{ marginLeft: '0.5rem' }}>Extracting Data...</span>
+                      <span style={{ marginLeft: "0.5rem" }}>
+                        Extracting Data...
+                      </span>
                     </>
                   ) : (
                     <span>Uploading...</span>
@@ -497,8 +517,9 @@ const UploadPage = () => {
                 ) : (
                   <>
                     <HiOutlineRocketLaunch className="w-5 h-5 inline" />
-                    <span style={{ marginLeft: '0.5rem' }}>
-                      Upload & Extract {files.length} File{files.length !== 1 ? 's' : ''}
+                    <span style={{ marginLeft: "0.5rem" }}>
+                      Upload & Extract {files.length} File
+                      {files.length !== 1 ? "s" : ""}
                     </span>
                   </>
                 )}
@@ -509,12 +530,15 @@ const UploadPage = () => {
               <div className="extracted-data-section">
                 <h3 className="extracted-data-title">
                   <HiOutlineCursorArrowRays className="w-6 h-6 inline text-blue-600" />
-                  <span style={{ marginLeft: '0.5rem' }}>Extracted Information</span>
+                  <span style={{ marginLeft: "0.5rem" }}>
+                    Extracted Information
+                  </span>
                 </h3>
 
                 {extractedData
                   .filter(
-                    (data) => data && typeof data === "object" && data.fileName
+                    (data) =>
+                      data && typeof data === "object" && data.fileName
                   )
                   .map((data, index) => (
                     <div
@@ -533,7 +557,12 @@ const UploadPage = () => {
                       {data.error && (
                         <div className="extraction-error-alert">
                           <HiExclamationTriangle className="w-5 h-5 text-amber-600 inline" />
-                          <span className="error-text" style={{ marginLeft: '0.5rem' }}>{data.error}</span>
+                          <span
+                            className="error-text"
+                            style={{ marginLeft: "0.5rem" }}
+                          >
+                            {data.error}
+                          </span>
                         </div>
                       )}
 
@@ -544,29 +573,41 @@ const UploadPage = () => {
                             value: data.name,
                             confidence: data.confidence?.name,
                             method: data.extractionMethods?.name,
-                            icon: <HiOutlineUser className="w-5 h-5 text-gray-600" />,
+                            icon: (
+                              <HiOutlineUser className="w-5 h-5 text-gray-600" />
+                            ),
                           },
                           {
                             label: "CGPA",
                             value: data.cgpa,
                             confidence: data.confidence?.cgpa,
                             method: data.extractionMethods?.cgpa,
-                            icon: <HiOutlineChartBarSquare className="w-5 h-5 text-gray-600" />,
+                            icon: (
+                              <HiOutlineChartBarSquare className="w-5 h-5 text-gray-600" />
+                            ),
                           },
                           {
                             label: "Program",
                             value: data.program,
                             confidence: data.confidence?.program,
                             method: data.extractionMethods?.program,
-                            icon: <FaGraduationCap className="w-5 h-5 text-gray-600" />,
+                            icon: (
+                              <FaGraduationCap className="w-5 h-5 text-gray-600" />
+                            ),
                           },
                         ].map((item, idx) => (
                           <div
                             key={idx}
                             className="data-field-card"
                             style={{
-                                border: `1px solid ${getConfidenceBg(item.confidence)}`,
-                                background: getConfidenceBg(item.confidence) === "#fee2e2" ? "#fef7f7" : getConfidenceBg(item.confidence),
+                              border: `1px solid ${getConfidenceBg(
+                                item.confidence
+                              )}`,
+                              background:
+                                getConfidenceBg(item.confidence) ===
+                                "#fee2e2"
+                                  ? "#fef7f7"
+                                  : getConfidenceBg(item.confidence),
                             }}
                           >
                             <div className="data-field-header">
@@ -579,48 +620,69 @@ const UploadPage = () => {
                             </div>
 
                             <div className="data-field-value-group">
-                                <span className="data-field-value">
+                              <span className="data-field-value">
                                 {item.value || "Not found"}
-                                </span>
-                                {item.confidence > 0 && (
-                                    <span className="confidence-badge" style={{
-                                        backgroundColor: getConfidenceColor(item.confidence),
-                                    }}>
-                                        {getConfidenceIcon(item.confidence)}{" "}
-                                        {Math.round(item.confidence * 100)}%
-                                    </span>
-                                )}
+                              </span>
                             </div>
-                            
+
+                            {/* UPDATED: Footer for bottom alignment */}
                             {item.confidence > 0 && (
+                              <div className="data-field-footer">
+                                {/* Percentage Badge Moved Here */}
+                                <span
+                                  className="confidence-badge"
+                                  style={{
+                                    backgroundColor: getConfidenceColor(
+                                      item.confidence
+                                    ),
+                                    alignSelf: "flex-start",
+                                    marginBottom: "0.5rem",
+                                  }}
+                                >
+                                  {getConfidenceIcon(item.confidence)}{" "}
+                                  {Math.round(item.confidence * 100)}%
+                                </span>
+
                                 <div className="confidence-details">
-                                <div>
+                                  <div>
                                     <strong>Confidence:</strong>{" "}
                                     {getConfidenceLabel(item.confidence)}
-                                </div>
-                                {item.method && (
+                                  </div>
+                                  {item.method && (
                                     <div>
-                                    <strong>Method:</strong>{" "}
-                                    {getMethodLabel(item.method)}
+                                      <strong>Method:</strong>{" "}
+                                      {getMethodLabel(item.method)}
                                     </div>
-                                )}
-                                {item.confidence < 0.65 && (
+                                  )}
+                                  {item.confidence < 0.65 && (
                                     <div className="verification-required-text">
-                                    <HiExclamationTriangle className="w-4 h-4 inline text-amber-600" />
-                                    <span style={{ marginLeft: '0.25rem' }}>Please verify manually</span>
+                                      <HiExclamationTriangle className="w-4 h-4 inline text-amber-600" />
+                                      <span
+                                        style={{ marginLeft: "0.25rem" }}
+                                      >
+                                        Please verify manually
+                                      </span>
                                     </div>
-                                )}
+                                  )}
                                 </div>
+                              </div>
                             )}
                           </div>
                         ))}
                       </div>
 
                       {data.confidence?.overall > 0 && (
-                        <div className="overall-quality-banner" style={{
-                            background: getConfidenceBg(data.confidence.overall),
-                            border: `1px solid ${getConfidenceColor(data.confidence.overall)}`,
-                          }}>
+                        <div
+                          className="overall-quality-banner"
+                          style={{
+                            background: getConfidenceBg(
+                              data.confidence.overall
+                            ),
+                            border: `1px solid ${getConfidenceColor(
+                              data.confidence.overall
+                            )}`,
+                          }}
+                        >
                           <div className="quality-content">
                             <div className="quality-indicator">
                               {data.qualityTier === "high" ? (
@@ -630,7 +692,10 @@ const UploadPage = () => {
                               ) : (
                                 <HiXCircle className="w-5 h-5 text-red-600 inline" />
                               )}
-                              <span className="quality-text" style={{ marginLeft: '0.5rem' }}>
+                              <span
+                                className="quality-text"
+                                style={{ marginLeft: "0.5rem" }}
+                              >
                                 Overall Quality:{" "}
                                 {getConfidenceLabel(data.confidence.overall)}
                               </span>
@@ -640,10 +705,17 @@ const UploadPage = () => {
                             </span>
                           </div>
                           <div className="progress-bar-overall">
-                            <div className="progress-bar-fill-overall" style={{
-                                width: `${Math.round(data.confidence.overall * 100)}%`,
-                                backgroundColor: getConfidenceColor(data.confidence.overall),
-                            }} />
+                            <div
+                              className="progress-bar-fill-overall"
+                              style={{
+                                width: `${Math.round(
+                                  data.confidence.overall * 100
+                                )}%`,
+                                backgroundColor: getConfidenceColor(
+                                  data.confidence.overall
+                                ),
+                              }}
+                            />
                           </div>
                         </div>
                       )}
@@ -661,11 +733,12 @@ const UploadPage = () => {
                     }}
                   >
                     <HiOutlineCloudArrowUp className="w-5 h-5 inline" />
-                    <span style={{ marginLeft: '0.5rem' }}>Upload More Files</span>
+                    <span style={{ marginLeft: "0.5rem" }}>
+                      Upload More Files
+                    </span>
                   </button>
                 </div>
-                
-                {/* Move the success CTA inside the extracted data section */}
+
                 {shareId && (
                   <div className="success-cta-card">
                     <div className="success-icon">
@@ -675,17 +748,21 @@ const UploadPage = () => {
                       Documents processed successfully!
                     </h3>
                     <p className="success-description">
-                      Your unique results link is ready. You can access your matches anytime with this link.
+                      Your unique results link is ready. You can access your
+                      matches anytime with this link.
                     </p>
-                    <div className="share-link-box" style={{
-                      background: "white",
-                      padding: "0.75rem",
-                      borderRadius: "8px",
-                      border: "1px solid #bbf7d0",
-                      margin: "1rem 0",
-                      fontFamily: "monospace",
-                      color: "#166534"
-                    }}>
+                    <div
+                      className="share-link-box"
+                      style={{
+                        background: "white",
+                        padding: "0.75rem",
+                        borderRadius: "8px",
+                        border: "1px solid #bbf7d0",
+                        margin: "1rem 0",
+                        fontFamily: "monospace",
+                        color: "#166534",
+                      }}
+                    >
                       dreamfund.com/results/{shareId}
                     </div>
                     <button
@@ -693,7 +770,9 @@ const UploadPage = () => {
                       className="btn-view-matches"
                     >
                       <HiMagnifyingGlass className="w-5 h-5 inline" />
-                      <span style={{ marginLeft: '0.5rem' }}>View Scholarship Matches</span>
+                      <span style={{ marginLeft: "0.5rem" }}>
+                        View Scholarship Matches
+                      </span>
                     </button>
                   </div>
                 )}
@@ -702,12 +781,13 @@ const UploadPage = () => {
           </div>
         </div>
       </div>
-      
+
       <style jsx>{`
         .page-wrapper {
           min-height: 100vh;
           background: #f8fafc;
-          font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+          font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
+            "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         }
 
         .main-content-area {
@@ -758,7 +838,7 @@ const UploadPage = () => {
           margin: 0 auto;
           line-height: 1.6;
         }
-        
+
         .main-card {
           background: white;
           border-radius: 16px;
@@ -767,34 +847,34 @@ const UploadPage = () => {
         }
 
         .card-padding {
-            padding: 2.5rem;
+          padding: 2.5rem;
         }
-        
+
         .message-alert {
           padding: 1rem 1.5rem;
           border-bottom: 1px solid #e5e7eb;
           border-radius: 16px 16px 0 0;
         }
-        
+
         .message-content {
           display: flex;
           align-items: center;
           gap: 0.75rem;
         }
-        
+
         .message-icon {
           font-size: 1.25rem;
         }
-        
+
         .message-text {
           font-weight: 600;
           font-size: 0.95rem;
         }
 
         .progress-bar-container {
-            margin-top: 0.75rem;
+          margin-top: 0.75rem;
         }
-        
+
         .progress-bar-track {
           width: 100%;
           height: 4px;
@@ -802,7 +882,7 @@ const UploadPage = () => {
           border-radius: 2px;
           overflow: hidden;
         }
-        
+
         .progress-bar-fill {
           width: 100%;
           height: 100%;
@@ -810,11 +890,17 @@ const UploadPage = () => {
           border-radius: 2px;
           animation: pulse-progress 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
-        
+
         @keyframes pulse-progress {
-          0% { transform: translateX(-100%); }
-          50% { transform: translateX(0); }
-          100% { transform: translateX(100%); }
+          0% {
+            transform: translateX(-100%);
+          }
+          50% {
+            transform: translateX(0);
+          }
+          100% {
+            transform: translateX(100%);
+          }
         }
 
         .upload-area {
@@ -826,8 +912,8 @@ const UploadPage = () => {
         }
 
         .upload-area.dragover {
-            transform: scale(1.02);
-            box-shadow: 0 0 0 4px #bfdbfe;
+          transform: scale(1.02);
+          box-shadow: 0 0 0 4px #bfdbfe;
         }
 
         .upload-icon-wrapper {
@@ -865,159 +951,159 @@ const UploadPage = () => {
           display: block;
           margin-top: 0.25rem;
         }
-        
+
         .selected-files-section {
-            margin-top: 2rem;
+          margin-top: 2rem;
         }
 
         .selected-files-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1rem;
         }
 
         .selected-files-title {
-            font-size: 1.125rem;
-            font-weight: 700;
-            color: #111827;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+          font-size: 1.125rem;
+          font-weight: 700;
+          color: #111827;
+          margin: 0;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
         }
 
         .file-count-badge {
-            background: #f3f4f6;
-            color: #4b5563;
-            padding: 0.25rem 0.625rem;
-            border-radius: 12px;
-            font-size: 0.875rem;
-            font-weight: 500;
+          background: #f3f4f6;
+          color: #4b5563;
+          padding: 0.25rem 0.625rem;
+          border-radius: 12px;
+          font-size: 0.875rem;
+          font-weight: 500;
         }
 
         .btn-clear-all {
-            padding: 0.5rem 1rem;
-            font-size: 0.875rem;
-            background: white;
-            color: #dc2626;
-            border: 1px solid #fecaca;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s ease;
+          padding: 0.5rem 1rem;
+          font-size: 0.875rem;
+          background: white;
+          color: #dc2626;
+          border: 1px solid #fecaca;
+          border-radius: 8px;
+          cursor: pointer;
+          font-weight: 600;
+          transition: all 0.2s ease;
         }
 
         .btn-clear-all:hover {
-            background: #fef2f2;
-            border-color: #fca5a5;
+          background: #fef2f2;
+          border-color: #fca5a5;
         }
 
         .file-list {
-            display: grid;
-            gap: 0.75rem;
+          display: grid;
+          gap: 0.75rem;
         }
 
         .file-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem;
-            background: #fafafa;
-            border-radius: 10px;
-            border: 1px solid #e5e7eb;
-            transition: all 0.2s ease;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1rem;
+          background: #fafafa;
+          border-radius: 10px;
+          border: 1px solid #e5e7eb;
+          transition: all 0.2s ease;
         }
 
         .file-info-group {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            flex: 1;
-            min-width: 0;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          flex: 1;
+          min-width: 0;
         }
 
         .file-icon-square {
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
-            background: #ede9fe;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.25rem;
-            flex-shrink: 0;
+          width: 40px;
+          height: 40px;
+          border-radius: 8px;
+          background: #ede9fe;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.25rem;
+          flex-shrink: 0;
         }
-        
+
         .file-details {
-            flex: 1;
-            min-width: 0;
+          flex: 1;
+          min-width: 0;
         }
 
         .file-name {
-            font-weight: 600;
-            color: #111827;
-            font-size: 0.95rem;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+          font-weight: 600;
+          color: #111827;
+          font-size: 0.95rem;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         .file-size {
-            font-size: 0.85rem;
-            color: #6b7280;
-            margin-top: 0.125rem;
+          font-size: 0.85rem;
+          color: #6b7280;
+          margin-top: 0.125rem;
         }
 
         .btn-remove-file {
-            padding: 0.5rem 1rem;
-            font-size: 0.875rem;
-            background: white;
-            color: #dc2626;
-            border: 1px solid #fecaca;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            flex-shrink: 0;
+          padding: 0.5rem 1rem;
+          font-size: 0.875rem;
+          background: white;
+          color: #dc2626;
+          border: 1px solid #fecaca;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 500;
+          transition: all 0.2s ease;
+          flex-shrink: 0;
         }
 
         .btn-remove-file:not([disabled]):hover {
-            background: #fef2f2;
+          background: #fef2f2;
         }
 
         .upload-button-container {
-            margin-top: 2.5rem;
-            text-align: center;
+          margin-top: 2.5rem;
+          text-align: center;
         }
 
         .btn-upload-extract {
-            padding: 1rem 2.5rem;
-            font-size: 1rem;
-            font-weight: 700;
-            background: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
-            opacity: 1;
+          padding: 1rem 2.5rem;
+          font-size: 1rem;
+          font-weight: 700;
+          background: #2563eb;
+          color: white;
+          border: none;
+          border-radius: 10px;
+          cursor: pointer;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+          opacity: 1;
         }
 
         .btn-upload-extract:not([disabled]):hover {
-            background: #1d4ed8;
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+          background: #1d4ed8;
+          transform: translateY(-3px);
+          box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
         }
 
         .btn-upload-extract[disabled] {
-            cursor: not-allowed;
-            background: #9ca3af;
-            box-shadow: none;
-            transform: translateY(0);
+          cursor: not-allowed;
+          background: #9ca3af;
+          box-shadow: none;
+          transform: translateY(0);
         }
-        
+
         .extracted-data-section {
           margin-top: 3.5rem;
           padding-top: 2rem;
@@ -1025,53 +1111,53 @@ const UploadPage = () => {
         }
 
         .extracted-data-title {
-            font-size: 1.375rem;
-            font-weight: 700;
-            color: #111827;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
+          font-size: 1.375rem;
+          font-weight: 700;
+          color: #111827;
+          margin-bottom: 1.5rem;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
         }
 
         .extraction-card {
-            margin-bottom: 2rem;
-            padding: 1.5rem;
-            background: #f9fafb;
-            border-radius: 16px;
-            border: 1px solid #e5e7eb;
+          margin-bottom: 2rem;
+          padding: 1.5rem;
+          background: #f9fafb;
+          border-radius: 16px;
+          border: 1px solid #e5e7eb;
         }
 
         .extraction-card-header {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 1.5rem;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          margin-bottom: 1.5rem;
         }
 
         .extraction-file-name {
-            margin: 0;
-            color: #111827;
-            font-size: 1.15rem;
-            font-weight: 700;
+          margin: 0;
+          color: #111827;
+          font-size: 1.15rem;
+          font-weight: 700;
         }
 
         .extraction-error-alert {
-            color: #991b1b;
-            font-size: 0.95rem;
-            margin-bottom: 1.25rem;
-            padding: 0.875rem;
-            background: #fef2f2;
-            border-radius: 8px;
-            border: 1px solid #fecaca;
-            display: flex;
-            align-items: center;
-            gap: 0.625rem;
-            font-weight: 500;
+          color: #991b1b;
+          font-size: 0.95rem;
+          margin-bottom: 1.25rem;
+          padding: 0.875rem;
+          background: #fef2f2;
+          border-radius: 8px;
+          border: 1px solid #fecaca;
+          display: flex;
+          align-items: center;
+          gap: 0.625rem;
+          font-weight: 500;
         }
-        
+
         .error-icon {
-            font-size: 1.1rem;
+          font-size: 1.1rem;
         }
 
         .extracted-data-grid {
@@ -1079,145 +1165,155 @@ const UploadPage = () => {
           grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
           gap: 1.5rem;
         }
-        
+
+        /* UPDATED CARD STYLING */
         .data-field-card {
-            padding: 1.25rem;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
-            transition: border-color 0.2s;
+          padding: 1.25rem;
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+          transition: border-color 0.2s;
+          display: flex;
+          flex-direction: column;
+          height: 100%;
         }
 
         .data-field-header {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 0.5rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 0.5rem;
         }
-        
+
         .data-field-icon {
-            font-size: 1rem;
+          font-size: 1rem;
         }
 
         .data-field-label {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: #6b7280;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+          font-size: 0.8rem;
+          font-weight: 600;
+          color: #6b7280;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
         }
-        
+
         .data-field-value-group {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            flex-wrap: wrap;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.5rem;
         }
 
         .data-field-value {
-            font-weight: 700;
-            color: #111827;
-            font-size: 1rem;
+          font-weight: 700;
+          color: #111827;
+          font-size: 1rem;
+        }
+
+        /* NEW FOOTER CLASS FOR BOTTOM ANCHORING */
+        .data-field-footer {
+          margin-top: auto;
+          display: flex;
+          flex-direction: column;
+          padding-top: 1rem;
         }
 
         .confidence-badge {
-            font-size: 0.7rem;
-            padding: 0.25rem 0.625rem;
-            border-radius: 12px;
-            color: white;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 0.25rem;
+          font-size: 0.7rem;
+          padding: 0.25rem 0.625rem;
+          border-radius: 12px;
+          color: white;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
         }
 
         .confidence-details {
-            font-size: 0.7rem;
-            color: #6b7280;
-            margin-top: 1rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-            padding-top: 0.75rem;
-            border-top: 1px dashed #e5e7eb;
+          font-size: 0.7rem;
+          color: #6b7280;
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+          padding-top: 0.75rem;
         }
 
         .confidence-details strong {
-            color: #4b5563;
-            font-weight: 600;
+          color: #4b5563;
+          font-weight: 600;
         }
 
         .verification-required-text {
-            color: #dc2626;
-            font-weight: 700;
-            margin-top: 0.25rem;
-            display: flex;
-            align-items: center;
-            gap: 0.25rem;
+          color: #dc2626;
+          font-weight: 700;
+          margin-top: 0.25rem;
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
         }
 
         .overall-quality-banner {
-            margin-top: 2rem;
-            padding: 1rem;
-            border-radius: 10px;
-            position: relative;
-            overflow: hidden;
+          margin-top: 2rem;
+          padding: 1rem;
+          border-radius: 10px;
+          position: relative;
+          overflow: hidden;
         }
 
         .quality-content {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            position: relative;
-            z-index: 1;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+          position: relative;
+          z-index: 1;
         }
 
         .quality-indicator {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
         }
 
         .quality-icon {
-            font-size: 1.1rem;
+          font-size: 1.1rem;
         }
-        
+
         .quality-text {
-            font-weight: 700;
-            color: #111827;
-            font-size: 1rem;
+          font-weight: 700;
+          color: #111827;
+          font-size: 1rem;
         }
 
         .quality-percentage {
-            font-size: 1rem;
-            font-weight: 700;
-            color: #111827;
+          font-size: 1rem;
+          font-weight: 700;
+          color: #111827;
         }
-        
+
         .progress-bar-overall {
-            height: 6px;
-            width: 100%;
-            background: rgba(255, 255, 255, 0.4);
-            border-radius: 3px;
-            margin-top: 0.75rem;
-            overflow: hidden;
-            position: relative;
-            z-index: 1;
+          height: 6px;
+          width: 100%;
+          background: rgba(255, 255, 255, 0.4);
+          border-radius: 3px;
+          margin-top: 0.75rem;
+          overflow: hidden;
+          position: relative;
+          z-index: 1;
         }
 
         .progress-bar-fill-overall {
-            height: 100%;
-            border-radius: 3px;
-            transition: width 0.5s ease-out;
+          height: 100%;
+          border-radius: 3px;
+          transition: width 0.5s ease-out;
         }
 
         .upload-more-container {
           text-align: center;
           margin-top: 2rem;
         }
-        
+
         .btn-upload-more {
           padding: 0.875rem 1.75rem;
           background: white;
@@ -1236,70 +1332,70 @@ const UploadPage = () => {
         }
 
         .success-cta-card {
-            margin-top: 2.5rem;
-            padding: 2.5rem;
-            background: #f0fdf4;
-            border-radius: 16px;
-            border: 1px solid #bbf7d0;
-            text-align: center;
+          margin-top: 2.5rem;
+          padding: 2.5rem;
+          background: #f0fdf4;
+          border-radius: 16px;
+          border: 1px solid #bbf7d0;
+          text-align: center;
         }
 
         .success-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
+          font-size: 3rem;
+          margin-bottom: 1rem;
         }
 
         .success-title {
-            font-size: 1.75rem;
-            font-weight: 800;
-            color: #166534;
-            margin-bottom: 0.75rem;
-            letter-spacing: -0.01em;
+          font-size: 1.75rem;
+          font-weight: 800;
+          color: #166534;
+          margin-bottom: 0.75rem;
+          letter-spacing: -0.01em;
         }
 
         .success-description {
-            color: #15803d;
-            margin-bottom: 1.75rem;
-            font-size: 1.125rem;
-            line-height: 1.75;
+          color: #15803d;
+          margin-bottom: 1.75rem;
+          font-size: 1.125rem;
+          line-height: 1.75;
         }
-        
+
         .btn-view-matches {
-            padding: 1rem 2.5rem;
-            background: #2563eb;
-            color: white;
-            text-decoration: none;
-            border-radius: 10px;
-            display: inline-block;
-            font-size: 1rem;
-            font-weight: 700;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
-            border: none;
-            cursor: pointer;
+          padding: 1rem 2.5rem;
+          background: #2563eb;
+          color: white;
+          text-decoration: none;
+          border-radius: 10px;
+          display: inline-block;
+          font-size: 1rem;
+          font-weight: 700;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+          border: none;
+          cursor: pointer;
         }
 
         .btn-view-matches:hover {
-            background: #1d4ed8;
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+          background: #1d4ed8;
+          transform: translateY(-3px);
+          box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
         }
 
         @media (max-width: 768px) {
           .main-content-area {
             padding: 2rem 1rem 4rem 1rem;
           }
-          
+
           .hero-title {
-              font-size: 2rem;
+            font-size: 2rem;
           }
-          
+
           .card-padding {
-              padding: 1.5rem;
+            padding: 1.5rem;
           }
 
           .extracted-data-grid {
-              grid-template-columns: 1fr;
+            grid-template-columns: 1fr;
           }
         }
       `}</style>

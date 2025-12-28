@@ -15,9 +15,6 @@ const Header = ({ navItems }) => {
   // Default items when navItems not provided
   const defaultItems = user
     ? [
-        { to: "/upload", label: "Upload" },
-        { to: "/profile", label: "Profile" },
-        { to: "/results", label: "Matches" },
         { type: "action", action: () => logout(), label: "Logout", className: "btn-logout" },
       ]
     : [

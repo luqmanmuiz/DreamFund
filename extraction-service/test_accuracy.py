@@ -24,14 +24,7 @@ def calculate_accuracy(nlp, test_data):
     total_correct = 0
     total_predicted = 0
     total_expected = 0
-    
-    print("="*80)
-    print("TESTING MODEL ON TEST DATA")
-    print("="*80)
-    print(f"Model: {nlp.meta['name']}")
-    print(f"Test examples: {len(test_data)}")
-    print()
-    
+   
     # Process each test example
     for idx, (text, annotations) in enumerate(test_data, 1):
         # Get ground truth
@@ -51,7 +44,6 @@ def calculate_accuracy(nlp, test_data):
                 total_predicted += 1
         
         # Compare and count matches
-        print(f"Example {idx}:")
         for label in ['STUDENT_NAME', 'CGPA', 'PROGRAM']:
             expected = expected_entities.get(label, None)
             predicted = predicted_entities.get(label, None)
@@ -72,25 +64,17 @@ def calculate_accuracy(nlp, test_data):
             if is_match:
                 metrics[label]['correct'] += 1
                 total_correct += 1
-                status = "✓"
-            else:
-                status = "✗"
-            
-            print(f"  {label:15s} {status}")
-            if expected:
-                print(f"    Expected:  '{expected}'")
-            else:
-                print(f"    Expected:  (none)")
-            if predicted:
-                print(f"    Predicted: '{predicted}'")
-            else:
-                print(f"    Predicted: (none)")
-        print()
     
     print("="*80)
     print("ACCURACY RESULTS")
     print("="*80)
     print()
+    
+    display_names = {
+        'STUDENT_NAME': 'Student Name',
+        'CGPA': 'CGPA',
+        'PROGRAM': 'Course'
+    }
     
     # Calculate per-entity metrics
     for label in ['STUDENT_NAME', 'CGPA', 'PROGRAM']:
@@ -107,7 +91,7 @@ def calculate_accuracy(nlp, test_data):
         # F1: Harmonic mean of precision and recall
         f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0
         
-        print(f"{label}:")
+        print(f"{display_names[label]}:")
         print(f"  Correct:   {correct}/{expected}")
         print(f"  Precision: {precision:.1f}%")
         print(f"  Recall:    {recall:.1f}%")

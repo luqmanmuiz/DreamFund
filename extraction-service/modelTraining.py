@@ -9,15 +9,13 @@ from spacy.util import minibatch, compounding
 import random
 from pathlib import Path
 import json
-from collections import defaultdict
 
 # Import your training data
 try:
     from train_data import TRAIN_DATA
-    print(f"✅ Loaded {len(TRAIN_DATA)} training examples")
+    from test_data import TEST_DATA
 except ImportError:
-    print("❌ Error: train_data.py not found!")
-    print("   Run Step 2 first to convert labeled data")
+    print("Error: train_data.py not found!")
     exit(1)
 
 def split_train_test(data, test_size=0.2, random_seed=42):
@@ -34,19 +32,13 @@ def split_train_test(data, test_size=0.2, random_seed=42):
     """
     random.seed(random_seed)
     
-    # Shuffle data
     shuffled = data.copy()
     random.shuffle(shuffled)
     
-    # Calculate split point
     split_idx = int(len(shuffled) * (1 - test_size))
     
     train_data = shuffled[:split_idx]
     test_data = shuffled[split_idx:]
-    
-    print(f"\n📊 Data Split:")
-    print(f"   Training set: {len(train_data)} documents ({(1-test_size)*100:.0f}%)")
-    print(f"   Test set:     {len(test_data)} documents ({test_size*100:.0f}%)")
     
     return train_data, test_data
 
@@ -63,12 +55,11 @@ def evaluate_model(nlp, test_data):
     examples = []
     
     for text, annotations in test_data:
-        doc = nlp.make_doc(text)
+        doc = nlp(text)
         example = Example.from_dict(doc, annotations)
         examples.append(example)
     
     scores = scorer.score(examples)
-    
     return scores
 
 def train_ner_model(
@@ -86,38 +77,22 @@ def train_ner_model(
         train_data: Training examples
         test_data: Test examples (for evaluation)
         output_dir: Where to save the trained model
-        n_iter: Number of training iterations (increased to 100)
+        n_iter: Number of training iterations
         model: Existing model to continue training (None = start from blank)
-        dropout: Dropout rate for regularization (reduced to 0.2)
+        dropout: Dropout rate for regularization
     """
-    
-    print("\n" + "=" * 60)
-    print("🚀 TRAINING CUSTOM NER MODEL WITH VALIDATION")
-    print("=" * 60)
-    
-    # Check dataset size
-    if len(train_data) < 20:
-        print(f"⚠️  WARNING: Only {len(train_data)} training examples!")
-        print(f"   Recommended: 50+ examples for good accuracy")
-        print(f"   Model may overfit with this small dataset\n")
     
     # Create or load spaCy model
     if model is not None:
         nlp = spacy.load(model)
-        print(f"📦 Loaded existing model: {model}")
     else:
         nlp = spacy.blank("en")
-        print(f"📦 Creating blank English model...")
-        # Add tokenizer with better handling
-        nlp.tokenizer.token_match = None
     
     # Add NER component
     if "ner" not in nlp.pipe_names:
         ner = nlp.add_pipe("ner", last=True)
-        print(f"🏷️  Adding NER component...")
     else:
         ner = nlp.get_pipe("ner")
-        print(f"🏷️  Using existing NER component...")
     
     # Add entity labels
     labels = set()
@@ -126,25 +101,16 @@ def train_ner_model(
             labels.add(label)
             ner.add_label(label)
     
-    print(f"📊 Labels to train: {sorted(labels)}")
-    
     # Train the model
     other_pipes = [pipe for pipe in nlp.pipe_names if pipe != "ner"]
-    
-    print(f"\n🎯 Training for {n_iter} iterations...")
-    print(f"   Dropout rate: {dropout}")
-    print(f"   Batch size: dynamic (4-32)")
-    print("-" * 60)
     
     best_loss = float('inf')
     best_test_score = 0.0
     patience = 0
-    max_patience = 20  # Early stopping if no improvement
+    max_patience = 20
     
     with nlp.disable_pipes(*other_pipes):
         optimizer = nlp.begin_training()
-        
-        # Set learning rate
         optimizer.learn_rate = 0.001
         
         for iteration in range(n_iter):
@@ -158,8 +124,8 @@ def train_ner_model(
                 example = Example.from_dict(doc, annotations)
                 examples.append(example)
             
-            # Batch training with smaller batches for small datasets
-            batch_size = min(8.0, len(train_data) / 2)  # Smaller batches
+            # Batch training
+            batch_size = min(8.0, len(train_data) / 2)
             batches = minibatch(examples, size=compounding(2.0, batch_size, 1.001))
             
             for batch in batches:
@@ -175,7 +141,7 @@ def train_ner_model(
             
             # Early stopping
             if patience > max_patience:
-                print(f"\n⚠️  Early stopping at iteration {iteration + 1} (no improvement for {max_patience} iterations)")
+                print(f"\nEarly stopping at iteration {iteration + 1}")
                 break
             
             # Evaluate on test set every 10 iterations
@@ -187,104 +153,64 @@ def train_ner_model(
                     best_test_score = test_f1
                 
                 print(f"Iteration {iteration + 1:3d}/{n_iter} | "
-                      f"Train Loss: {current_loss:8.4f} | "
-                      f"Test F1: {test_f1:5.2f}% | "
-                      f"Best: {best_test_score:5.2f}%")
-            elif (iteration + 1) % 5 == 0 or iteration == 0:
-                print(f"Iteration {iteration + 1:3d}/{n_iter} | "
                       f"Loss: {current_loss:8.4f} | "
-                      f"Best: {best_loss:8.4f}")
-    
-    print("-" * 60)
-    print(f"✅ Training complete!")
+                      f"F1: {test_f1:5.2f}%")
+            elif (iteration + 1) % 5 == 0 or iteration == 0:
+                print(f"Iteration {iteration + 1:3d}/{n_iter} | Loss: {current_loss:8.4f}")
     
     # Final evaluation on test set
     if test_data:
-        print("\n" + "=" * 60)
-        print("📊 FINAL EVALUATION ON TEST SET")
-        print("=" * 60)
-        
         scores = evaluate_model(nlp, test_data)
         
-        print(f"\n🎯 Overall Metrics:")
-        print(f"   Precision: {scores.get('ents_p', 0) * 100:.2f}%")
-        print(f"   Recall:    {scores.get('ents_r', 0) * 100:.2f}%")
-        print(f"   F1-Score:  {scores.get('ents_f', 0) * 100:.2f}%")
-        
-        # Per-entity scores
-        if 'ents_per_type' in scores:
-            print(f"\n📋 Per-Entity Performance:")
-            for entity, entity_scores in scores['ents_per_type'].items():
-                print(f"   {entity}:")
-                print(f"      Precision: {entity_scores.get('p', 0) * 100:.2f}%")
-                print(f"      Recall:    {entity_scores.get('r', 0) * 100:.2f}%")
-                print(f"      F1-Score:  {entity_scores.get('f', 0) * 100:.2f}%")
+        print(f"\nFinal Results:")
+        print(f"  Precision: {scores.get('ents_p', 0) * 100:.2f}%")
+        print(f"  Recall:    {scores.get('ents_r', 0) * 100:.2f}%")
+        print(f"  F1-Score:  {scores.get('ents_f', 0) * 100:.2f}%")
     
     # Save model
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     nlp.to_disk(output_path)
     
-    # Calculate model size
-    model_size = sum(f.stat().st_size for f in output_path.rglob('*') if f.is_file()) / 1024 / 1024
+    print(f"\nModel saved to: {output_path}")
     
-    print(f"\n💾 Model saved to: {output_path}")
-    print(f"📦 Model size: {model_size:.1f} MB")
-    
-    # Save training metadata with test scores
+    # Save training metadata
     metadata = {
         "training_examples": len(train_data),
         "test_examples": len(test_data) if test_data else 0,
-        "iterations": n_iter,
+        "iterations": iteration + 1,
         "final_train_loss": float(current_loss),
         "best_train_loss": float(best_loss),
         "test_f1_score": scores.get('ents_f', 0) * 100 if test_data else None,
         "test_precision": scores.get('ents_p', 0) * 100 if test_data else None,
         "test_recall": scores.get('ents_r', 0) * 100 if test_data else None,
         "entity_labels": sorted(labels),
-        "model_size_mb": round(model_size, 1),
-        "dropout": dropout
+        "dropout": dropout,
+        "learning_rate": 0.001
     }
     
     with open(output_path / "training_metadata.json", 'w') as f:
         json.dump(metadata, f, indent=2)
-    
-    print("\n" + "=" * 60)
-    print("✅ MODEL TRAINING COMPLETE!")
-    print("=" * 60)
-    
-    if test_data:
-        print(f"\n⚠️  IMPORTANT:")
-        print(f"   Training F1: ~{best_loss:.2f} (may be optimistic)")
-        print(f"   Test F1:     {scores.get('ents_f', 0) * 100:.2f}% (real performance)")
-        print(f"   Use the TEST score to evaluate model quality!")
 
 if __name__ == "__main__":
-    # Check dataset size
-    print(f"\n📊 Dataset Information:")
-    print(f"   Total examples: {len(TRAIN_DATA)}")
+    # Import test data
+    try:
+        from test_data import TEST_DATA
+    except ImportError:
+        TEST_DATA = None
     
-    if len(TRAIN_DATA) < 30:
-        print(f"\n⚠️  DATASET TOO SMALL!")
-        print(f"   Current: {len(TRAIN_DATA)} examples")
-        print(f"   Recommended: 50+ examples")
-        print(f"   Optimal: 100+ examples")
-        print(f"\n   With only {len(TRAIN_DATA)} examples, accuracy will be limited.")
-        print(f"   Consider labeling more transcripts for better results.\n")
-        
-        response = input("Continue training anyway? (y/n): ")
-        if response.lower() != 'y':
-            print("Training cancelled. Label more data and try again.")
-            exit(0)
+    # Use pre-split data if available
+    if TEST_DATA:
+        train_data = TRAIN_DATA
+        test_data = TEST_DATA
+    else:
+        train_data, test_data = split_train_test(TRAIN_DATA, test_size=0.2)
     
-    # Split data into train and test
-    train_data, test_data = split_train_test(TRAIN_DATA, test_size=0.2)
-    
-    # Train the model with validation
+    # Train the model
     train_ner_model(
         train_data=train_data,
         test_data=test_data,
         output_dir="./custom_transcript_ner_model",
-        n_iter=100,  # Increased iterations
-        dropout=0.2   # Reduced dropout
+        n_iter=100,
+        dropout=0.2
     )

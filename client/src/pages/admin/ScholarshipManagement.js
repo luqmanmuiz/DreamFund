@@ -1,25 +1,24 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import ConfirmModal from "../../components/ConfirmModal";
 import { useAuth } from "../../contexts/AuthContext";
 import { useScholarships } from "../../contexts/ScholarshipContext";
 import AdminLayout from "../../components/AdminLayout";
-import { 
+import {
   HiOutlineDocumentText,
   HiOutlineCheckCircle,
   HiOutlineXCircle,
   HiOutlineChartBarSquare,
   HiOutlineClock,
-  HiExclamationTriangle,
-  HiOutlineCalendar
-} from 'react-icons/hi2';
-import { FaGraduationCap } from 'react-icons/fa';
+  HiOutlineCalendar,
+} from "react-icons/hi2";
+import { FaGraduationCap } from "react-icons/fa";
 
 const ScholarshipManagement = () => {
   const { user, logout } = useAuth();
   const {
     scholarships,
-    createScholarship,
     updateScholarship,
     deleteScholarship,
     fetchScholarships,
@@ -35,11 +34,6 @@ const ScholarshipManagement = () => {
     studyLevels: [],
     requirements: {
       minGPA: "",
-      maxAge: "",
-      majors: "", // Changed to string for input handling
-      financialNeed: "any",
-      extracurriculars: "", // Changed to string
-      achievements: "", // Changed to string
     },
     provider: {
       name: "",
@@ -47,9 +41,11 @@ const ScholarshipManagement = () => {
       website: "",
     },
     status: "active",
-    eligibleCourses: "", // Changed to string
+    eligibleCourses: "",
   });
   const [message, setMessage] = useState("");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [scholarshipToDelete, setScholarshipToDelete] = useState(null);
   const [loading, setLoading] = useState(false);
   const [scrapeLoading, setScrapeLoading] = useState(false);
   const [scrapeMessage, setScrapeMessage] = useState("");
@@ -60,6 +56,7 @@ const ScholarshipManagement = () => {
   });
   const [eventSource, setEventSource] = useState(null);
   const [scrapingStats, setScrapingStats] = useState(null);
+  const [lastSuccessfulScrape, setLastSuccessfulScrape] = useState(null);
 
   // Memoized fetch function for useEffect dependency
   const stableFetchScholarships = useCallback(fetchScholarships, []);
@@ -81,6 +78,9 @@ const ScholarshipManagement = () => {
         const data = await response.json();
         if (data.success && data.data) {
           setScrapingStats(data.data);
+        }
+        if (data.lastSuccessfulScrape) {
+          setLastSuccessfulScrape(data.lastSuccessfulScrape);
         }
       } catch (error) {
         console.error("Error fetching scraping stats:", error);
@@ -123,13 +123,36 @@ const ScholarshipManagement = () => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    
+
     const parts = [];
     if (hours > 0) parts.push(`${hours}h`);
     if (minutes > 0) parts.push(`${minutes}m`);
     if (secs > 0 || parts.length === 0) parts.push(`${secs}s`);
-    
+
     return parts.join(" ");
+  };
+
+  // Format last scrape time in human-readable format
+  const formatLastScrapeTime = (timestamp) => {
+    if (!timestamp) return null;
+
+    const now = new Date();
+    const scrapeTime = new Date(timestamp);
+    const diffInMs = now - scrapeTime;
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+
+    // Show relative time if within 24 hours
+    if (diffInHours < 24) {
+      if (diffInMinutes < 1) return "Just now";
+      if (diffInMinutes < 60)
+        return `${diffInMinutes} minute${diffInMinutes !== 1 ? "s" : ""} ago`;
+      return `${diffInHours} hour${diffInHours !== 1 ? "s" : ""} ago`;
+    }
+
+    // Otherwise show abbreviated date
+    const options = { day: "numeric", month: "short", year: "numeric" };
+    return scrapeTime.toLocaleDateString("en-GB", options);
   };
 
   // Get stats to display (live or last session)
@@ -137,38 +160,45 @@ const ScholarshipManagement = () => {
     // If scraping is active, show live stats
     if (scrapeLoading && scrapeProgress.total > 0) {
       const totalProcessed = scrapeProgress.current;
-      const successCount = (scrapeProgress.savedCount || 0) + (scrapeProgress.updatedCount || 0);
+      const successCount =
+        (scrapeProgress.savedCount || 0) + (scrapeProgress.updatedCount || 0);
       const failedCount = scrapeProgress.failedCount || 0;
-      const successRate = totalProcessed > 0 ? (successCount / totalProcessed) * 100 : 0;
-      const startTime = scrapeProgress.startTime ? new Date(scrapeProgress.startTime) : null;
-      const duration = startTime ? Math.floor((new Date() - startTime) / 1000) : 0;
-      
+      const successRate =
+        totalProcessed > 0 ? (successCount / totalProcessed) * 100 : 0;
+      const startTime = scrapeProgress.startTime
+        ? new Date(scrapeProgress.startTime)
+        : null;
+      const duration = startTime
+        ? Math.floor((new Date() - startTime) / 1000)
+        : 0;
+
       return {
         totalProcessed,
         successCount,
         failedCount,
         successRate,
         duration,
-        isLive: true
+        isLive: true,
       };
     }
-    
+
     // Otherwise show last completed session
     if (scrapingStats) {
-      const successRate = scrapingStats.totalProcessed > 0 
-        ? (scrapingStats.successCount / scrapingStats.totalProcessed) * 100 
-        : 0;
-      
+      const successRate =
+        scrapingStats.totalProcessed > 0
+          ? (scrapingStats.successCount / scrapingStats.totalProcessed) * 100
+          : 0;
+
       return {
         totalProcessed: scrapingStats.totalProcessed,
         successCount: scrapingStats.successCount,
         failedCount: scrapingStats.failedCount,
         successRate,
         duration: scrapingStats.duration,
-        isLive: false
+        isLive: false,
       };
     }
-    
+
     return null;
   };
 
@@ -183,7 +213,7 @@ const ScholarshipManagement = () => {
       studyLevel === "diploma";
 
     if (!hasValidStudyLevel) {
-      return "draft";
+      return "missing-study-level";
     }
 
     const deadlineValue = scholarship.deadline || scholarship.extractedDeadline;
@@ -201,7 +231,7 @@ const ScholarshipManagement = () => {
           deadlineDate.getUTCDate()
         )
       );
-      if (dl.getTime() < todayMidnightUtc.getTime()) return "inactive"; // Inactive if expired
+      if (dl.getTime() < todayMidnightUtc.getTime()) return "expired"; // Changed to 'expired' for clarity
     }
 
     return String(scholarship.status || "active").toLowerCase() === "inactive"
@@ -211,46 +241,40 @@ const ScholarshipManagement = () => {
 
   // Function to calculate counts for filter buttons
   const getFilteredCounts = () => {
-      const counts = {
-          all: scholarships.length,
-          active: 0,
-          inactive: 0,
-          draft: 0,
-          expired: 0, // Using 'inactive' for display but tracking expired separately for accuracy
-      };
+    const counts = {
+      all: scholarships.length,
+      active: 0,
+      inactive: 0,
+      missingStudyLevel: 0,
+      expired: 0,
+    };
 
-      for (const scholarship of scholarships) {
-          const status = computeDisplayStatus(scholarship);
-          
-          if (status === 'active') {
-              counts.active++;
-          } else if (status === 'inactive') {
-              // Check if truly expired (for display accuracy, though the filter uses 'inactive')
-              const deadlineDate = tryParseDeadline(scholarship.deadline || scholarship.extractedDeadline);
-              const isExpired = deadlineDate && deadlineDate.getTime() < new Date().getTime();
-              
-              if (isExpired) {
-                  counts.inactive++; // Count under the 'inactive' category
-              } else {
-                  counts.draft++; // Treat as draft if inactive but not expired (manually set inactive)
-              }
-          } else if (status === 'draft') {
-              counts.draft++;
-          } else {
-              // Fallback
-              counts.draft++;
-          }
+    for (const scholarship of scholarships) {
+      const status = computeDisplayStatus(scholarship);
+
+      if (status === "active") {
+        counts.active++;
+      } else if (status === "inactive") {
+        counts.inactive++;
+      } else if (status === "expired") {
+        counts.expired++; // Count separately
+      } else if (status === "missing-study-level") {
+        counts.missingStudyLevel++;
+      } else {
+        counts.missingStudyLevel++;
       }
-      // Note: The filter buttons will display 'All', 'Active', 'Inactive', 'Draft/Incomplete'
-      // The old 'not-eligible' is now mapped to 'draft' in computeDisplayStatus
-      
-      return counts;
+    }
+
+    // Combine expired into inactive for the filter button if desired, or keep separate
+    // For this UI, let's group expired and inactive for the "Inactive" button count
+    counts.inactiveTotal = counts.inactive + counts.expired;
+
+    return counts;
   };
-  
+
   // Scrape cancellation function
   const handleCancelScraping = async () => {
     try {
-      // Note: Assumes the local storage token is valid and the API endpoint is correct
       const response = await fetch(
         "http://localhost:5000/api/scholarships/cancel-scraping",
         {
@@ -359,7 +383,6 @@ const ScholarshipManagement = () => {
         };
 
         es.onerror = (error) => {
-          console.error("❌ SSE error:", error);
           es.close();
           setEventSource(null);
           setScrapeLoading(false);
@@ -391,11 +414,7 @@ const ScholarshipManagement = () => {
       studyLevels: [],
       requirements: {
         minGPA: "",
-        maxAge: "",
         majors: "",
-        financialNeed: "any",
-        extracurriculars: "",
-        achievements: "",
       },
       provider: {
         name: "",
@@ -450,10 +469,6 @@ const ScholarshipManagement = () => {
         ...formData.requirements,
         minGPA: Number.parseFloat(formData.requirements.minGPA) || 0,
         majors: parseStringToArray(formData.requirements.majors),
-        extracurriculars: parseStringToArray(
-          formData.requirements.extracurriculars
-        ),
-        achievements: parseStringToArray(formData.requirements.achievements),
       },
       eligibleCourses: parseStringToArray(formData.eligibleCourses),
 
@@ -470,17 +485,19 @@ const ScholarshipManagement = () => {
         : null,
     };
 
-    let result;
-    if (editingScholarship) {
-      result = await updateScholarship(editingScholarship._id, scholarshipData);
-    } else {
-      result = await createScholarship(scholarshipData);
+    if (!editingScholarship) {
+      setMessage("Error: No scholarship selected for editing");
+      setLoading(false);
+      return;
     }
 
+    const result = await updateScholarship(
+      editingScholarship._id,
+      scholarshipData
+    );
+
     if (result.success) {
-      setMessage(
-        `Scholarship ${editingScholarship ? "updated" : "created"} successfully! ✅`
-      );
+      setMessage("Scholarship updated successfully! ✅");
       resetForm();
     } else {
       setMessage(result.message);
@@ -499,13 +516,7 @@ const ScholarshipManagement = () => {
         : [],
       requirements: {
         minGPA: scholarship.requirements?.minGPA?.toString() || "",
-        maxAge: scholarship.requirements?.maxAge?.toString() || "",
         majors: (scholarship.requirements?.majors || []).join(", "),
-        financialNeed: scholarship.requirements?.financialNeed || "any",
-        extracurriculars: (
-          scholarship.requirements?.extracurriculars || []
-        ).join(", "),
-        achievements: (scholarship.requirements?.achievements || []).join(", "),
       },
       provider: {
         name: scholarship.provider?.name || "",
@@ -517,6 +528,7 @@ const ScholarshipManagement = () => {
     });
     setEditingScholarship(scholarship);
     setShowForm(true);
+    window.scrollTo({ top: 0, behavior: "smooth" }); // Scroll up to form
   };
 
   const toggleStudyLevel = (level) => {
@@ -528,15 +540,27 @@ const ScholarshipManagement = () => {
     });
   };
 
-  const handleDelete = async (scholarshipId) => {
-    if (window.confirm("Are you sure you want to delete this scholarship?")) {
-      const result = await deleteScholarship(scholarshipId);
-      if (result.success) {
-        setMessage("Scholarship deleted successfully! 🗑️");
-      } else {
-        setMessage(result.message);
-      }
+  const handleDelete = (scholarshipId) => {
+    setScholarshipToDelete(scholarshipId);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!scholarshipToDelete) return;
+    const result = await deleteScholarship(scholarshipToDelete);
+    if (result.success) {
+      setMessage("Scholarship deleted successfully! 🗑️");
+      setTimeout(() => setMessage(""), 3000);
+    } else {
+      setMessage(result.message);
     }
+    setShowDeleteModal(false);
+    setScholarshipToDelete(null);
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setScholarshipToDelete(null);
   };
 
   const formatDate = (dateString) => {
@@ -548,31 +572,32 @@ const ScholarshipManagement = () => {
   };
 
   const filteredCounts = getFilteredCounts(); // Calculate counts once
-  
+
   // Filtered and Searchable List
-  const filteredScholarships = (scholarships || [])
-    .filter((scholarship) => {
-      const matchesSearch =
-        scholarship.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (scholarship.provider?.name || "")
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase());
+  const filteredScholarships = (scholarships || []).filter((scholarship) => {
+    const matchesSearch =
+      scholarship.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (scholarship.provider?.name || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
 
-      const currentStatus = computeDisplayStatus(scholarship);
-      
-      const matchesFilter = filterStatus === "all" || currentStatus === filterStatus;
+    const currentStatus = computeDisplayStatus(scholarship);
 
-      // Special handling for the 'draft' filter button in the UI
-      if (filterStatus === 'draft') {
-          // 'draft' filter button displays scholarships whose status is computed as 'draft'
-          return matchesSearch && currentStatus === 'draft';
-      } else if (filterStatus === 'inactive') {
-          // 'inactive' filter button displays scholarships whose status is computed as 'inactive'
-          return matchesSearch && currentStatus === 'inactive';
-      }
+    const matchesFilter =
+      filterStatus === "all" || currentStatus === filterStatus;
 
-      return matchesSearch && matchesFilter;
-    });
+    if (filterStatus === "missing-study-level") {
+      return matchesSearch && currentStatus === "missing-study-level";
+    } else if (filterStatus === "inactive") {
+      // 'inactive' filter button displays scholarships whose status is 'inactive' or 'expired'
+      return (
+        matchesSearch &&
+        (currentStatus === "inactive" || currentStatus === "expired")
+      );
+    }
+
+    return matchesSearch && matchesFilter;
+  });
 
   // Action Bar for AdminLayout
   const headerActions = (
@@ -582,15 +607,12 @@ const ScholarshipManagement = () => {
         <button
           onClick={handleScrapeScholarships}
           disabled={scrapeLoading}
-          className={`btn-scrape ${scrapeLoading ? 'btn-scrape-loading' : ''}`}
+          className={`btn-scrape ${scrapeLoading ? "btn-scrape-loading" : ""}`}
         >
           {scrapeLoading ? "Scraping..." : "Scrape Scholarships"}
         </button>
         {scrapeLoading && (
-          <button
-            onClick={handleCancelScraping}
-            className="btn-cancel-scrape"
-          >
+          <button onClick={handleCancelScraping} className="btn-cancel-scrape">
             Cancel
           </button>
         )}
@@ -605,21 +627,32 @@ const ScholarshipManagement = () => {
                   {scrapeProgress.current}/{scrapeProgress.total}
                 </span>
                 <span className="progress-percent">
-                  {scrapeProgress.total > 0 ? Math.round((scrapeProgress.current / scrapeProgress.total) * 100) : 0}%
+                  {scrapeProgress.total > 0
+                    ? Math.round(
+                        (scrapeProgress.current / scrapeProgress.total) * 100
+                      )
+                    : 0}
+                  %
                 </span>
               </div>
               <div className="progress-bar-track">
-                <div 
-                  className="progress-bar-fill" 
+                <div
+                  className="progress-bar-fill"
                   style={{
-                    width: `${scrapeProgress.total > 0 ? (scrapeProgress.current / scrapeProgress.total) * 100 : 0}%`,
-                  }} 
+                    width: `${
+                      scrapeProgress.total > 0
+                        ? (scrapeProgress.current / scrapeProgress.total) * 100
+                        : 0
+                    }%`,
+                  }}
                 />
               </div>
               {scrapeProgress.currentScholarship && (
                 <div className="current-scrape-title">
                   <HiOutlineDocumentText className="w-5 h-5 inline text-blue-600" />
-                  <span style={{ marginLeft: '0.5rem' }}>{scrapeProgress.currentScholarship}</span>
+                  <span style={{ marginLeft: "0.5rem" }}>
+                    {scrapeProgress.currentScholarship}
+                  </span>
                 </div>
               )}
             </>
@@ -627,7 +660,7 @@ const ScholarshipManagement = () => {
             <div className="progress-initializing">
               <div className="progress-spinner" />
               <span>
-                {scrapeProgress.currentScholarship || 'Initializing scraper...'}
+                {scrapeProgress.currentScholarship || "Initializing scraper..."}
               </span>
               <span className="progress-info">
                 This may take a few minutes. Please be patient...
@@ -636,113 +669,118 @@ const ScholarshipManagement = () => {
           )}
         </div>
       )}
-
-      {/* Add New Button */}
-      <button
-        onClick={() => setShowForm(true)}
-        className="btn-add-new"
-      >
-        + Add New Scholarship
-      </button>
     </div>
   );
-  
+
   // Filter buttons data (using the pre-calculated counts)
   const filterButtons = [
     { status: "all", label: "All", count: filteredCounts.all },
     { status: "active", label: "Active", count: filteredCounts.active },
-    { status: "inactive", label: "Expired/Inactive", count: filteredCounts.inactive },
-    { status: "draft", label: "Draft/Incomplete", count: filteredCounts.draft },
+    {
+      status: "inactive",
+      label: "Inactive/Expired",
+      count: filteredCounts.inactiveTotal,
+    },
+    {
+      status: "missing-study-level",
+      label: "Missing Study Level",
+      count: filteredCounts.missingStudyLevel,
+    },
   ];
 
   return (
     <AdminLayout title="Scholarship Management" headerActions={headerActions}>
-      {/* Scraping Statistics Cards */}
+      {/* Scraping Statistics Cards - UPDATED TO ICON BOX STYLE */}
       {getDisplayStats() ? (
         <div className="stats-grid">
-          {/* Total Scholarships Scraped */}
+          {/* All-Time Scholarships */}
           <div className="stat-card">
-            <div className="card-top">
-              <HiOutlineDocumentText className="card-icon" />
-              <div className="card-value">
-                {getDisplayStats().totalProcessed}
-              </div>
+            <div className="icon-box" style={{ backgroundColor: "#eff6ff", color: "#2563eb" }}>
+              <HiOutlineDocumentText className="icon-size" />
             </div>
-            <div className="card-label">Total Scholarships Scraped</div>
-            {getDisplayStats().isLive && (
-              <div className="live-indicator">
-                <span className="spinner-small"></span> Live
-              </div>
-            )}
+            <div className="stat-info">
+              <div className="stat-label">Total Scholarships</div>
+              <div className="stat-value">{scholarships.length}</div>
+            </div>
           </div>
 
           {/* Successful Extractions */}
           <div className="stat-card">
-            <div className="card-top">
-              <HiOutlineCheckCircle className="card-icon" style={{ color: "#10b981" }} />
-              <div className="card-value" style={{ color: "#10b981" }}>
-                {getDisplayStats().successCount}
-              </div>
+            <div className="icon-box" style={{ backgroundColor: "#ecfdf5", color: "#059669" }}>
+              <HiOutlineCheckCircle className="icon-size" />
             </div>
-            <div className="card-label">Successful Extractions</div>
+            <div className="stat-info">
+              <div className="stat-label">Successful</div>
+              <div className="stat-value">{getDisplayStats().successCount}</div>
+            </div>
             {getDisplayStats().isLive && (
-              <div className="live-indicator">
-                <span className="spinner-small"></span> Live
-              </div>
+              <div className="live-badge">Live</div>
             )}
           </div>
 
           {/* Failed Extractions */}
           <div className="stat-card">
-            <div className="card-top">
-              <HiOutlineXCircle className="card-icon" style={{ color: "#ef4444" }} />
-              <div className="card-value" style={{ color: "#ef4444" }}>
-                {getDisplayStats().failedCount}
-              </div>
+             <div className="icon-box" style={{ backgroundColor: "#fef2f2", color: "#dc2626" }}>
+              <HiOutlineXCircle className="icon-size" />
             </div>
-            <div className="card-label">Failed Extractions</div>
+            <div className="stat-info">
+              <div className="stat-label">Failed</div>
+              <div className="stat-value">{getDisplayStats().failedCount}</div>
+            </div>
             {getDisplayStats().isLive && (
-              <div className="live-indicator">
-                <span className="spinner-small"></span> Live
-              </div>
+               <div className="live-badge">Live</div>
             )}
           </div>
 
           {/* Success Rate */}
           <div className="stat-card">
-            <div className="card-top">
-              <HiOutlineChartBarSquare className="card-icon" style={{ color: "#2563eb" }} />
-              <div className="card-value" style={{ color: "#2563eb" }}>
-                {getDisplayStats().successRate.toFixed(0)}%
-              </div>
+             <div className="icon-box" style={{ backgroundColor: "#f3e8ff", color: "#9333ea" }}>
+              <HiOutlineChartBarSquare className="icon-size" />
             </div>
-            <div className="card-label">Success Rate</div>
-            {getDisplayStats().isLive && (
-              <div className="live-indicator">
-                <span className="spinner-small"></span> Live
-              </div>
+            <div className="stat-info">
+              <div className="stat-label">Success Rate</div>
+              <div className="stat-value">{getDisplayStats().successRate.toFixed(0)}%</div>
+            </div>
+             {getDisplayStats().isLive && (
+               <div className="live-badge">Live</div>
             )}
           </div>
 
           {/* Scraping Duration */}
           <div className="stat-card">
-            <div className="card-top">
-              <HiOutlineClock className="card-icon" style={{ color: "#f59e0b" }} />
-              <div className="card-value" style={{ color: "#f59e0b" }}>
-                {formatDuration(getDisplayStats().duration)}
-              </div>
+             <div className="icon-box" style={{ backgroundColor: "#fffbeb", color: "#d97706" }}>
+              <HiOutlineClock className="icon-size" />
             </div>
-            <div className="card-label">Scraping Duration</div>
-            {getDisplayStats().isLive && (
-              <div className="live-indicator">
-                <span className="spinner-small"></span> Live
-              </div>
+            <div className="stat-info">
+              <div className="stat-label">Duration</div>
+              <div className="stat-value">{formatDuration(getDisplayStats().duration)}</div>
+            </div>
+             {getDisplayStats().isLive && (
+               <div className="live-badge">Live</div>
             )}
           </div>
+
+          {/* Last Successful Scrape */}
+          {lastSuccessfulScrape && (
+            <div className="stat-card">
+               <div className="icon-box" style={{ backgroundColor: "#e0e7ff", color: "#4f46e5" }}>
+                <HiOutlineCalendar className="icon-size" />
+              </div>
+              <div className="stat-info">
+                <div className="stat-label">Last Scrape</div>
+                <div className="stat-value" style={{fontSize: "1.1rem"}}>
+                  {formatLastScrapeTime(lastSuccessfulScrape)}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="no-stats-placeholder">
-          <HiOutlineChartBarSquare className="w-12 h-12 text-gray-400" style={{ margin: '0 auto 0.5rem' }} />
+          <HiOutlineChartBarSquare
+            className="w-12 h-12 text-gray-400"
+            style={{ margin: "0 auto 0.5rem" }}
+          />
           <p>No scraping data yet</p>
           <span style={{ fontSize: "0.9rem", color: "#6b7280" }}>
             Run your first scrape to see statistics
@@ -765,7 +803,9 @@ const ScholarshipManagement = () => {
             <button
               key={btn.status}
               onClick={() => setFilterStatus(btn.status)}
-              className={`filter-button ${filterStatus === btn.status ? "active-filter" : ""}`}
+              className={`filter-button ${
+                filterStatus === btn.status ? "active-filter" : ""
+              }`}
             >
               {btn.label} ({btn.count})
             </button>
@@ -775,20 +815,23 @@ const ScholarshipManagement = () => {
 
       {/* Alerts */}
       {message && (
-        <div className="alert-message" style={{
-            backgroundColor: message.includes("success") ? "#d1fae5" : "#fee2e2",
+        <div
+          className="alert-message"
+          style={{
+            backgroundColor: message.includes("success")
+              ? "#d1fae5"
+              : "#fee2e2",
             color: message.includes("success") ? "#065f46" : "#991b1b",
-        }}>
+          }}
+        >
           {message}
         </div>
       )}
 
-      {/* Scholarship Form (Add/Edit) */}
-      {showForm && (
+      {/* Scholarship Form (Edit Only) */}
+      {showForm && editingScholarship && (
         <div className="form-card">
-          <h3 className="form-title">
-            {editingScholarship ? "Edit Scholarship" : "Add New Scholarship"}
-          </h3>
+          <h3 className="form-title">Edit Scholarship</h3>
           <form onSubmit={handleSubmit}>
             {/* General Info */}
             <h4 className="form-section-title">General Information</h4>
@@ -816,7 +859,12 @@ const ScholarshipManagement = () => {
               </div>
               <div className="form-group">
                 <label className="form-label">Status</label>
-                <select name="status" className="form-input" value={formData.status} onChange={handleInputChange}>
+                <select
+                  name="status"
+                  className="form-input"
+                  value={formData.status}
+                  onChange={handleInputChange}
+                >
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
@@ -829,7 +877,7 @@ const ScholarshipManagement = () => {
               <div className="form-group">
                 <label className="form-label">Study Levels</label>
                 <div className="checkbox-group">
-                  {['diploma', 'degree'].map(level => (
+                  {["diploma", "degree"].map((level) => (
                     <label key={level} className="checkbox-label">
                       <input
                         type="checkbox"
@@ -841,7 +889,7 @@ const ScholarshipManagement = () => {
                   ))}
                 </div>
               </div>
-              
+
               <div className="form-group">
                 <label className="form-label">Minimum GPA</label>
                 <input
@@ -856,41 +904,14 @@ const ScholarshipManagement = () => {
                   placeholder="e.g. 3.0"
                 />
               </div>
-
-              <div className="form-group">
-                <label className="form-label">Maximum Age</label>
-                <input
-                  type="number"
-                  name="requirements.maxAge"
-                  className="form-input"
-                  value={formData.requirements.maxAge}
-                  onChange={handleInputChange}
-                  min="18"
-                  max="100"
-                  placeholder="e.g. 25"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Financial Need</label>
-                <select
-                  name="requirements.financialNeed"
-                  className="form-input"
-                  value={formData.requirements.financialNeed}
-                  onChange={handleInputChange}
-                >
-                  <option value="any">Any</option>
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                </select>
-              </div>
             </div>
 
             {/* Arrays (Comma Separated) */}
             <div className="form-grid">
               <div className="form-group span-2">
-                <label className="form-label">Eligible Courses/Fields (comma-separated)</label>
+                <label className="form-label">
+                  Eligible Courses/Fields (comma-separated)
+                </label>
                 <input
                   type="text"
                   name="eligibleCourses"
@@ -898,39 +919,6 @@ const ScholarshipManagement = () => {
                   value={formData.eligibleCourses}
                   onChange={handleInputChange}
                   placeholder="Engineering, Technology, Data Science, AI, Finance, Economics"
-                />
-              </div>
-              <div className="form-group span-2">
-                <label className="form-label">Majors (comma-separated)</label>
-                <input
-                  type="text"
-                  name="requirements.majors"
-                  className="form-input"
-                  value={formData.requirements.majors}
-                  onChange={handleInputChange}
-                  placeholder="e.g. CS, Electrical Engineering"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Extracurriculars (comma-separated)</label>
-                <input
-                  type="text"
-                  name="requirements.extracurriculars"
-                  className="form-input"
-                  value={formData.requirements.extracurriculars}
-                  onChange={handleInputChange}
-                  placeholder="Sports, Debate, Volunteer"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Achievements (comma-separated)</label>
-                <input
-                  type="text"
-                  name="requirements.achievements"
-                  className="form-input"
-                  value={formData.requirements.achievements}
-                  onChange={handleInputChange}
-                  placeholder="Dean's List, Competition Winner"
                 />
               </div>
             </div>
@@ -975,9 +963,14 @@ const ScholarshipManagement = () => {
             {/* Form Actions */}
             <div className="form-actions">
               <button type="submit" className="btn-primary" disabled={loading}>
-                {loading ? "Saving..." : editingScholarship ? "Update Scholarship" : "Create Scholarship"}
+                {loading ? "Saving..." : "Update Scholarship"}
               </button>
-              <button type="button" onClick={resetForm} className="btn-secondary" disabled={loading}>
+              <button
+                type="button"
+                onClick={resetForm}
+                className="btn-secondary"
+                disabled={loading}
+              >
                 Cancel
               </button>
             </div>
@@ -986,78 +979,123 @@ const ScholarshipManagement = () => {
       )}
 
       {/* Scholarship List */}
-      <div className="scholarship-list-grid">
-        {filteredScholarships.map((scholarship) => (
-          <div key={scholarship._id} className="list-item-card">
-            <div className="card-content-top">
-                <h4 className="card-title">{scholarship.title}</h4>
-                <p className="card-subtitle">
-                    {scholarship.provider?.name || "Unknown"} Scholarship
-                </p>
-                <div className="card-details">
-                    <span className="detail-item">
-                        <FaGraduationCap className="w-5 h-5 inline text-gray-600" />
-                        <span style={{ marginLeft: '0.25rem' }}>{scholarship.studyLevel?.toUpperCase() || 'N/A'}</span>
-                    </span>
-                    <span className="detail-item">
-                        <HiOutlineCalendar className="w-5 h-5 inline text-gray-600" />
-                        <span style={{ marginLeft: '0.25rem' }}>{scholarship.deadline ? formatDate(scholarship.deadline) : 'N/A'}</span>
-                    </span>
-                </div>
-            </div>
+      <>
+        <ConfirmModal
+          open={showDeleteModal}
+          title="Delete Scholarship?"
+          message="Are you sure you want to delete this scholarship? This action cannot be undone."
+          confirmText="Delete"
+          cancelText="Cancel"
+          onConfirm={confirmDelete}
+          onCancel={cancelDelete}
+          danger
+        />
+        <div className="scholarship-list-grid">
+          {filteredScholarships.map((scholarship) => {
+            const displayStatus = computeDisplayStatus(scholarship);
 
-            <div className="card-actions-row">
-              {/* Status Badge */}
-              {(() => {
-                const displayStatus = computeDisplayStatus(scholarship);
-                const statusMap = {
-                    active: { bg: "#d1fae5", text: "#065f46" },
-                    inactive: { bg: "#fee2e2", text: "#991b1b" },
-                    draft: { bg: "#fef3c7", text: "#92400e" },
-                    // Use inactive style for expired
-                    expired: { bg: "#fee2e2", text: "#991b1b" }, 
-                };
-                const statusStyle = statusMap[displayStatus] || statusMap.draft;
-                
-                return (
-                  <span className="status-badge" style={{ 
-                      backgroundColor: statusStyle.bg, 
-                      color: statusStyle.text 
-                  }}>
-                    {displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1)}
+            // Status Colors Configuration
+            const statusConfig = {
+              active: { bg: "#ecfdf5", text: "#047857", dot: "#10b981" }, // Emerald Green
+              inactive: { bg: "#fef2f2", text: "#b91c1c", dot: "#ef4444" }, // Red
+              "missing-study-level": {
+                bg: "#fffbeb",
+                text: "#b45309",
+                dot: "#f59e0b",
+              }, // Amber
+              expired: { bg: "#f3f4f6", text: "#374151", dot: "#9ca3af" }, // Gray
+            };
+
+            const statusStyle =
+              statusConfig[displayStatus] || statusConfig["inactive"];
+
+            return (
+              <div key={scholarship._id} className="scholarship-card">
+                {/* --- Card Header: Provider & Status --- */}
+                <div className="card-header">
+                  <span className="provider-label">
+                    {scholarship.provider?.name || "Unknown Provider"}
                   </span>
-                );
-              })()}
+                  <div
+                    className="status-pill"
+                    style={{
+                      backgroundColor: statusStyle.bg,
+                      color: statusStyle.text,
+                    }}
+                  >
+                    <span
+                      className="status-dot"
+                      style={{ backgroundColor: statusStyle.dot }}
+                    />
+                    {displayStatus.replace(/-/g, " ")}
+                  </div>
+                </div>
 
-              <div className="action-buttons-group">
-                <button
-                  onClick={() => handleEdit(scholarship)}
-                  className="btn-icon-edit"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(scholarship._id)}
-                  className="btn-icon-delete"
-                >
-                  Delete
-                </button>
+                {/* --- Card Body: Title --- */}
+                <div className="card-body">
+                  <h3 className="card-title" title={scholarship.title}>
+                    {scholarship.title}
+                  </h3>
+
+                  {/* --- Meta Tags Row --- */}
+                  <div className="meta-tags-container">
+                    <div className="meta-tag">
+                      <FaGraduationCap className="meta-icon" />
+                      <span>
+                        {Array.isArray(scholarship.studyLevels) &&
+                        scholarship.studyLevels.length > 0
+                          ? scholarship.studyLevels
+                              .map(
+                                (l) => l.charAt(0).toUpperCase() + l.slice(1)
+                              )
+                              .join(", ")
+                          : scholarship.studyLevel || "N/A"}
+                      </span>
+                    </div>
+
+                    <div className="meta-tag">
+                      <HiOutlineCalendar className="meta-icon" />
+                      <span>
+                        {scholarship.deadline
+                          ? formatDate(scholarship.deadline)
+                          : "No Deadline"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* --- Card Footer: Actions --- */}
+                <div className="card-footer">
+                  <button
+                    onClick={() => handleEdit(scholarship)}
+                    className="action-btn edit-btn"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(scholarship._id)}
+                    className="action-btn delete-btn"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
-        ))}
-        {filteredScholarships.length === 0 && (
+            );
+          })}
+          {filteredScholarships.length === 0 && (
             <div className="empty-list-state">
-                No scholarships found. Use the "Add New" or "Scrape" buttons to populate the list.
+              No scholarships found. Use the "Scrape" button to populate the
+              list.
             </div>
-        )}
-      </div>
+          )}
+        </div>
+      </>
 
       <style jsx>{`
         /* --- Stats Cards Grid --- */
         .stats-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
           gap: 1.5rem;
           margin-bottom: 2rem;
         }
@@ -1065,65 +1103,541 @@ const ScholarshipManagement = () => {
         .stat-card {
           background: white;
           padding: 1.5rem;
-          border-radius: 12px;
+          border-radius: 16px;
           border: 1px solid #e5e7eb;
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.04);
-          transition: transform 0.2s, box-shadow 0.2s;
-          position: relative;
-        }
-        
-        .stat-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
-        }
-
-        .card-top {
+          box-shadow: 0 2px 4px rgba(0,0,0,0.02);
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          margin-bottom: 0.5rem;
+          gap: 1.25rem;
+          position: relative;
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
-        .card-icon {
-          font-size: 1.5rem;
-          opacity: 0.7;
+        .stat-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 16px rgba(0,0,0,0.06);
         }
 
-        .card-value {
-          font-size: 2.2rem;
+        .icon-box {
+          width: 56px;
+          height: 56px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .icon-size {
+          font-size: 1.75rem;
+          display: flex;
+        }
+
+        .stat-info {
+          flex: 1;
+        }
+
+        .stat-label {
+          color: #64748b;
+          font-size: 0.875rem;
+          font-weight: 600;
+          margin-bottom: 0.25rem;
+          text-transform: capitalize;
+        }
+
+        .stat-value {
+          color: #1e293b;
+          font-size: 1.875rem;
           font-weight: 800;
-          color: #1f2937;
+          line-height: 1.2;
         }
         
-        .card-label {
-          color: #6b7280;
-          font-size: 0.95rem;
-          font-weight: 600;
-          letter-spacing: 0.01em;
+        .live-badge {
+          position: absolute;
+          top: 1rem;
+          right: 1rem;
+          font-size: 0.7rem;
+          background: #eff6ff;
+          color: #2563eb;
+          padding: 2px 8px;
+          border-radius: 10px;
+          font-weight: 700;
+          border: 1px solid #bfdbfe;
+          animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
         }
 
-        .live-indicator {
+        /* --- Layout & Utilities --- */
+        .control-panel {
+          display: flex;
+          gap: 1rem;
+          margin-bottom: 2rem;
+          flex-wrap: wrap;
+          align-items: center;
+        }
+
+        .search-input {
+          width: 100%;
+          max-width: 400px;
+          padding: 0.75rem 1rem;
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          outline: none;
+          transition: all 0.2s;
+        }
+
+        .search-input:focus {
+          border-color: #2563eb;
+          box-shadow: 0 0 0 2px #bfdbfe;
+        }
+
+        .filter-group {
+          display: flex;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+        }
+
+        .filter-button {
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+          border: 1px solid #e5e7eb;
+          background: white;
+          color: #374151;
+          font-weight: 600;
+          font-size: 0.9rem;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .filter-button:hover {
+          background: #f3f4f6;
+        }
+
+        .filter-button.active-filter {
+          background: #2563eb;
+          color: white;
+          border-color: #2563eb;
+        }
+
+        /* --- Alerts and Scraping Panel --- */
+        .alert-message {
+          padding: 0.75rem 1rem;
+          margin-bottom: 1rem;
+          border-radius: 8px;
+          font-weight: 600;
+          font-size: 0.95rem;
+          border: 1px solid;
+        }
+
+        .header-actions-container {
+          display: flex;
+          gap: 1rem;
+          flex-wrap: wrap;
+          align-items: center;
+          justify-content: flex-end;
+        }
+
+        .scrape-control-group {
+          display: flex;
+          gap: 0.5rem;
+        }
+
+        .btn-scrape,
+        .btn-cancel-scrape {
+          padding: 0.75rem 1rem;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-weight: 600;
+          transition: all 0.2s;
+        }
+
+        .btn-scrape {
+          background: #f59e0b;
+          color: white;
+        }
+
+        .btn-scrape:hover {
+          background: #d97706;
+        }
+
+        .btn-scrape-loading {
+          background: #9ca3af !important;
+          cursor: not-allowed;
+        }
+
+        .btn-cancel-scrape {
+          background: #ef4444;
+          color: white;
+        }
+
+        .btn-cancel-scrape:hover {
+          background: #dc2626;
+        }
+
+        /* Scraping Progress Panel */
+        .scrape-progress-panel {
+          background: white;
+          padding: 1rem;
+          border-radius: 8px;
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+          min-width: 300px;
+          border: 2px solid #f59e0b;
+        }
+
+        .progress-header {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 0.5rem;
+          font-size: 1rem;
+          color: #4b5563;
+        }
+
+        .progress-count,
+        .progress-percent {
+          font-weight: 700;
+          color: #f59e0b;
+        }
+
+        .progress-count {
+          color: #111827;
+        }
+
+        .progress-bar-track {
+          width: 100%;
+          height: 8px;
+          background: #e5e7eb;
+          border-radius: 4px;
+          overflow: hidden;
+        }
+
+        .progress-bar-fill {
+          height: 100%;
+          background: #f59e0b;
+          border-radius: 4px;
+          transition: width 0.3s ease;
+        }
+
+        .current-scrape-title {
+          margin-top: 0.5rem;
+          font-size: 0.85rem;
+          color: #6b7280;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .progress-initializing {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          color: #6b7280;
+          font-size: 0.9rem;
+          padding: 0.5rem 0;
+        }
+
+        .progress-spinner {
+          width: 18px;
+          height: 18px;
+          border: 3px solid #f59e0b;
+          border-top-color: transparent;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+
+        .progress-info {
+          font-size: 0.75rem;
+          color: #9ca3af;
+          font-style: italic;
+          display: block;
+          margin-top: 0.25rem;
+        }
+        
+        @keyframes spin {
+             0% { transform: rotate(0deg); }
+             100% { transform: rotate(360deg); }
+        }
+
+        /* --- Form Styling --- */
+        .form-card {
+          background: white;
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+          padding: 2rem;
+          margin-bottom: 2rem;
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .form-title {
+          margin-top: 0;
+          margin-bottom: 1.5rem;
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #111827;
+        }
+
+        .form-section-title {
+          margin-top: 1.5rem;
+          margin-bottom: 1rem;
+          font-size: 1.1rem;
+          font-weight: 700;
+          color: #1f2937;
+          border-bottom: 1px solid #f3f4f6;
+          padding-bottom: 0.5rem;
+        }
+
+        .form-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 1.5rem;
+        }
+
+        .form-group {
+          margin-bottom: 0;
+        }
+
+        .form-group.span-2 {
+          grid-column: span 2;
+        }
+
+        @media (max-width: 640px) {
+          .form-group.span-2 {
+            grid-column: span 1;
+          }
+        }
+
+        .form-label {
+          display: block;
+          margin-bottom: 0.5rem;
+          font-weight: 600;
+          color: #111827;
+          font-size: 0.875rem;
+        }
+
+        .form-input {
+          width: 100%;
+          padding: 0.75rem 1rem;
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          font-size: 1rem;
+          transition: all 0.2s ease;
+          background-color: white;
+        }
+
+        .form-input:focus {
+          border-color: #2563eb;
+          box-shadow: 0 0 0 3px #bfdbfe;
+          outline: none;
+        }
+
+        .checkbox-group {
+          display: flex;
+          gap: 1.5rem;
+          align-items: center;
+          font-size: 0.95rem;
+          color: #374151;
+        }
+
+        .checkbox-label {
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          margin-top: 0.75rem;
-          font-size: 0.85rem;
-          color: #2563eb;
+          cursor: pointer;
+        }
+
+        .form-actions {
+          margin-top: 2rem;
+          display: flex;
+          gap: 1rem;
+        }
+
+        .btn-primary,
+        .btn-secondary {
+          padding: 0.75rem 1.5rem;
+          border-radius: 8px;
           font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
         }
 
-        .spinner-small {
-          display: inline-block;
-          width: 12px;
-          height: 12px;
-          border: 2px solid #bfdbfe;
-          border-top-color: #2563eb;
+        .btn-primary {
+          background: #2563eb;
+          color: white;
+          border: none;
+        }
+
+        .btn-primary:hover {
+          background: #1d4ed8;
+        }
+
+        .btn-secondary {
+          background: white;
+          color: #374151;
+          border: 1px solid #d1d5db;
+        }
+
+        .btn-secondary:hover {
+          background: #f9fafb;
+        }
+
+        /* --- New Scholarship Card Design --- */
+        .scholarship-list-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+          gap: 1.5rem;
+        }
+
+        .scholarship-card {
+          background: white;
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+          display: flex;
+          flex-direction: column;
+          transition: all 0.2s ease-in-out;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .scholarship-card:hover {
+          border-color: #d1d5db;
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05),
+            0 4px 6px -2px rgba(0, 0, 0, 0.025);
+          transform: translateY(-2px);
+        }
+
+        /* Header Section */
+        .card-header {
+          padding: 1.25rem 1.25rem 0.75rem;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .provider-label {
+          font-size: 0.7rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          font-weight: 700;
+          color: #6b7280; /* Cool Gray 500 */
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 60%;
+        }
+
+        .status-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px 10px;
+          border-radius: 9999px;
+          font-size: 0.7rem;
+          font-weight: 600;
+          text-transform: capitalize;
+        }
+
+        .status-dot {
+          width: 6px;
+          height: 6px;
           border-radius: 50%;
-          animation: spin 0.8s linear infinite;
         }
 
-        @keyframes spin {
-          to { transform: rotate(360deg); }
+        /* Body Section */
+        .card-body {
+          padding: 0 1.25rem 1.25rem;
+          flex-grow: 1;
+        }
+
+        .card-title {
+          font-size: 1.125rem;
+          font-weight: 700;
+          color: #111827;
+          line-height: 1.4;
+          margin-bottom: 1rem;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        /* Meta Tags (Icons + Text) */
+        .meta-tags-container {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.75rem;
+        }
+
+        .meta-tag {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.375rem 0.75rem;
+          background-color: #f9fafb;
+          border: 1px solid #f3f4f6;
+          border-radius: 8px;
+          font-size: 0.85rem;
+          color: #4b5563;
+          font-weight: 500;
+        }
+
+        .meta-icon {
+          color: #9ca3af;
+          font-size: 1rem;
+        }
+
+        /* Footer Section */
+        .card-footer {
+          margin-top: auto;
+          padding: 0.75rem 1.25rem;
+          background-color: #ffffff;
+          border-top: 1px solid #f3f4f6;
+          display: flex;
+          justify-content: flex-end;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .action-btn {
+          background: transparent;
+          border: none;
+          font-size: 0.875rem;
+          font-weight: 600;
+          cursor: pointer;
+          padding: 0.5rem 1rem;
+          border-radius: 6px;
+          transition: background 0.2s;
+        }
+
+        .edit-btn {
+          color: #2563eb; /* Blue 600 */
+        }
+
+        .edit-btn:hover {
+          background-color: #eff6ff; /* Blue 50 */
+        }
+
+        .delete-btn {
+          color: #ef4444; /* Red 500 */
+        }
+
+        .delete-btn:hover {
+          background-color: #fef2f2; /* Red 50 */
+        }
+
+        .empty-list-state {
+          grid-column: 1 / -1;
+          text-align: center;
+          padding: 3rem;
+          color: #6b7280;
+          font-size: 1rem;
+          background: #f9fafb;
+          border: 1px solid #e5e7eb;
+          border-radius: 10px;
         }
 
         .no-stats-placeholder {
@@ -1146,489 +1660,41 @@ const ScholarshipManagement = () => {
           color: #6b7280;
         }
 
-        /* --- Layout & Utilities --- */
-        .control-panel {
-          display: flex;
-          gap: 1rem;
-          margin-bottom: 2rem;
-          flex-wrap: wrap;
-          align-items: center;
-        }
-
-        .search-input {
-          width: 100%;
-          max-width: 400px;
-          padding: 0.75rem 1rem;
-          border: 1px solid #d1d5db;
-          border-radius: 8px;
-          outline: none;
-          transition: all 0.2s;
-        }
-        
-        .search-input:focus {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 2px #bfdbfe;
-        }
-
-        .filter-group {
-          display: flex;
-          gap: 0.5rem;
-          flex-wrap: wrap;
-        }
-
-        .filter-button {
-          padding: 0.5rem 1rem;
-          border-radius: 8px;
-          border: 1px solid #e5e7eb;
-          background: white;
-          color: #374151;
-          font-weight: 600;
-          font-size: 0.9rem;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .filter-button:hover {
-            background: #f3f4f6;
-        }
-
-        .filter-button.active-filter {
-          background: #2563eb;
-          color: white;
-          border-color: #2563eb;
-        }
-        
-        /* --- Alerts and Scraping Panel --- */
-        .alert-message {
-          padding: 0.75rem 1rem;
-          margin-bottom: 1rem;
-          border-radius: 8px;
-          font-weight: 600;
-          font-size: 0.95rem;
-          border: 1px solid;
-        }
-
-        .header-actions-container {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: flex-end;
-        }
-
-        .scrape-control-group {
-            display: flex;
-            gap: 0.5rem;
-        }
-        
-        .btn-scrape, .btn-cancel-scrape {
-            padding: 0.75rem 1rem;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-        
-        .btn-scrape {
-            background: #f59e0b;
-            color: white;
-        }
-        
-        .btn-scrape:hover {
-            background: #d97706;
-        }
-        
-        .btn-scrape-loading {
-            background: #9ca3af !important;
-            cursor: not-allowed;
-        }
-
-        .btn-cancel-scrape {
-            background: #ef4444;
-            color: white;
-        }
-        
-        .btn-cancel-scrape:hover {
-            background: #dc2626;
-        }
-        
-        .btn-add-new {
-            padding: 0.75rem 1.5rem;
-            background: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s;
-            box-shadow: 0 4px 6px rgba(37, 99, 235, 0.1);
-        }
-        
-        .btn-add-new:hover {
-            background: #1d4ed8;
-            transform: translateY(-1px);
-        }
-
-        /* Scraping Progress Panel */
-        .scrape-progress-panel {
-            background: white;
-            padding: 1rem;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            min-width: 300px;
-            border: 2px solid #f59e0b;
-        }
-
-        .progress-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 0.5rem;
-            font-size: 1rem;
-            color: #4b5563;
-        }
-
-        .progress-count, .progress-percent {
-            font-weight: 700;
-            color: #f59e0b;
-        }
-        
-        .progress-count {
-            color: #111827;
-        }
-
-        .progress-bar-track {
-            width: 100%;
-            height: 8px;
-            background: #e5e7eb;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .progress-bar-fill {
-            height: 100%;
-            background: #f59e0b;
-            border-radius: 4px;
-            transition: width 0.3s ease;
-        }
-
-        .current-scrape-title {
-            margin-top: 0.5rem;
-            font-size: 0.85rem;
-            color: #6b7280;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .progress-initializing {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            color: #6b7280;
-            font-size: 0.9rem;
-            padding: 0.5rem 0;
-        }
-        
-        .progress-spinner {
-            width: 18px;
-            height: 18px;
-            border: 3px solid #f59e0b;
-            border-top-color: transparent;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        
-        .progress-info {
-            font-size: 0.75rem;
-            color: #9ca3af;
-            font-style: italic;
-            display: block;
-            margin-top: 0.25rem;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* --- Form Styling --- */
-        .form-card {
-          background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 12px;
-          padding: 2rem;
-          margin-bottom: 2rem;
-          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-        }
-
-        .form-title {
-            margin-top: 0;
-            margin-bottom: 1.5rem;
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #111827;
-        }
-        
-        .form-section-title {
-            margin-top: 1.5rem;
-            margin-bottom: 1rem;
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: #1f2937;
-            border-bottom: 1px solid #f3f4f6;
-            padding-bottom: 0.5rem;
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .form-group {
-            margin-bottom: 0;
-        }
-        
-        .form-group.span-2 {
-            grid-column: span 2;
-        }
-        
+        /* Responsive adjustments */
         @media (max-width: 640px) {
-            .form-group.span-2 {
-                grid-column: span 1;
-            }
-        }
-
-
-        .form-label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: #111827;
-            font-size: 0.875rem;
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 0.75rem 1rem;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: all 0.2s ease;
-            background-color: white;
-        }
-
-        .form-input:focus {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 3px #bfdbfe;
-            outline: none;
-        }
-        
-        .checkbox-group {
-            display: flex;
-            gap: 1.5rem;
-            align-items: center;
-            font-size: 0.95rem;
-            color: #374151;
-        }
-        
-        .checkbox-label {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            cursor: pointer;
-        }
-        
-        .form-actions {
-            margin-top: 2rem;
-            display: flex;
-            gap: 1rem;
-        }
-        
-        .btn-primary, .btn-secondary {
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .btn-primary {
-            background: #2563eb;
-            color: white;
-            border: none;
-        }
-
-        .btn-primary:hover {
-            background: #1d4ed8;
-        }
-
-        .btn-secondary {
-            background: white;
-            color: #374151;
-            border: 1px solid #d1d5db;
-        }
-
-        .btn-secondary:hover {
-            background: #f9fafb;
-        }
-
-        /* --- Scholarship List Grid --- */
-        .scholarship-list-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-          gap: 1.5rem;
-        }
-
-        .list-item-card {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 10px;
-            padding: 1.5rem;
-            display: flex;
+          .control-panel {
             flex-direction: column;
-            min-height: 180px;
-            transition: all 0.2s;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
-        }
-        
-        .list-item-card:hover {
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.05);
-            transform: translateY(-1px);
-        }
-        
-        .card-content-top {
-            flex-grow: 1;
-            margin-bottom: 1rem;
-        }
-
-        .card-title {
-            margin: 0 0 0.5rem 0;
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: #1f2937;
-        }
-
-        .card-subtitle {
-            margin: 0 0 1rem 0;
-            color: #6b7280;
-            font-size: 0.9rem;
-        }
-        
-        .card-details {
-            display: flex;
+            align-items: stretch;
+          }
+          .search-input {
+            max-width: 100%;
+          }
+          .form-card {
+            padding: 1rem;
+          }
+          .form-grid {
+            grid-template-columns: 1fr;
             gap: 1rem;
-            font-size: 0.9rem;
-            color: #4b5563;
-        }
-        
-        .detail-item {
-            display: flex;
-            align-items: center;
-            gap: 0.25rem;
-        }
-        
-        .detail-icon {
-            font-size: 1rem;
-        }
-        
-        .card-actions-row {
-            display: flex;
+          }
+          .header-actions-container {
             justify-content: space-between;
-            align-items: center;
-            padding-top: 1rem;
-            border-top: 1px dashed #f3f4f6;
-        }
-        
-        .status-badge {
-            padding: 0.3rem 0.8rem;
-            border-radius: 16px;
-            font-size: 0.75rem;
-            font-weight: 700;
-        }
-        
-        .action-buttons-group {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .btn-icon-edit, .btn-icon-delete {
-            padding: 0.6rem 0.9rem;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            font-weight: 600;
-            transition: background 0.2s;
-        }
-        
-        .btn-icon-edit {
-            background: #f3f4f6;
-            border: 1px solid #d1d5db;
-            color: #374151;
-        }
-
-        .btn-icon-edit:hover {
-            background: #e5e7eb;
-        }
-
-        .btn-icon-delete {
-            background: #ef4444;
-            color: white;
-            border: none;
-        }
-        
-        .btn-icon-delete:hover {
-            background: #dc2626;
-        }
-        
-        .empty-list-state {
-            grid-column: 1 / -1;
-            text-align: center;
-            padding: 3rem;
-            color: #6b7280;
-            font-size: 1rem;
-            background: #f9fafb;
-            border: 1px solid #e5e7eb;
-            border-radius: 10px;
-        }
-
-        /* Responsive adjustments for form grid */
-        @media (max-width: 640px) {
-            .control-panel {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            .search-input {
-                max-width: 100%;
-            }
-            .form-card {
-                padding: 1rem;
-            }
-            .form-grid {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-            .header-actions-container {
-                justify-content: space-between;
-                flex-direction: column;
-                align-items: stretch;
-            }
-            .scrape-control-group {
-                width: 100%;
-                justify-content: space-between;
-            }
-            .btn-scrape, .btn-cancel-scrape {
-                flex: 1;
-            }
-            .btn-add-new {
-                width: 100%;
-            }
-            .scrape-progress-panel {
-                min-width: 100%;
-            }
-            .form-actions {
-                flex-direction: column;
-            }
+            flex-direction: column;
+            align-items: stretch;
+          }
+          .scrape-control-group {
+            width: 100%;
+            justify-content: space-between;
+          }
+          .btn-scrape,
+          .btn-cancel-scrape {
+            flex: 1;
+          }
+          .scrape-progress-panel {
+            min-width: 100%;
+          }
+          .form-actions {
+            flex-direction: column;
+          }
         }
       `}</style>
     </AdminLayout>

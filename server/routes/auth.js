@@ -1,70 +1,99 @@
-const express = require('express')
-const jwt = require('jsonwebtoken')
-// User model is only used for Admin check or legacy support now
-const User = require('../models/User') 
-const auth = require('../middleware/auth')
-const router = express.Router()
+const express = require("express");
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
+const auth = require("../middleware/auth");
+const router = express.Router();
 
-// Login (Admin Only)
-router.post('/login', async (req, res) => {
+// @route   POST /api/auth/login
+// @desc    Login user (Admin Only)
+// @access  Public (with rate limiting)
+router.post("/login", async (req, res) => {
   try {
-    const { email, password } = req.body
+    const { email, password } = req.body;
 
     // Validation
     if (!email || !password) {
-      return res.status(400).json({ message: 'Please provide email and password' })
+      return res
+        .status(400)
+        .json({ message: "Please provide email and password" });
     }
 
-    // Check for admin credentials (mock admin)
-    if (email === 'admin@dreamfund.com' && password === 'admin123') {
-      const mockAdmin = {
-        id: 'admin-1',
-        name: 'System Administrator',
-        email: 'admin@dreamfund.com',
-        role: 'admin'
-      }
+    // Find user by email
+    const user = await User.findOne({ email: email.toLowerCase() });
 
-      const token = jwt.sign(
-        { userId: mockAdmin.id, email: mockAdmin.email, role: mockAdmin.role },
-        process.env.JWT_SECRET || 'fallback-secret-key',
-        { expiresIn: '7d' }
-      )
-
-      return res.json({
-        token,
-        user: mockAdmin
-      })
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // Student login via DB is disabled/removed as per requirements
-    return res.status(401).json({ message: 'Invalid credentials' })
+    // Check if user is admin
+    if (user.role !== "admin") {
+      return res
+        .status(403)
+        .json({ message: "Access denied. Admin role required." });
+    }
 
+    // Compare password
+    const isMatch = await user.comparePassword(password);
+
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // Update last login
+    await user.updateLastLogin();
+
+    // Generate JWT token
+    const token = jwt.sign(
+      {
+        userId: user._id,
+        email: user.email,
+        role: user.role,
+      },
+      process.env.JWT_SECRET || "fallback-secret-key",
+      { expiresIn: "7d" }
+    );
+
+    // Return token and user info (without password)
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
   } catch (error) {
-    console.error('Login error:', error)
-    res.status(500).json({ message: 'Server error during login' })
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Server error during login" });
   }
-})
+});
 
-// Get current user (Admin Only)
-router.get('/me', auth, async (req, res) => {
+// @route   GET /api/auth/me
+// @desc    Get current authenticated user
+// @access  Private
+router.get("/me", auth, async (req, res) => {
   try {
-    // Check if it's the mock admin
-    if (req.user.userId === 'admin-1') {
-      return res.json({
-        user: {
-          id: 'admin-1',
-          name: 'System Administrator',
-          email: 'admin@dreamfund.com',
-          role: 'admin'
-        }
-      })
+    // Find user by ID from JWT token
+    const user = await User.findById(req.user.userId).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
 
-    return res.status(404).json({ message: 'User not found' })
+    res.json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        lastLogin: user.lastLogin,
+      },
+    });
   } catch (error) {
-    console.error('Get user error:', error)
-    res.status(500).json({ message: 'Server error' })
+    console.error("Get user error:", error);
+    res.status(500).json({ message: "Server error" });
   }
-})
+});
 
-module.exports = router
+module.exports = router;

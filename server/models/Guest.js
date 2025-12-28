@@ -1,31 +1,41 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-const guestSchema = new mongoose.Schema({
-  shareId: {
-    type: String,
-    required: true,
-    unique: true,
-    index: true
+const guestSchema = new mongoose.Schema(
+  {
+    shareId: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+    },
+    name: {
+      type: String,
+      default: "Student",
+      trim: true,
+    },
+    cgpa: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 4.0,
+    },
+    program: {
+      type: String,
+      default: "General Studies",
+      trim: true,
+    },
+    expiresAt: {
+      type: Date,
+      required: true,
+      index: true,
+    },
   },
-  name: {
-    type: String,
-    default: 'Student'
-  },
-  cgpa: {
-    type: Number,
-    required: true
-  },
-  program: {
-    type: String,
-    required: true
-  },
-  expiresAt: {
-    type: Date,
-    required: true,
-    index: { expires: 0 } // TTL index - MongoDB will auto-delete after expiresAt
+  {
+    timestamps: true,
   }
-}, {
-  timestamps: true
-});
+);
 
-module.exports = mongoose.model('Guest', guestSchema);
+// TTL index - MongoDB will automatically delete documents after expiresAt date passes
+guestSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+module.exports = mongoose.model("Guest", guestSchema);

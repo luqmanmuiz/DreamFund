@@ -879,7 +879,6 @@ class ScholarshipScraper {
       const shouldUseAI = ollamaEnabled && !alreadyDetectedAllFields && textForAI.length > 500;
       
       if (shouldUseAI) {
-        console.log(`   🤖 Using AI to extract eligible courses for ${title}`);
         try {
           const aiCourses = await extractCoursesWithOllama(textForAI, url);
           if (aiCourses && aiCourses.length > 0) {
