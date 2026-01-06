@@ -47,7 +47,7 @@ const ScholarshipManagement = () => {
   const [scholarshipToDelete, setScholarshipToDelete] = useState(null);
   const [loading, setLoading] = useState(false);
   const [scrapeLoading, setScrapeLoading] = useState(false);
-  const [setScrapeMessage] = useState("");
+  const [scrapeMessage, setScrapeMessage] = useState("");
   const [scrapeProgress, setScrapeProgress] = useState({
     current: 0,
     total: 0,
@@ -211,10 +211,7 @@ const ScholarshipManagement = () => {
       studyLevel === "degree" ||
       studyLevel === "diploma";
 
-    if (!hasValidStudyLevel) {
-      return "missing-study-level";
-    }
-
+    // 1. Check deadline first - expired scholarships go to Inactive/Expired tab
     const deadlineValue = scholarship.deadline || scholarship.extractedDeadline;
     const deadlineDate = tryParseDeadline(deadlineValue);
 
@@ -230,12 +227,23 @@ const ScholarshipManagement = () => {
           deadlineDate.getUTCDate()
         )
       );
-      if (dl.getTime() < todayMidnightUtc.getTime()) return "expired"; // Changed to 'expired' for clarity
+      if (dl.getTime() < todayMidnightUtc.getTime()) return "expired";
     }
 
-    return String(scholarship.status || "active").toLowerCase() === "inactive"
-      ? "inactive"
-      : "active";
+    // 2. Check database status - inactive scholarships go to Inactive/Expired tab
+    const dbStatus = String(scholarship.status || "active").toLowerCase();
+
+    if (dbStatus === "inactive") {
+      return "inactive";
+    }
+
+    // 3. Check study level - only for active, non-expired scholarships
+    if (!hasValidStudyLevel) {
+      return "missing-study-level";
+    }
+
+    // 4. Finally, if active, not expired, and has valid study level
+    return "active";
   };
 
   // Function to calculate counts for filter buttons
@@ -256,16 +264,15 @@ const ScholarshipManagement = () => {
       } else if (status === "inactive") {
         counts.inactive++;
       } else if (status === "expired") {
-        counts.expired++; // Count separately
+        counts.expired++;
       } else if (status === "missing-study-level") {
-        counts.missingStudyLevel++;
-      } else {
         counts.missingStudyLevel++;
       }
     }
 
-    // Combine expired into inactive for the filter button if desired, or keep separate
-    // For this UI, let's group expired and inactive for the "Inactive" button count
+    // Inactive/Expired tab should include: inactive + expired + missing study level
+    // But since missing-study-level only applies to ACTIVE scholarships now,
+    // we DON'T add it to inactiveTotal anymore
     counts.inactiveTotal = counts.inactive + counts.expired;
 
     return counts;

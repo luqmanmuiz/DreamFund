@@ -189,10 +189,31 @@ router.get("/scholarship-applications", adminAuth, async (req, res) => {
       },
       {
         $group: {
-          _id: "$scholarshipId",
-          totalApplications: { $sum: 1 },
+          _id: {
+            scholarshipId: "$scholarshipId",
+            isMatched: "$isMatched",
+          },
+          count: { $sum: 1 },
           earliestApplication: { $min: "$feedbackTimestamp" },
           latestApplication: { $max: "$feedbackTimestamp" },
+        },
+      },
+      {
+        $group: {
+          _id: "$_id.scholarshipId",
+          matchedApplications: {
+            $sum: {
+              $cond: [{ $eq: ["$_id.isMatched", true] }, "$count", 0],
+            },
+          },
+          nonMatchedApplications: {
+            $sum: {
+              $cond: [{ $eq: ["$_id.isMatched", false] }, "$count", 0],
+            },
+          },
+          totalApplications: { $sum: "$count" },
+          earliestApplication: { $min: "$earliestApplication" },
+          latestApplication: { $max: "$latestApplication" },
         },
       },
       {
@@ -210,6 +231,8 @@ router.get("/scholarship-applications", adminAuth, async (req, res) => {
         $project: {
           _id: 1,
           scholarshipTitle: "$scholarship.title",
+          matchedApplications: 1,
+          nonMatchedApplications: 1,
           totalApplications: 1,
           earliestApplication: 1,
           latestApplication: 1,

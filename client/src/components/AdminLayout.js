@@ -18,10 +18,29 @@ const AdminLayout = ({ children, title, headerActions }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarWidth, setSidebarWidth] = useState(260)
   const [isResizing, setIsResizing] = useState(false)
+  const [isMobile, setIsMobile] = useState(false) // New State for Mobile detection
   const sidebarRef = useRef(null)
 
-  // -- Resizing Logic --
+  // -- Mobile Detection --
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      // Auto-close sidebar on initial mobile load, open on desktop
+      if (mobile) setSidebarOpen(false);
+      else setSidebarOpen(true);
+    };
+
+    // Initial check
+    handleResize();
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // -- Resizing Logic (Desktop Only) --
   const handleMouseDown = (e) => {
+    if (isMobile) return; 
     setIsResizing(true)
     e.preventDefault()
   }
@@ -72,24 +91,50 @@ const AdminLayout = ({ children, title, headerActions }) => {
     contentBg: "#f8fafc",     
   }
 
+  // Helper to close sidebar on mobile click
+  const handleMobileNavClick = () => {
+    if(isMobile) setSidebarOpen(false);
+  }
+
   return (
-    <div className="admin-layout" style={{ display: "flex", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
+    <div className="admin-layout" style={{ display: "flex", minHeight: "100vh", fontFamily: "'Inter', sans-serif", position: "relative" }}>
       
+      {/* MOBILE BACKDROP OVERLAY */}
+      {isMobile && sidebarOpen && (
+        <div 
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            zIndex: 40,
+            backdropFilter: "blur(2px)"
+          }}
+        />
+      )}
+
       {/* SIDEBAR */}
       <aside
         ref={sidebarRef}
         style={{
-          width: sidebarOpen ? `${sidebarWidth}px` : "0px",
+          // Logic: On Mobile, it's fixed 280px. On Desktop, it's dynamic sidebarWidth.
+          width: sidebarOpen ? (isMobile ? "280px" : `${sidebarWidth}px`) : "0px",
           background: theme.sidebarBg,
           borderRight: `1px solid ${theme.sidebarBorder}`,
           color: "#334155",
           transition: isResizing ? "none" : "width 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
           overflow: "hidden",
-          position: "relative",
+          // Logic: On Mobile, it's Fixed (Overlay). On Desktop, it's Relative (Push).
+          position: isMobile ? "fixed" : "relative",
+          height: isMobile ? "100%" : "auto",
+          zIndex: 50, // Above everything on mobile
           flexShrink: 0,
           display: "flex",
           flexDirection: "column",
-          // Removed 'justifyContent: space-between' so items stack at the top
+          boxShadow: isMobile && sidebarOpen ? "4px 0 24px rgba(0,0,0,0.15)" : "none",
         }}
       >
         {/* Brand Header */}
@@ -101,7 +146,7 @@ const AdminLayout = ({ children, title, headerActions }) => {
             gap: "12px",
             borderBottom: `1px solid ${theme.sidebarBorder}`,
             minWidth: "250px", 
-            flexShrink: 0 // Prevent header shrinking
+            flexShrink: 0 
           }}
         >
           <div style={{ 
@@ -119,7 +164,6 @@ const AdminLayout = ({ children, title, headerActions }) => {
         </div>
 
         {/* Navigation */}
-        {/* CHANGED: Removed 'flex: 1'. Added 'paddingBottom: 0' */}
         <nav style={{ padding: "1.5rem 1rem 0 1rem", minWidth: "250px" }}>
           <p style={{ margin: "0 0 0.75rem 0.75rem", fontSize: "0.75rem", color: "#94a3b8", fontWeight: "700", textTransform: "uppercase" }}>Menu</p>
           <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "4px" }}>
@@ -129,6 +173,7 @@ const AdminLayout = ({ children, title, headerActions }) => {
                 <li key={item.path}>
                   <Link
                     to={item.path}
+                    onClick={handleMobileNavClick}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -165,7 +210,6 @@ const AdminLayout = ({ children, title, headerActions }) => {
         </nav>
 
         {/* Footer / Logout */}
-        {/* CHANGED: Removed borderTop to make it look cleaner, added marginTop to give breathing room from menu */}
         <div style={{ padding: "1rem", minWidth: "250px", marginTop: "1rem" }}>
             <button
               onClick={logout}
@@ -199,8 +243,8 @@ const AdminLayout = ({ children, title, headerActions }) => {
             </button>
         </div>
 
-        {/* Resize Handle */}
-        {sidebarOpen && (
+        {/* Resize Handle - HIDDEN ON MOBILE */}
+        {sidebarOpen && !isMobile && (
           <div
             onMouseDown={handleMouseDown}
             style={{
@@ -238,13 +282,14 @@ const AdminLayout = ({ children, title, headerActions }) => {
           transition: isResizing ? "none" : "margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
           display: "flex",
           flexDirection: "column",
-          overflow: "hidden" 
+          overflow: "hidden",
+          width: "100%"
         }}
       >
         {/* Top Header */}
         <header
           style={{
-            padding: "1rem 2rem",
+            padding: isMobile ? "0.75rem 1rem" : "1rem 2rem", // Adjusted padding for mobile
             background: "white",
             display: "flex",
             justifyContent: "space-between",
@@ -255,7 +300,7 @@ const AdminLayout = ({ children, title, headerActions }) => {
             zIndex: 5
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: isMobile ? "0.75rem" : "1.5rem" }}>
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               style={{
@@ -273,22 +318,16 @@ const AdminLayout = ({ children, title, headerActions }) => {
                 boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
                 transition: "all 0.2s"
               }}
-              onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "#cbd5e1"
-                  e.currentTarget.style.color = "#1e293b"
-              }}
-              onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "#e2e8f0"
-                  e.currentTarget.style.color = "#64748b"
-              }}
             >
               <HiOutlineMenu size={24} />
             </button>
             <div>
-              <h1 style={{ margin: 0, fontSize: "1.5rem", fontWeight: "700", color: "#1e293b", lineHeight: 1.2 }}>{title}</h1>
-              <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "0.875rem" }}>
-                Welcome back, <span style={{fontWeight: 600, color: "#2563eb"}}>{user?.name}</span>
-              </p>
+              <h1 style={{ margin: 0, fontSize: isMobile ? "1.25rem" : "1.5rem", fontWeight: "700", color: "#1e293b", lineHeight: 1.2 }}>{title}</h1>
+              {!isMobile && (
+                <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "0.875rem" }}>
+                  Welcome back, <span style={{fontWeight: 600, color: "#2563eb"}}>{user?.name}</span>
+                </p>
+              )}
             </div>
           </div>
           
@@ -300,10 +339,21 @@ const AdminLayout = ({ children, title, headerActions }) => {
         </header>
 
         {/* Content Area */}
-        <div style={{ padding: "2rem", overflowY: "auto", flex: 1 }}>
+        <div style={{ padding: isMobile ? "1rem" : "2rem", overflowY: "auto", flex: 1 }}>
             {children}
         </div>
       </main>
+
+      {/* --- Responsive Styles --- */}
+      <style>{`
+        @media (max-width: 768px) {
+           /* Ensure generic tables/cards inside children don't overflow page */
+           .admin-content img, .admin-content video {
+             max-width: 100%;
+             height: auto;
+           }
+        }
+      `}</style>
     </div>
   )
 }

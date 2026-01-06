@@ -1,8 +1,14 @@
 import { useState, useEffect } from "react";
-import { FaGraduationCap } from 'react-icons/fa';
+import { FaGraduationCap } from "react-icons/fa";
 import { getSessionId } from "../utils/sessionUtils";
 
-const FeedbackBanner = ({ scholarshipId, scholarshipTitle, onClose }) => {
+const FeedbackBanner = ({
+  scholarshipId,
+  scholarshipTitle,
+  onClose,
+  onApplied,
+  isMatched = true,
+}) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -35,24 +41,33 @@ const FeedbackBanner = ({ scholarshipId, scholarshipTitle, onClose }) => {
       const user = userStr ? JSON.parse(userStr) : null;
       const userId = user?._id || user?.id || null;
 
-      const response = await fetch("http://localhost:5000/api/clicks/feedback", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          scholarshipId,
-          sessionId,
-          responseType,
-          userId,
-        }),
-      });
+      const response = await fetch(
+        "http://localhost:5000/api/clicks/feedback",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            scholarshipId,
+            sessionId,
+            responseType,
+            userId,
+          }),
+        }
+      );
 
       const data = await response.json();
-      
+
       if (data.success) {
         // Mark this scholarship as responded in localStorage (only for "completed")
         markScholarshipAsResponded(scholarshipId, responseType);
+
+        // Notify parent component if scholarship was marked as applied
+        if (responseType === "completed" && onApplied) {
+          onApplied(scholarshipId);
+        }
+
         onClose(responseType);
       } else {
         onClose(responseType);
@@ -80,7 +95,14 @@ const FeedbackBanner = ({ scholarshipId, scholarshipTitle, onClose }) => {
     // Only mark as "responded" (prevent future popups) if completed
     // Allow popups to show again for "not_yet" and "dismissed" responses
     if (responseType === "completed") {
-      const key = "feedbackResponded";
+      // Get user ID from localStorage to make the key user-specific
+      const userStr = localStorage.getItem("user");
+      const user = userStr ? JSON.parse(userStr) : null;
+      const currentUserId = user?._id || user?.id || null;
+
+      // Use session-specific key format with match status
+      const matchType = isMatched ? "matched" : "nonmatched";
+      const key = `feedbackResponded_${matchType}_${currentUserId || "guest"}`;
       const responded = JSON.parse(localStorage.getItem(key) || "[]");
       if (!responded.includes(scholarshipId)) {
         responded.push(scholarshipId);
@@ -162,9 +184,9 @@ const FeedbackBanner = ({ scholarshipId, scholarshipTitle, onClose }) => {
             fontWeight: "600",
             color: "#1f2937",
             marginBottom: "0.5rem",
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
           }}
         >
           Help us improve DreamFund!
@@ -193,7 +215,9 @@ const FeedbackBanner = ({ scholarshipId, scholarshipTitle, onClose }) => {
             transition: "background-color 0.2s",
             opacity: isSubmitting ? 0.7 : 1,
           }}
-          onMouseOver={(e) => !isSubmitting && (e.target.style.backgroundColor = "#059669")}
+          onMouseOver={(e) =>
+            !isSubmitting && (e.target.style.backgroundColor = "#059669")
+          }
           onMouseOut={(e) => (e.target.style.backgroundColor = "#10b981")}
         >
           ✓ Yes, I completed it
@@ -215,7 +239,9 @@ const FeedbackBanner = ({ scholarshipId, scholarshipTitle, onClose }) => {
             transition: "background-color 0.2s",
             opacity: isSubmitting ? 0.7 : 1,
           }}
-          onMouseOver={(e) => !isSubmitting && (e.target.style.backgroundColor = "#d97706")}
+          onMouseOver={(e) =>
+            !isSubmitting && (e.target.style.backgroundColor = "#d97706")
+          }
           onMouseOut={(e) => (e.target.style.backgroundColor = "#f59e0b")}
         >
           Not yet

@@ -459,18 +459,10 @@ router.post("/recalculate-status", async (req, res) => {
       if (normalizedDeadline && !(record.deadline instanceof Date)) {
         record.deadline = normalizedDeadline;
       }
-      const hasDiplomaOrDegree = Array.isArray(record.studyLevels)
-        ? record.studyLevels.some((lvl) =>
-            ["diploma", "degree"].includes(String(lvl).toLowerCase())
-          )
-        : ["diploma", "degree"].includes(
-            String(record.studyLevel || "").toLowerCase()
-          );
+      // Determine status based ONLY on deadline, not studyLevels
+      let newStatus = "active"; // Default to active
 
-      let newStatus = "inactive";
-      if (!hasDiplomaOrDegree) {
-        newStatus = "inactive";
-      } else if (
+      if (
         record.deadline instanceof Date &&
         !isNaN(record.deadline.getTime())
       ) {
@@ -484,7 +476,7 @@ router.post("/recalculate-status", async (req, res) => {
             ? "active"
             : "inactive";
       } else {
-        // No deadline means scholarship is active (as long as study level is valid)
+        // No deadline means scholarship is always active
         newStatus = "active";
       }
 
@@ -659,9 +651,17 @@ router.post("/scrape-scholarships", auth, adminAuth, async (req, res) => {
             const result = await Scholarship.findOneAndUpdate(
               { sourceUrl: normalized.sourceUrl },
               { $set: normalized },
-              { upsert: true, new: true, setDefaultsOnInsert: true, rawResult: true }
+              {
+                upsert: true,
+                new: true,
+                setDefaultsOnInsert: true,
+                rawResult: true,
+              }
             );
-            if (result.lastErrorObject && result.lastErrorObject.updatedExisting === false) {
+            if (
+              result.lastErrorObject &&
+              result.lastErrorObject.updatedExisting === false
+            ) {
               scrapingState.savedCount++;
             } else {
               scrapingState.updatedCount++;
@@ -694,11 +694,49 @@ router.post("/scrape-scholarships", auth, adminAuth, async (req, res) => {
               status: status,
               errors: scrapingState.errors,
             });
-          } catch (sessionError) {
-          }
+          } catch (sessionError) {}
         }
 
         scrapingState.isRunning = false;
+
+        try {
+          console.log("🔄 Auto-recalculating scholarship statuses...");
+          const now = new Date();
+          const todayMidnightUtc = new Date(
+            Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+          );
+
+          const allScholarships = await Scholarship.find({});
+          let autoUpdated = 0;
+
+          for (const scholarship of allScholarships) {
+            // Determine status based ONLY on deadline, not studyLevels
+            let newStatus = "active"; // Default to active
+
+            if (
+              scholarship.deadline instanceof Date &&
+              !isNaN(scholarship.deadline.getTime())
+            ) {
+              const dl = scholarship.deadline;
+              const deadlineMidnightUtc = new Date(
+                Date.UTC(dl.getUTCFullYear(), dl.getUTCMonth(), dl.getUTCDate())
+              );
+              newStatus =
+                deadlineMidnightUtc.getTime() >= todayMidnightUtc.getTime()
+                  ? "active"
+                  : "inactive";
+            } else {
+              // No deadline = always active
+              newStatus = "active";
+            }
+
+            if (scholarship.status !== newStatus) {
+              scholarship.status = newStatus;
+              await scholarship.save();
+              autoUpdated++;
+            }
+          }
+        } catch (autoUpdateError) {}
       } catch (error) {
         scrapingState.errors.push(`Critical error: ${error.message}`);
 
@@ -726,8 +764,7 @@ router.post("/scrape-scholarships", auth, adminAuth, async (req, res) => {
             errors: scrapingState.errors,
             triggeredBy: userId,
           });
-        } catch (sessionError) {
-        }
+        } catch (sessionError) {}
 
         scrapingState.isRunning = false;
       }
@@ -837,6 +874,18 @@ router.get("/matches/:userId", auth, async (req, res) => {
         );
         expiredCount++;
         continue; // Skip expired scholarships
+      }
+
+      const hasValidStudyLevel = Array.isArray(scholarship.studyLevels)
+        ? scholarship.studyLevels.some((level) =>
+            ["diploma", "degree"].includes(String(level).toLowerCase())
+          )
+        : ["diploma", "degree"].includes(
+            String(scholarship.studyLevel || "").toLowerCase()
+          );
+
+      if (!hasValidStudyLevel) {
+        continue; // ❌ SKIPS scholarship completely - won't show in results
       }
 
       // 2. Check CGPA requirements
@@ -1103,6 +1152,21 @@ router.post("/public-matches", async (req, res) => {
         );
         expiredCount++;
         continue; // Skip expired scholarships
+      }
+
+      const hasValidStudyLevel = Array.isArray(scholarship.studyLevels)
+        ? scholarship.studyLevels.some((level) =>
+            ["diploma", "degree"].includes(String(level).toLowerCase())
+          )
+        : ["diploma", "degree"].includes(
+            String(scholarship.studyLevel || "").toLowerCase()
+          );
+
+      if (!hasValidStudyLevel) {
+        console.log(
+          `📚 Skipping scholarship without valid study level: ${scholarship.title}`
+        );
+        continue;
       }
 
       // 2. Check CGPA requirements

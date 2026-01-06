@@ -62,20 +62,7 @@ const ReportsPage = () => {
 
   // Compute display status for scholarship
   const computeDisplayStatus = (scholarship) => {
-    // First, check for valid study levels
-    const studyLevels = scholarship.studyLevels || [];
-    const studyLevel = scholarship.studyLevel;
-    const hasValidStudyLevel =
-      studyLevels.includes("degree") ||
-      studyLevels.includes("diploma") ||
-      studyLevel === "degree" ||
-      studyLevel === "diploma";
-
-    if (!hasValidStudyLevel) {
-      return "missing-study-level";
-    }
-
-    // Then check deadline expiration
+    // First, check deadline expiration
     const deadlineValue = scholarship.deadline || scholarship.extractedDeadline;
     const deadlineDate = tryParseDeadline(deadlineValue);
 
@@ -91,13 +78,26 @@ const ReportsPage = () => {
           deadlineDate.getUTCDate()
         )
       );
+      // If deadline has passed, it's inactive regardless of study level
       if (dl.getTime() < todayMidnightUtc.getTime()) return "inactive";
     }
 
-    // Finally, check the status field
-    return String(scholarship.status || "active").toLowerCase() === "inactive"
-      ? "inactive"
-      : "active";
+    // Deadline is valid or doesn't exist, now check study levels
+    const studyLevels = scholarship.studyLevels || [];
+    const studyLevel = scholarship.studyLevel;
+    const hasValidStudyLevel =
+      studyLevels.includes("degree") ||
+      studyLevels.includes("diploma") ||
+      studyLevel === "degree" ||
+      studyLevel === "diploma";
+
+    // If missing study level but not expired, categorize as missing-study-level
+    if (!hasValidStudyLevel) {
+      return "missing-study-level";
+    }
+
+    // Has valid study level and not expired = active
+    return "active";
   };
 
   // Get status colors for chart
@@ -237,7 +237,6 @@ const ReportsPage = () => {
         return {
           date: `${month} ${day}`,
           created: entry.created || 0,
-          expired: entry.expired || 0,
         };
       });
     }
@@ -250,7 +249,6 @@ const ReportsPage = () => {
     data.push({
       date: `${month} ${day}`,
       created: guestStats.createdToday || 0,
-      expired: 0, // Today's expirations not tracked separately
     });
 
     return data;
@@ -727,15 +725,6 @@ const ReportsPage = () => {
                       dot={{ fill: "#2563eb", r: 4 }}
                       activeDot={{ r: 6 }}
                     />
-                    <Line
-                      type="monotone"
-                      dataKey="expired"
-                      stroke="#6b7280"
-                      strokeWidth={2}
-                      name="Guests Expired"
-                      dot={{ fill: "#6b7280", r: 4 }}
-                      activeDot={{ r: 6 }}
-                    />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -877,6 +866,26 @@ const ReportsPage = () => {
                           color: "#374151",
                         }}
                       >
+                        Matched Apps
+                      </th>
+                      <th
+                        style={{
+                          textAlign: "center",
+                          padding: "0.75rem",
+                          fontWeight: "600",
+                          color: "#374151",
+                        }}
+                      >
+                        Non-Matched Apps
+                      </th>
+                      <th
+                        style={{
+                          textAlign: "center",
+                          padding: "0.75rem",
+                          fontWeight: "600",
+                          color: "#374151",
+                        }}
+                      >
                         Total Applications
                       </th>
                       <th
@@ -922,6 +931,38 @@ const ReportsPage = () => {
                             }}
                           >
                             {item.scholarshipTitle}
+                          </td>
+                          <td
+                            style={{ padding: "0.75rem", textAlign: "center" }}
+                          >
+                            <span
+                              style={{
+                                background: "#dcfce7",
+                                color: "#166534",
+                                padding: "0.25rem 0.75rem",
+                                borderRadius: "12px",
+                                fontWeight: "600",
+                                fontSize: "0.875rem",
+                              }}
+                            >
+                              {item.matchedApplications || 0}
+                            </span>
+                          </td>
+                          <td
+                            style={{ padding: "0.75rem", textAlign: "center" }}
+                          >
+                            <span
+                              style={{
+                                background: "#fef3c7",
+                                color: "#92400e",
+                                padding: "0.25rem 0.75rem",
+                                borderRadius: "12px",
+                                fontWeight: "600",
+                                fontSize: "0.875rem",
+                              }}
+                            >
+                              {item.nonMatchedApplications || 0}
+                            </span>
                           </td>
                           <td
                             style={{

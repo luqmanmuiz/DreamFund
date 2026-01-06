@@ -28,6 +28,7 @@ const ResultsPage = () => {
   const [studentCtx, setStudentCtx] = useState({ cgpa: 0, program: "" });
   const [studentName, setStudentName] = useState("");
   const [feedbackScholarship, setFeedbackScholarship] = useState(null);
+  const [appliedScholarships, setAppliedScholarships] = useState([]);
 
   const capitalizeWords = (str) => {
     if (!str || typeof str !== "string") return "";
@@ -37,6 +38,35 @@ const ResultsPage = () => {
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" ");
   };
+
+  // Load applied scholarships from localStorage on mount
+  useEffect(() => {
+    if (matches.length > 0 || nonMatches.length > 0) {
+      // Load both matched and non-matched applied scholarships
+      const matchedKey = `feedbackResponded_matched_${userId || "guest"}`;
+      const nonMatchedKey = `feedbackResponded_nonmatched_${userId || "guest"}`;
+
+      const matchedResponded = JSON.parse(
+        localStorage.getItem(matchedKey) || "[]"
+      );
+      const nonMatchedResponded = JSON.parse(
+        localStorage.getItem(nonMatchedKey) || "[]"
+      );
+
+      // Combine both arrays
+      const allApplied = [...matchedResponded, ...nonMatchedResponded];
+
+      // Filter to only include scholarships in current results
+      const allScholarshipIds = [
+        ...matches.map((m) => m.scholarship._id),
+        ...nonMatches.map((nm) => nm.scholarship._id),
+      ];
+      const validApplied = allApplied.filter((id) =>
+        allScholarshipIds.includes(id)
+      );
+      setAppliedScholarships(validApplied);
+    }
+  }, [matches, nonMatches, userId]);
 
   useEffect(() => {
     const fetchMatches = async () => {
@@ -179,28 +209,45 @@ const ResultsPage = () => {
     );
   }
 
-  const handleApplyNowClick = async (scholarship) => {
+  const handleApplyNowClick = async (scholarship, isMatched = true) => {
     if (!scholarship.provider.website) {
       alert("No website available for this scholarship provider");
       return;
     }
 
-    trackScholarshipClick(scholarship._id, user?._id || null).catch((err) => {
-      console.log("Tracking failed:", err);
-    });
+    trackScholarshipClick(scholarship._id, user?._id || null, isMatched).catch(
+      (err) => {
+        console.log("Tracking failed:", err);
+      }
+    );
 
-    markPendingFeedback(scholarship._id);
+    // Only mark pending feedback if scholarship hasn't been applied yet
+    const alreadyApplied = appliedScholarships.includes(scholarship._id);
+    if (!alreadyApplied) {
+      markPendingFeedback(scholarship._id);
+    }
+
     window.open(scholarship.provider.website, "_blank");
 
-    setTimeout(() => {
-      if (!feedbackScholarship) {
-        setFeedbackScholarship({
-          id: scholarship._id,
-          title: scholarship.title,
-        });
-        markFeedbackShown(scholarship._id);
-      }
-    }, 3000);
+    // Only show feedback banner if not already applied
+    if (!alreadyApplied) {
+      setTimeout(() => {
+        if (!feedbackScholarship) {
+          setFeedbackScholarship({
+            id: scholarship._id,
+            title: scholarship.title,
+            isMatched: isMatched,
+          });
+          markFeedbackShown(scholarship._id);
+        }
+      }, 2500);
+    }
+  };
+
+  const handleScholarshipApplied = (scholarshipId) => {
+    if (!appliedScholarships.includes(scholarshipId)) {
+      setAppliedScholarships((prev) => [...prev, scholarshipId]);
+    }
   };
 
   const handleFeedbackClose = (responseType) => {
@@ -271,6 +318,20 @@ const ResultsPage = () => {
 
     const hasConstraint = validCourses.length > 0;
     if (!hasConstraint) return { ok: true, detail: "Open to any program" };
+
+    const isOpenToAll = validCourses.some((c) => {
+      const cc = normalize(c);
+      return (
+        cc === "all fields" ||
+        cc === "all" ||
+        cc === "any field" ||
+        cc === "any"
+      );
+    });
+
+    if (isOpenToAll) {
+      return { ok: true, detail: "Open to all fields" };
+    }
 
     const p = normalize(program);
     const educationLevelMatch = validCourses.some((c) => {
@@ -516,6 +577,7 @@ const ResultsPage = () => {
                 hasDeadline && new Date(scholarship.deadline) < new Date();
               const reasons = getEligibilityReasons(scholarship);
               const indicator = getEligibilityIndicator(reasons);
+              const isApplied = appliedScholarships.includes(scholarship._id);
 
               return (
                 <div
@@ -526,8 +588,17 @@ const ResultsPage = () => {
                     boxShadow: `0 4px 6px rgba(0,0,0,0.05), 0 1px 3px ${indicator.color}30`,
                   }}
                 >
-                  <div className="card-header">
-                    <h3 className="scholarship-title">{scholarship.title}</h3>
+                  {/* NEW TOP ROW: Holds Applied Badge (Left) and Match Indicator (Right) */}
+                  <div className="card-top-row">
+                    {isApplied ? (
+                      <div className="applied-badge">
+                        <HiCheckCircle className="w-4 h-4" />
+                        <span>Applied</span>
+                      </div>
+                    ) : (
+                      <div className="spacer"></div>
+                    )}
+
                     <span
                       className="match-indicator"
                       style={{
@@ -538,6 +609,11 @@ const ResultsPage = () => {
                     >
                       {indicator.icon}
                     </span>
+                  </div>
+
+                  {/* Title is now in its own block, unaffected by absolute positioning */}
+                  <div className="card-header-title">
+                    <h3 className="scholarship-title">{scholarship.title}</h3>
                   </div>
 
                   <div className="deadline-info">
@@ -613,7 +689,7 @@ const ResultsPage = () => {
                       </button>
                     ) : (
                       <button
-                        onClick={() => handleApplyNowClick(scholarship)}
+                        onClick={() => handleApplyNowClick(scholarship, true)}
                         className="btn-apply-now"
                       >
                         Apply Now
@@ -645,15 +721,28 @@ const ResultsPage = () => {
                 const reasons = item.reasons || [];
                 const hasDeadline =
                   scholarship.deadline != null && scholarship.deadline !== "";
+                const isApplied = appliedScholarships.includes(scholarship._id);
 
                 return (
                   <div
                     key={scholarship._id}
                     className="scholarship-card non-match-card"
                   >
-                    <div className="non-match-badge">Not Eligible</div>
+                    {/* UPDATED HEADER: Layout mimics the Match Card structure */}
+                    <div className="card-top-row">
+                      {isApplied ? (
+                        <div className="applied-badge-nonmatch">
+                          <HiCheckCircle className="w-4 h-4" />
+                          <span>Applied</span>
+                        </div>
+                      ) : (
+                        <div className="spacer"></div>
+                      )}
 
-                    <div className="card-header">
+                      <div className="non-match-badge">Not Eligible</div>
+                    </div>
+
+                    <div className="card-header-title">
                       <h3 className="scholarship-title non-match-title">
                         {scholarship.scholarshipName || scholarship.title}
                       </h3>
@@ -690,7 +779,7 @@ const ResultsPage = () => {
 
                     <div className="card-footer">
                       <button
-                        onClick={() => handleApplyNowClick(scholarship)}
+                        onClick={() => handleApplyNowClick(scholarship, false)}
                         className="btn-apply-now-secondary"
                       >
                         View Details Anyway
@@ -709,6 +798,8 @@ const ResultsPage = () => {
           scholarshipId={feedbackScholarship.id}
           scholarshipTitle={feedbackScholarship.title}
           onClose={handleFeedbackClose}
+          onApplied={handleScholarshipApplied}
+          isMatched={feedbackScholarship.isMatched}
         />
       )}
 
@@ -742,10 +833,6 @@ const ResultsPage = () => {
           background: #dbeafe;
           border-radius: 9999px;
           margin-bottom: 1.5rem;
-        }
-
-        .hero-badge-icon {
-          font-size: 1rem;
         }
 
         .hero-badge-text {
@@ -848,7 +935,7 @@ const ResultsPage = () => {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
           gap: 2rem;
-          align-items: stretch; /* Ensures cards are same height */
+          align-items: stretch;
         }
 
         /* Scholarship Card (General) */
@@ -858,9 +945,10 @@ const ResultsPage = () => {
           border-radius: 12px;
           display: flex;
           flex-direction: column;
-          height: 100%; /* Fills the grid cell */
+          height: 100%;
           border: 1px solid #e5e7eb;
           transition: all 0.3s ease;
+          position: relative; /* Needed for stacking context */
         }
 
         .scholarship-card:hover {
@@ -868,35 +956,67 @@ const ResultsPage = () => {
           box-shadow: 0 15px 30px rgba(0, 0, 0, 0.08);
         }
 
-        /* Match Card Specifics */
         .match-card {
-          border-left: none; /* Removed original inline border */
+          border-left: none;
         }
 
-        .card-header {
+        /* --- NEW HEADER LAYOUT --- */
+        .card-top-row {
           display: flex;
           justify-content: space-between;
-          align-items: flex-start;
-          gap: 1rem;
+          align-items: center;
+          margin-bottom: 1rem;
+          min-height: 28px; /* Ensures space is reserved even if empty */
+        }
+
+        .card-header-title {
           margin-bottom: 0.75rem;
         }
 
-        /* --- UPDATED TITLE STYLES FOR UNIFORM HEIGHT --- */
         .scholarship-title {
           font-size: 1.3rem;
           font-weight: 700;
           color: #111827;
           line-height: 1.4;
           margin: 0;
-          flex-grow: 1;
-
-          /* Enforcement of height */
           display: -webkit-box;
-          -webkit-line-clamp: 2; /* Shows max 2 lines */
+          -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
           overflow: hidden;
           text-overflow: ellipsis;
-          min-height: 3.6rem; /* Calculated based on font-size * line-height * 2 lines (approx) */
+          min-height: 3.6rem;
+        }
+
+        /* --- UPDATED APPLIED BADGE --- */
+        .applied-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.375rem;
+          background-color: #ecfdf5; /* Light Green */
+          color: #059669; /* Dark Green Text */
+          padding: 0.25rem 0.75rem;
+          border-radius: 9999px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          border: 1px solid #a7f3d0;
+          text-transform: uppercase;
+          letter-spacing: 0.025em;
+        }
+
+        /* --- UPDATED APPLIED BADGE (NON-MATCH) --- */
+        .applied-badge-nonmatch {
+          display: inline-flex; /* Changed from absolute */
+          align-items: center;
+          gap: 0.375rem;
+          background-color: #fef3c7; /* Original Yellow Background */
+          color: #92400e; /* Original Brown/Orange Text */
+          padding: 0.25rem 0.75rem; /* Matches .applied-badge */
+          border-radius: 9999px; /* Matches .applied-badge */
+          font-size: 0.75rem; /* Matches .applied-badge */
+          font-weight: 700; /* Matches .applied-badge */
+          border: 1px solid #fcd34d; /* Matches style with yellow border */
+          text-transform: uppercase; /* Matches .applied-badge */
+          letter-spacing: 0.025em; /* Matches .applied-badge */
         }
 
         .match-indicator {
@@ -905,14 +1025,20 @@ const ResultsPage = () => {
           font-size: 0.75rem;
           font-weight: 700;
           flex-shrink: 0;
+          /* If no applied badge, push to right */
+          margin-left: auto;
         }
 
-        /* --- UPDATED DEADLINE INFO FOR UNIFORM HEIGHT --- */
+        /* If applied badge exists, reset margin for match indicator handled by justify-between */
+        .card-top-row > .match-indicator {
+          margin-left: 0;
+        }
+
         .deadline-info {
           font-size: 0.875rem;
           margin-bottom: 1.5rem;
           font-weight: 500;
-          min-height: 1.5rem; /* Reserves space so next section starts aligned */
+          min-height: 1.5rem;
           display: flex;
           align-items: center;
         }
@@ -936,20 +1062,14 @@ const ResultsPage = () => {
           font-weight: 700;
         }
 
-        /* --- CARD BODY PUSHES FOOTER DOWN --- */
         .card-body {
-          flex-grow: 1; /* This is key: it fills available space */
+          flex-grow: 1;
           padding-bottom: 1rem;
           border-bottom: 1px solid #f3f4f6;
           margin-bottom: 1.5rem;
           display: flex;
           flex-direction: column;
           gap: 1rem;
-        }
-
-        .requirements-list,
-        .match-reasons {
-          /* No fixed height here to avoid whitespace gaps if list is short */
         }
 
         .list-title {
@@ -978,20 +1098,10 @@ const ResultsPage = () => {
           margin-bottom: 0.25rem;
         }
 
-        .reason-icon {
-          font-size: 0.75rem;
-          line-height: 1.5;
-        }
-
         .reason-not-ok {
-          color: #ef4444; /* Highlight negative reasons */
+          color: #ef4444;
         }
 
-        .reason-not-ok .reason-icon {
-          content: "🔴";
-        }
-
-        /* Card Footer (Buttons) - ALways at bottom */
         .card-footer {
           margin-top: auto;
           padding-top: 0.5rem;
@@ -1036,7 +1146,6 @@ const ResultsPage = () => {
           box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
         }
 
-        /* Non-Match Card Specifics */
         .non-matches-section {
           margin-top: 5rem;
           padding-top: 2rem;
@@ -1063,13 +1172,14 @@ const ResultsPage = () => {
         }
 
         .non-match-card {
-          background-color: #fefcf9; /* Very light yellow/cream */
-          opacity: 1; /* Reset opacity from original inline style */
-          border: 1px solid #fef3c7; /* Light yellow border */
+          background-color: #fefcf9;
+          opacity: 1;
+          border: 1px solid #fef3c7;
           border-top: 4px solid #f59e0b;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
 
+        /* Updated Non Match Badge: now positioned by flex, not absolute */
         .non-match-badge {
           background-color: #fef3c7;
           color: #92400e;
@@ -1077,9 +1187,14 @@ const ResultsPage = () => {
           border-radius: 9999px;
           font-size: 0.75rem;
           font-weight: 600;
-          text-align: right;
-          align-self: flex-end;
-          margin-bottom: 1rem;
+          flex-shrink: 0;
+          /* If no applied badge, push to right */
+          margin-left: auto;
+        }
+
+        /* If applied badge exists, reset margin */
+        .card-top-row > .non-match-badge {
+          margin-left: 0;
         }
 
         .non-match-title {
@@ -1136,7 +1251,6 @@ const ResultsPage = () => {
           box-shadow: 0 4px 10px rgba(37, 99, 235, 0.1);
         }
 
-        /* Media Queries */
         @media (max-width: 1024px) {
           .matches-grid {
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));

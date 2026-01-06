@@ -401,7 +401,7 @@ const LandingPage = () => {
 
         /* --- HOW IT WORKS SECTION --- */
         .how-it-works {
-          padding: 8rem 0;
+          padding: 4rem 0;
           background: #ffffff;
         }
 

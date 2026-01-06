@@ -14,6 +14,18 @@ const scholarshipClickSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    // User ID (if logged in)
+    userId: {
+      type: String,
+      default: null,
+      index: true,
+    },
+    // Whether the scholarship was matched or non-matched for the user
+    isMatched: {
+      type: Boolean,
+      default: true, // Default to true for existing data
+      index: true,
+    },
     // Additional metadata
     userAgent: {
       type: String,

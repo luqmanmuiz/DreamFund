@@ -6,9 +6,11 @@ const MODEL_NAME = 'llama3.2:1b'; // Using 1b model (3b requires too much RAM)
 
 // Force CPU-only mode to avoid GPU memory issues
 const OLLAMA_OPTIONS = {
-  num_gpu: 0,        // Use CPU only (prevents "model requires more system memory" error)
-  num_thread: 4,     // Use 4 CPU threads for decent performance
-  num_ctx: 2048,     // Context window
+  num_gpu: 0,
+  num_thread: 4,
+  num_ctx: 4096, // Increased context window to read more text
+  temperature: 0.1, // VERY LOW temperature for maximum strictness/accuracy
+  top_p: 0.5,
 };
 
 /**
@@ -24,6 +26,14 @@ async function isOllamaAvailable() {
   } catch (error) {
     return false;
   }
+}
+
+function cleanRawText(text) {
+  return text
+    .replace(/<[^>]*>/g, ' ') // HTML tags
+    .replace(/[{}];/g, '') // CSS
+    .replace(/\s+/g, ' ') // Multiple spaces
+    .trim();
 }
 
 /**

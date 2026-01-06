@@ -8,7 +8,7 @@ const Scholarship = require("../models/Scholarship");
 // @access  Public (works for both logged-in and guest users)
 router.post("/track", async (req, res) => {
   try {
-    const { scholarshipId, sessionId, userId } = req.body;
+    const { scholarshipId, sessionId, userId, isMatched } = req.body;
 
     // Validate required fields
     if (!scholarshipId || !sessionId) {
@@ -42,6 +42,7 @@ router.post("/track", async (req, res) => {
       sessionId,
       userAgent,
       ipAddress,
+      isMatched: isMatched !== undefined ? isMatched : true, // Default to true if not provided
     });
 
     // Save asynchronously without waiting

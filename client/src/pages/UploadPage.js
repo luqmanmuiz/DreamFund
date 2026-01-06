@@ -1095,19 +1095,24 @@ const UploadPage = () => {
           cursor: pointer;
           transition: transform 0.2s;
           box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          display: block; /* Make it block level */
+          width: auto;
+          margin: 0 auto 1.5rem; /* Center with bottom margin */
         }
         .btn-success-lg:hover {
           transform: translateY(-2px);
           box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
         }
         .share-link {
-          margin-top: 1.5rem;
+          margin-top: 0; /* Remove top margin since button has bottom margin */
           font-family: monospace;
           background: rgba(0, 0, 0, 0.1);
-          padding: 0.5rem;
+          padding: 0.5rem 1rem;
           border-radius: 6px;
-          font-size: 0.9rem;
-          display: inline-block;
+          font-size: 0.85rem; /* Slightly smaller */
+          display: block; /* Block level */
+          text-align: center;
+          word-break: break-all; /* Ensure long URLs wrap */
         }
 
         .btn-secondary-outline {

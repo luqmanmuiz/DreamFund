@@ -9,13 +9,11 @@ import AdminLayout from "../../components/AdminLayout";
 import {
   HiOutlineUsers,
   HiOutlineChartBar,
-  HiOutlineInformationCircle,
   HiOutlineCheckBadge,
   HiOutlineAcademicCap,
   HiOutlineCursorArrowRays,
   HiOutlineSparkles,
   HiOutlineBookOpen,
-  HiOutlineCircleStack,
   HiOutlineClock,
 } from "react-icons/hi2";
 
@@ -248,7 +246,7 @@ const AdminDashboard = () => {
         );
       })
       .sort((a, b) => a.parsedDeadline - b.parsedDeadline)
-      .slice(0, 10); // INCREASED SLICE TO SHOW MORE IF SPACE ALLOWS
+      .slice(0, 10);
 
     setUpcomingDeadlines(upcoming);
   }, [scholarships]);
@@ -525,12 +523,6 @@ const AdminDashboard = () => {
           margin-bottom: 2rem;
         }
 
-        @media (max-width: 1024px) {
-          .widgets-grid {
-            grid-template-columns: 1fr;
-          }
-        }
-
         /* --- Stat Cards --- */
         .stat-card {
           background: white;
@@ -585,8 +577,7 @@ const AdminDashboard = () => {
           box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
           display: flex;
           flex-direction: column;
-          /* CHANGED: Increased height to 650px to fill space */
-          height: 650px;
+          height: 650px; /* Fixed height for Desktop */
         }
 
         .widget-header {
@@ -596,7 +587,7 @@ const AdminDashboard = () => {
           align-items: center;
           justify-content: space-between;
           background: #fff;
-          flex-shrink: 0; /* Header doesn't shrink */
+          flex-shrink: 0;
         }
 
         .widget-title {
@@ -618,7 +609,6 @@ const AdminDashboard = () => {
           color: #64748b;
         }
 
-        /* CHANGED: Flex 1 allows list to fill the taller card */
         .activity-feed,
         .deadlines-list {
           padding: 1rem;
@@ -626,6 +616,7 @@ const AdminDashboard = () => {
           overflow-y: auto;
         }
 
+        /* Scrollbar Styling */
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
         }
@@ -637,7 +628,7 @@ const AdminDashboard = () => {
           border-radius: 20px;
         }
 
-        /* --- Timeline Styles (Activity) --- */
+        /* --- Timeline Styles --- */
         .timeline-container {
           padding: 1.5rem 1.5rem 0 1.5rem;
         }
@@ -645,7 +636,7 @@ const AdminDashboard = () => {
         .timeline-item {
           position: relative;
           padding-left: 2rem;
-          padding-bottom: 2rem; /* Increased spacing */
+          padding-bottom: 2rem;
         }
         .timeline-item:last-child {
           padding-bottom: 0;
@@ -838,6 +829,50 @@ const AdminDashboard = () => {
           font-size: 0.8rem;
           margin-top: 0.5rem;
           max-width: 200px;
+        }
+
+        /* --- RESPONSIVE / MOBILE STYLES --- */
+        @media (max-width: 1024px) {
+          .widgets-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 768px) {
+          /* Stack stats in one column or narrow 2-col on small tablets */
+          .stats-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+          }
+
+          /* Let widgets breathe on mobile, don't force fixed 650px height */
+          .widget-card {
+            height: auto;
+            min-height: 400px;
+            max-height: 600px;
+          }
+
+          /* Stack deadline content vertically so long titles don't crash into badges */
+          .deadline-card {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.75rem;
+          }
+
+          /* Allow full width for text */
+          .deadline-link {
+            max-width: 100%;
+            white-space: normal; /* allow wrapping */
+          }
+
+          .deadline-status-badge {
+            align-self: flex-start;
+          }
+
+          /* Adjust timeline padding for smaller screens */
+          .timeline-container {
+            padding: 1rem;
+          }
         }
       `}</style>
     </AdminLayout>
